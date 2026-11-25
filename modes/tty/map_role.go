@@ -35,29 +35,29 @@ var mapRoles = [numSurfaces]mapRole{
 }
 
 // mapRole is the UI mode on screen's role; an unruled one is Observer's.
-func (d Dashboard) mapRole() mapRole {
-	if d.surface < 0 || d.surface >= numSurfaces || mapRoles[d.surface].place == mapPlaceUnruled {
+func (mm mapModel) mapRole(e mapEnv) mapRole {
+	if e.Surface < 0 || e.Surface >= numSurfaces || mapRoles[e.Surface].place == mapPlaceUnruled {
 		return mapRoles[SurfaceObserver]
 	}
-	return mapRoles[d.surface]
+	return mapRoles[e.Surface]
 }
 
 // propRole is the UI mode on screen's Propagation role (D-193).
-func (d Dashboard) propRole() propRole { return d.mapRole().prop }
+func (mm mapModel) propRole(e mapEnv) propRole { return mm.mapRole(e).prop }
 
 // mapPlace is the place the map is on (D-195): the selected place, or the
 // station's; nil with none.
-func (d Dashboard) mapPlace() *snapshot.Location {
-	if d.mapRole().place == mapOnStation {
-		return d.stationPlace()
+func (mm mapModel) mapPlace(e mapEnv) *snapshot.Location {
+	if mm.mapRole(e).place == mapOnStation {
+		return mm.stationPlace(e)
 	}
-	return d.selectedLocation()
+	return e.Pick.location()
 }
 
 // noTransmitter reports whether no transmitter is set: the selected place
 // stands in for the station (D-193).
-func (d Dashboard) noTransmitter() bool {
-	t := d.cfg.Transmitter
+func (mm mapModel) noTransmitter(e mapEnv) bool {
+	t := e.Station.Transmitter
 	return t == nil || (t.Lat == 0 && t.Lon == 0)
 }
 
@@ -65,14 +65,14 @@ func (d Dashboard) noTransmitter() bool {
 // Settings - the watchlist's own record where one is at its place, so its
 // alerts come with it - or, with none set, the selected place, standing in;
 // nil with neither.
-func (d Dashboard) stationPlace() *snapshot.Location {
-	if d.noTransmitter() {
-		return d.selectedLocation()
+func (mm mapModel) stationPlace(e mapEnv) *snapshot.Location {
+	if mm.noTransmitter(e) {
+		return e.Pick.location()
 	}
-	t := d.cfg.Transmitter
-	if d.snap != nil {
-		for i := range d.snap.Locations {
-			if l := &d.snap.Locations[i]; l.Lat == t.Lat && l.Lon == t.Lon {
+	t := e.Station.Transmitter
+	if e.Pick.Snap != nil {
+		for i := range e.Pick.Snap.Locations {
+			if l := &e.Pick.Snap.Locations[i]; l.Lat == t.Lat && l.Lon == t.Lon {
 				return l
 			}
 		}

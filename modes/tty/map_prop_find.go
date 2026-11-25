@@ -44,151 +44,158 @@ type propFoundMsg struct {
 
 // openPropFind is /: the find entry over the map, in the Propagation mode
 // alone.
-func (d Dashboard) openPropFind() Dashboard {
-	d.mapPane.propFindQuery, d.mapPane.propFindErr = "", ""
-	return d.openInPropagation(modalPropFind)
+func (mm mapModel) openPropFind(e mapEnv) (mapModel, mapWant) {
+	return mm.openPropEntry(mapModalPropFind, e)
 }
 
 // propFindLines are the entry's lines: what is typed, that it is being
 // found, why it was not, the place found now, that none is kept, and the
 // keys.
-func (d Dashboard) propFindLines(o render.Opts) []string {
-	lines := []string{"", "  City, ZIP, coordinates or grid locator:", "  " + d.mapPane.propFindQuery + o.Glyphs().Cursor, ""}
+func (mm mapModel) propFindLines(o render.Opts) []string {
+	lines := []string{"", "  City, ZIP, coordinates or grid locator:", "  " + mm.mapPane.propFindQuery + o.Glyphs().Cursor, ""}
 	switch {
-	case d.mapPane.propFindBusy:
+	case mm.mapPane.propFindBusy:
 		lines = append(lines, "  Finding it...", "")
-	case d.mapPane.propFindErr != "":
-		for _, l := range render.WrapText(o.Glyphs().Alert+" "+d.mapPane.propFindErr+". Change it, or press Enter to try again.", propFindWidth-8) { // a lookup that did not answer is tried again as it is (AX-10)
+	case mm.mapPane.propFindErr != "":
+		for _, l := range render.WrapText(o.Glyphs().Alert+" "+mm.mapPane.propFindErr+". Change it, or press Enter to try again.", propFindWidth-8) { // a lookup that did not answer is tried again as it is (AX-10)
 			lines = append(lines, "  "+l)
 		}
 		lines = append(lines, "")
 	}
-	if f := d.mapPane.propFound; f != nil {
+	if f := mm.mapPane.propFound; f != nil {
 		lines = append(lines, "  Marked now: "+render.TruncateCells(f.Label, propFindWidth-22)+".", "  An empty Enter takes the mark off.", "")
 	}
 	lines = append(lines, "  Anywhere on the globe. A found place is", "  not kept: find it again at any time.", "")
 	return append(lines, "  "+o.Controls("   ", render.Ctl("enter", "Find"), render.Ctl("esc", "Cancel")))
 }
 
-// handlePropFindKey is the entry's keyboard: printable keys build what is
+// onPropFindKey is the entry's keyboard: printable keys build what is
 // typed, so no binding fires mid-typing; Enter finds it - off the UI
 // goroutine, the lookup may go online - or with nothing typed takes the
 // mark off; Esc leaves everything as it was.
-func (d Dashboard) handlePropFindKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
+func (mm mapModel) onPropFindKey(key tea.KeyPressMsg, e mapEnv) (mapModel, tea.Cmd, mapWant) {
 	switch key.String() {
 	case "enter":
-		q := strings.TrimSpace(d.mapPane.propFindQuery)
+		q := strings.TrimSpace(mm.mapPane.propFindQuery)
 		if q == "" {
-			return d.markFound(nil).close().renderMap(), nil
+			return mm.markFound(nil, e), nil, mapWant{Close: true, Then: mapStepRender}
 		}
-		find := d.mapHooks.FindPlace
-		if find == nil || d.mapPane.propFindBusy {
-			return d, nil
+		find := mm.mapHooks.FindPlace
+		if find == nil || mm.mapPane.propFindBusy {
+			return mm, nil, mapWant{}
 		}
-		d.mapPane.propFindSeq++
-		d.mapPane.propFindBusy, d.mapPane.propFindErr = true, ""
-		seq := d.mapPane.propFindSeq
+		mm.mapPane.propFindSeq++
+		mm.mapPane.propFindBusy, mm.mapPane.propFindErr = true, ""
+		seq := mm.mapPane.propFindSeq
 		ctx, cancel := context.WithCancel(context.Background())
-		d.mapPane.propFindCancel = cancel
-		return d, func() tea.Msg {
+		mm.mapPane.propFindCancel = cancel
+		return mm, func() tea.Msg {
 			defer cancel()
 			ref, err := find(ctx, q)
 			return propFoundMsg{seq: seq, ref: ref, err: err}
-		}
+		}, mapWant{}
 	case "esc":
-		return d.dropFind().close(), nil
+		return mm.dropFind(), nil, mapWant{Close: true}
 	case "backspace":
-		d.mapPane.propFindQuery = eraseRune(d.mapPane.propFindQuery)
+		mm.mapPane.propFindQuery = eraseRune(mm.mapPane.propFindQuery)
 	default:
-		if key.Text != "" && len([]rune(d.mapPane.propFindQuery)) < propFindMost {
-			d.mapPane.propFindQuery += key.Text
+		if key.Text != "" && len([]rune(mm.mapPane.propFindQuery)) < propFindMost {
+			mm.mapPane.propFindQuery += key.Text
 		}
 	}
-	d.mapPane.propFindErr = ""
-	return d, nil
+	mm.mapPane.propFindErr = ""
+	return mm, nil, mapWant{}
 }
 
 // dropFind cancels the find in flight, if one is: its answer is dropped
 // (AX-11) and its request stopped with it - a query the listener took back,
 // or one from a session since ended (D-27), is not sent on.
-func (d Dashboard) dropFind() Dashboard {
-	if !d.mapPane.propFindBusy {
-		return d
+func (mm mapModel) dropFind() mapModel {
+	if !mm.mapPane.propFindBusy {
+		return mm
 	}
-	d.mapPane.propFindSeq++
-	d.mapPane.propFindBusy = false
-	if d.mapPane.propFindCancel != nil {
-		d.mapPane.propFindCancel()
+	mm.mapPane.propFindSeq++
+	mm.mapPane.propFindBusy = false
+	if mm.mapPane.propFindCancel != nil {
+		mm.mapPane.propFindCancel()
 	}
-	return d
+	return mm
 }
 
 // applyPropFound takes a find's answer: a failure is said in the entry,
 // which stays open to change what was typed; a place is marked, and centred
 // on the Broadcaster alone (D-204); the entry closes and the map has the
 // focus again.
-func (d Dashboard) applyPropFound(v propFoundMsg) (Dashboard, tea.Cmd) {
-	if v.seq != d.mapPane.propFindSeq {
-		return d, nil // a later find's answer is the one wanted
+func (mm mapModel) applyPropFound(v propFoundMsg, e mapEnv) (mapModel, tea.Cmd, mapWant) {
+	if v.seq != mm.mapPane.propFindSeq {
+		return mm, nil, mapWant{} // a later find's answer is the one wanted
 	}
-	d.mapPane.propFindBusy = false
+	mm.mapPane.propFindBusy = false
 	if v.err != nil {
-		d.mapPane.propFindErr = v.err.Error()
+		mm.mapPane.propFindErr = v.err.Error()
 		if cause := errors.Unwrap(v.err); cause != nil {
-			d.problem("Propagation finder: " + cause.Error()) // the cause for the diagnostics; the words above are the listener's (D-124)
+			mm.problem("Propagation finder: "+cause.Error(), e) // the cause for the diagnostics; the words above are the listener's (D-124)
 		}
-		return d, nil
+		return mm, nil, mapWant{}
 	}
 	ref := v.ref
-	d = d.markFound(&ref)
-	if d.modal == modalPropFind {
-		d = d.close() // focus back on the map (FR-1.10)
+	mm = mm.markFound(&ref, e)
+	if e.Window == mapModalPropFind {
+		return mm, nil, mapWant{Close: true, Then: mapStepFoundRecentre} // focus back on the map (FR-1.10), then the place
 	}
-	if m := d.mapPane.m; m != nil && d.propRole().target { // the Broadcaster's target is the centre; on the Observer the place is a target row and the map stays (D-204)
-		d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: ref.Lon, Lat: ref.Lat}) })
+	mm, cmd := mm.foundRecentre(e)
+	return mm, cmd, mapWant{}
+}
+
+// foundRecentre is the map on the place found (0.19.6 design MS-1's S3),
+// the finder closed: recentred where the role centres on it, and drawn.
+func (mm mapModel) foundRecentre(e mapEnv) (mapModel, tea.Cmd) {
+	ref := *mm.mapPane.propFound
+	if m := mm.mapPane.m; m != nil && mm.propRole(e).target { // the Broadcaster's target is the centre; on the Observer the place is a target row and the map stays (D-204)
+		mm.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: ref.Lon, Lat: ref.Lat}) })
 	}
-	d, settle := d.viewMoved()
-	d = d.renderMap()
-	return d, tea.Batch(d.mapWorkCmd(), settle)
+	mm, settle := mm.viewMoved(e)
+	mm = mm.renderMap(e)
+	return mm, tea.Batch(mm.mapWorkCmd(e), settle)
 }
 
 // markFound marks the place found, or with nil takes the mark off: a ring,
 // named for it, on the map's places (D-147: the map's own marks).
-func (d Dashboard) markFound(ref *snapshot.LocationRef) Dashboard {
-	d.mapPane.propFound = ref
-	m := d.mapPane.m
+func (mm mapModel) markFound(ref *snapshot.LocationRef, e mapEnv) mapModel {
+	mm.mapPane.propFound = ref
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
-	if d.mapPane.foundMarked {
-		d.mapPane.call("RemovePlace", func() { _, _ = m.RemovePlace(foundPlaceID) })
-		d.mapPane.foundMarked = false
+	if mm.mapPane.foundMarked {
+		mm.mapPane.call("RemovePlace", func() { _, _ = m.RemovePlace(foundPlaceID) })
+		mm.mapPane.foundMarked = false
 	}
 	if ref == nil {
-		return d
+		return mm
 	}
 	var err error
-	d.mapPane.call("AddPlace", func() {
+	mm.mapPane.call("AddPlace", func() {
 		_, err = m.AddPlace(tuimaps.Place{ID: foundPlaceID, Name: ref.Label, At: tuimaps.LonLat{Lon: ref.Lon, Lat: ref.Lat}, Marker: tuimaps.MarkerRing})
 	})
 	if err != nil {
-		d.problem("Propagation: the found place not marked - " + err.Error()) // ours to fix, never the listener's (D-124)
-		return d
+		mm.problem("Propagation: the found place not marked - "+err.Error(), e) // ours to fix, never the listener's (D-124)
+		return mm
 	}
-	d.mapPane.foundMarked = true
-	return d
+	mm.mapPane.foundMarked = true
+	return mm
 }
 
 // propFoundWords say the place found, while it is marked (FR-1.10).
-func (d Dashboard) propFoundWords() string {
-	f := d.mapPane.propFound
+func (mm mapModel) propFoundWords(e mapEnv) string {
+	f := mm.mapPane.propFound
 	if f == nil {
 		return ""
 	}
-	if !d.propRole().target {
+	if !mm.propRole(e).target {
 		return "Found " + f.Label + ": marked on the map and answered with the targets, and not kept." // a target row, the map where it was (D-204)
 	}
-	if c, ok := d.propCentreAt(); ok && propStepped(f.Lat, f.Lon) != c {
+	if c, ok := mm.propCentreAt(); ok && propStepped(f.Lat, f.Lon) != c {
 		return "Found " + f.Label + ": marked on the map, and not kept." // panned away: the centre is another place (AX-1)
 	}
 	return "Found " + f.Label + ": marked at the map's centre, and not kept."

@@ -87,11 +87,24 @@ type perturbed struct {
 // DERIVED BY REFLECTION, which is the whole point: a field added later is
 // perturbed without anyone remembering to add it here. Unexported fields are
 // reachable because this is an in-package test and the struct is addressable.
+//
+// THE MAP'S MODEL IS WALKED AS A MODEL OF ITS OWN (0.19.6 A-31, D-81): a named
+// field, it is one struct the walk would descend into once, leaving its pane
+// and its choices unperturbed while the guard reported them covered. So the
+// Dashboard is walked with it excused, and then the model, each of its
+// perturbations set back into the Dashboard, the Dashboard's writer modelled
+// on it as on the Dashboard's own.
 func perturbations(t *testing.T, base Dashboard) []perturbed {
 	t.Helper()
 	var out []perturbed
 	ttytest.PerturbEach(t, base, nestedExcuse, dashboardWriter, func(path string, next Dashboard) {
 		out = append(out, perturbed{field: path, model: next})
+	})
+	ttytest.PerturbEach(t, base.mapModel, nil, nil, func(path string, next mapModel) {
+		d := base
+		d.mapModel = next
+		dashboardWriter(path, &d)
+		out = append(out, perturbed{field: "mapModel." + path, model: d})
 	})
 	return out
 }
@@ -129,6 +142,7 @@ var nestedExcuse = map[string]string{
 	// setup_ui.go), which is why the excuse is one FIELD rather than the struct
 	// it sits in.
 	"cfg.Version": "written once at construction; the app has no path that changes it while running",
+	"mapModel":    "the map's model, walked as a model of its own (perturbations, 0.19.6 D-81)",
 }
 
 // modalName is the window's name for the subtest, derived from the enum so a
@@ -191,7 +205,7 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 		ownHooks(&d).NewMap = embeddedMap
 		next, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 		d = next.(Dashboard).toggleMap()
-		t.Cleanup(d.closeMap)
+		t.Cleanup(d.mapModel.closeMap)
 		return settleMap(t, d)
 	case modalRelayFault:
 		return d.openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{

@@ -88,13 +88,13 @@ func TestTheWindowReturnedToResumes(t *testing.T) {
 		t.Error("the details opened at the map's scroll")
 	}
 	calls := []string{}
-	d.mapPane.calls = &calls
-	gen := d.mapPane.gen
+	d.mapModel.mapPane.calls = &calls
+	gen := d.mapModel.mapPane.gen
 	d, _ = pressKey(d, "esc")
 	if d.modalScroll != 3 {
 		t.Errorf("back on the map the scroll is %d; want 3, as left", d.modalScroll)
 	}
-	if d.mapPane.gen == gen || !strings.Contains(strings.Join(calls, ","), "Render") {
+	if d.mapModel.mapPane.gen == gen || !strings.Contains(strings.Join(calls, ","), "Render") {
 		t.Errorf("back on the map it was not drawn again: %v", calls)
 	}
 }

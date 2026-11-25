@@ -2,6 +2,6 @@ import pathlib
 # 0.19.0 AX-8: the words say the short names in full on opening.
 # Killed by TestTheShortNamesAreSaidInFull.
 p = pathlib.Path('modes/tty/map_prop_words.go'); s = p.read_text()
-old = '\tif d.mapPane.propSess.applied < 2 {\n'
+old = '\tif mm.mapPane.propSess.applied < 2 {\n'
 assert old in s, 'm329'
-p.write_text(s.replace(old, '\tif d.mapPane.propSess.applied < 0 {\n'))
+p.write_text(s.replace(old, '\tif mm.mapPane.propSess.applied < 0 {\n'))

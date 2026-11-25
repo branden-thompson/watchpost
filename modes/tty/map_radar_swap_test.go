@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 )
 
@@ -41,8 +42,8 @@ func renamed(r MapRadar, box string, frames int) MapRadar {
 func budgetForOne(t *testing.T, d Dashboard, next tuimaps.Overlay) {
 	t.Helper()
 	var err error
-	d.mapPane.call("SetImageBudget", func() { _ = d.mapPane.m.SetImageBudget(1) })
-	d.mapPane.call("Set", func() { _, err = d.mapPane.m.Set(next) })
+	d.mapModel.mapPane.call("SetImageBudget", func() { _ = d.mapModel.mapPane.m.SetImageBudget(1) })
+	d.mapModel.mapPane.call("Set", func() { _, err = d.mapModel.mapPane.m.Set(next) })
 	if err == nil {
 		t.Fatal("a budget of one byte took a loop; the probe measures nothing")
 	}
@@ -54,7 +55,7 @@ func budgetForOne(t *testing.T, d Dashboard, next tuimaps.Overlay) {
 	if perr != nil {
 		t.Fatal(perr)
 	}
-	d.mapPane.call("SetImageBudget", func() { _ = d.mapPane.m.SetImageBudget(int64(n)) })
+	d.mapModel.mapPane.call("SetImageBudget", func() { _ = d.mapModel.mapPane.m.SetImageBudget(int64(n)) })
 }
 
 // TestAZoomAcrossTheBoxesKeepsTheRadar is U2-59: the closer boxes' loops are
@@ -68,15 +69,17 @@ func TestAZoomAcrossTheBoxesKeepsTheRadar(t *testing.T) {
 	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	var frames []MapFrame
 	ownHooks(&d).MapFrame = func(f MapFrame) { frames = append(frames, f) }
-	r := renamed(radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk()), "us-b", 1)
+	r := renamed(radarFeed(t, "MRMS", &asked)(context.Background(), d.mapModel.mapAsk(d.mapEnv())), "us-b", 1)
 	budgetForOne(t, d, r.Overlays[0])
 
-	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
+	m := d
+	var cmd tea.Cmd
+	m.mapModel, cmd = d.mapModel.applyMapRadar(mapRadarMsg{radar: r, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = settleRadar(t, m, cmd)
-	if _, ok := d.mapPane.radarGiven[RadarLayer+"/us-b"]; !ok || len(d.mapPane.radarGiven) != 1 {
-		t.Errorf("the radar holds %v; want the closer box's loop alone", d.radarGivenIDs())
+	if _, ok := d.mapModel.mapPane.radarGiven[RadarLayer+"/us-b"]; !ok || len(d.mapModel.mapPane.radarGiven) != 1 {
+		t.Errorf("the radar holds %v; want the closer box's loop alone", d.mapModel.radarGivenIDs())
 	}
-	if st := d.mapPane.m.Loop(); st.Count == 0 {
+	if st := d.mapModel.mapPane.m.Loop(); st.Count == 0 {
 		t.Error("the map draws no loop after the zoom")
 	}
 	// The recorder says which boxes a frame was drawn from, which is how
@@ -84,8 +87,8 @@ func TestAZoomAcrossTheBoxesKeepsTheRadar(t *testing.T) {
 	if len(frames) == 0 || strings.Join(frames[len(frames)-1].Radar, ",") != RadarLayer+"/us-b" {
 		t.Errorf("the last frame recorded is drawn from %v; want the closer box's loop", lastRadar(frames))
 	}
-	if d.radarChipText() == "" || len(problems) != 0 {
-		t.Errorf("the chip reads %q and the diagnostics %q; want the source and no refusal", d.radarChipText(), problems)
+	if d.mapModel.radarChipText(d.mapEnv()) == "" || len(problems) != 0 {
+		t.Errorf("the chip reads %q and the diagnostics %q; want the source and no refusal", d.mapModel.radarChipText(d.mapEnv()), problems)
 	}
 }
 
@@ -99,19 +102,21 @@ func TestARefusedSwapKeepsTheLoopsItHad(t *testing.T) {
 	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
 	var frames []MapFrame
 	ownHooks(&d).MapFrame = func(f MapFrame) { frames = append(frames, f) }
-	feed := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
+	feed := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapModel.mapAsk(d.mapEnv()))
 	budgetForOne(t, d, renamed(feed, "us-b", 1).Overlays[0])
 	big := renamed(feed, "us-b", 3) // three times the frames: over the budget alone
 
-	m, cmd := d.applyMapRadar(mapRadarMsg{radar: big, region: d.mapPane.region.Name})
+	m := d
+	var cmd tea.Cmd
+	m.mapModel, cmd = d.mapModel.applyMapRadar(mapRadarMsg{radar: big, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = settleRadar(t, m, cmd)
-	if _, ok := d.mapPane.radarGiven[RadarLayer+"/us-a"]; !ok || len(d.mapPane.radarGiven) != 1 {
-		t.Errorf("the radar holds %v; want the loop it had, put back", d.radarGivenIDs())
+	if _, ok := d.mapModel.mapPane.radarGiven[RadarLayer+"/us-a"]; !ok || len(d.mapModel.mapPane.radarGiven) != 1 {
+		t.Errorf("the radar holds %v; want the loop it had, put back", d.mapModel.radarGivenIDs())
 	}
-	if st := d.mapPane.m.Loop(); st.Count == 0 {
+	if st := d.mapModel.mapPane.m.Loop(); st.Count == 0 {
 		t.Error("the map draws no loop: the one it had was lost")
 	}
-	if d.radarChipText() == "" {
+	if d.mapModel.radarChipText(d.mapEnv()) == "" {
 		t.Error("the chip went with the refused loops; the loop it had is still drawn")
 	}
 	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Radar") {

@@ -44,26 +44,26 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 				row = s
 			}
 		}
-		was := d.detailOn(l.key) // the Weather preset's (D-79)
+		was := d.mapModel.detailOn(l.key) // the Weather preset's (D-79)
 		words := map[bool]string{true: "Enabled", false: "Disabled"}
 		if !strings.Contains(row, "←") || !strings.Contains(row, words[was]) || !strings.Contains(row, "→") {
 			t.Fatalf("%s: the row is %q, not the picker at %s", l.key, row, words[was])
 		}
 		for _, key := range []tea.KeyPressMsg{{Code: tea.KeyRight}, {Code: tea.KeyLeft}} {
 			m, _, _ := d.setupRowKey(key)
-			if m.detailOn(l.key) == was {
+			if m.mapModel.detailOn(l.key) == was {
 				t.Errorf("%s: %s left it as it was", l.key, key.String())
 			}
 		}
 		d = d.setupSpace()
-		if d.detailOn(l.key) == was {
+		if d.mapModel.detailOn(l.key) == was {
 			t.Errorf("%s: space left it as it was", l.key)
 		}
 		body, _, _ = d.focusBody(d.opts())
 		if !strings.Contains(ttytest.StripANSI(strings.Join(body, "\n")), words[!was]) {
 			t.Errorf("%s: switched, the row does not say %s", l.key, words[!was])
 		}
-		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); m.detailOn(l.key) != was {
+		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); m.mapModel.detailOn(l.key) != was {
 			t.Errorf("%s: → did not switch it back", l.key)
 		}
 		m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -134,24 +134,24 @@ func TestTheAlertCategoriesSwitchTheirAlerts(t *testing.T) {
 	d.cfg.SetUI = func(p UIPrefs) error { saved = p; return nil }
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	if len(d.mapPane.given) != 2 {
-		t.Fatalf("both categories on, %d overlays drawn", len(d.mapPane.given))
+	if len(d.mapModel.mapPane.given) != 2 {
+		t.Fatalf("both categories on, %d overlays drawn", len(d.mapModel.mapPane.given))
 	}
 	d = pressCode(d, 'O', "O")
 	var keys []string
-	for _, r := range d.overlayRows() {
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		keys = append(keys, r.key)
 	}
-	d.mapPane.menuAt = slices.Index(keys, AlertCategorySwitch("advisories"))
-	if d.mapPane.menuAt < 0 {
+	d.mapModel.mapPane.menuAt = slices.Index(keys, AlertCategorySwitch("advisories"))
+	if d.mapModel.mapPane.menuAt < 0 {
 		t.Fatalf("the menu has no Advisories row: %v", keys)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = feedAndSettle(t, m)
-	if _, ok := d.mapPane.given["alert/advisories/a"]; ok {
+	if _, ok := d.mapModel.mapPane.given["alert/advisories/a"]; ok {
 		t.Error("the advisory is still drawn with Advisories off")
 	}
-	if _, ok := d.mapPane.given["alert/warnings/w"]; !ok {
+	if _, ok := d.mapModel.mapPane.given["alert/warnings/w"]; !ok {
 		t.Error("switching Advisories off took the warning too")
 	}
 	for _, msg := range msgsOf(t, cmd) {

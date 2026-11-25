@@ -27,7 +27,7 @@ import (
 // first on: the place's own heading and the map's lines before it aside.
 func propWordsFrom(t *testing.T, d Dashboard) []string {
 	t.Helper()
-	all := d.describeLinesAll()
+	all := d.mapModel.describeLinesAll(d.mapEnv())
 	for i, l := range all {
 		if strings.HasPrefix(l, "The Propagation mode") {
 			return all[i:]
@@ -68,7 +68,7 @@ func targetLine(lines []string, name string) int {
 func heldDash(t *testing.T) Dashboard {
 	t.Helper()
 	d := stationDash(t)
-	d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 7.2, "7.2 MHz"
+	d.mapModel.mapPane.propFreqMHz, d.mapModel.mapPane.propFreqLabel = 7.2, "7.2 MHz"
 	return workCentre(t, d)
 }
 
@@ -103,12 +103,12 @@ func TestTheWordsFollowTheRuledOrder(t *testing.T) {
 // have the same answer - the open before the closed.
 func TestThePropagationWordsAnswerWithoutThePicture(t *testing.T) {
 	d := chartDash(t)
-	d.mapDesc = mapDescInstead
+	d.mapModel.mapDesc = mapDescInstead
 	words := propWordsFrom(t, d)
 	if lineWith(words, ", now: MUF(3000) 18.0 megahertz, foF2 6.0 megahertz.") < 0 {
 		t.Errorf("the origin's answer is not said:\n%s", strings.Join(words, "\n"))
 	}
-	names, _ := d.propChartRows()
+	names, _ := d.mapModel.propChartRows()
 	for _, n := range names {
 		i := targetLine(words, n)
 		if i < 0 {
@@ -185,16 +185,16 @@ func TestTheStatusIsSaidWithoutThePicture(t *testing.T) {
 	d := propDash(t, &seam{}, true)
 	d.cfg.ASCII = true
 	d = pressMap(t, d, "P")
-	d.mapPane.propSess.busy, d.mapPane.propSnap = true, nil
+	d.mapModel.mapPane.propSess.busy, d.mapModel.mapPane.propSnap = true, nil
 	if words := strings.Join(propWordsFrom(t, d), "\n"); !strings.Contains(words, "asking NOAA for the newest grid") {
 		t.Errorf("asking is not said:\n%s", words)
 	}
-	d.mapPane.propSess.busy, d.mapPane.propErr = false, errors.New("ionomaps: NOAA not reached")
+	d.mapModel.mapPane.propSess.busy, d.mapModel.mapPane.propErr = false, errors.New("ionomaps: NOAA not reached")
 	if words := strings.Join(propWordsFrom(t, d), "\n"); !strings.Contains(words, "NOAA not reached") || !strings.Contains(words, "U refreshes now") {
 		t.Errorf("a failure is not said with its path:\n%s", words)
 	}
 	held, _ := drawnDash(t)
-	held.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
+	held.mapModel.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
 	words := propWordsFrom(t, held)
 	status := words[lineWith(words, "Status: ")]
 	for _, want := range []string{"data 30 minutes old", "the last update failed: NOAA not reached", "U refreshes now", "foF2 from GloTEC"} {
@@ -202,13 +202,13 @@ func TestTheStatusIsSaidWithoutThePicture(t *testing.T) {
 			t.Errorf("the status does not say %q: %q", want, status)
 		}
 	}
-	held.mapPane.propErr = context.Canceled
+	held.mapModel.mapPane.propErr = context.Canceled
 	if w := strings.Join(propWordsFrom(t, held), "\n"); strings.Contains(w, "failed") {
 		t.Errorf("an update ended by leaving the mode is said as failed:\n%s", w)
 	}
-	held.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
-	if !strings.Contains(ttytest.StripANSI(held.mapStatusLine()), "the last update failed") {
-		t.Errorf("a failed refresh over a field kept is not said on the status line: %q", ttytest.StripANSI(held.mapStatusLine()))
+	held.mapModel.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
+	if !strings.Contains(ttytest.StripANSI(held.mapModel.mapStatusLine(held.mapEnv())), "the last update failed") {
+		t.Errorf("a failed refresh over a field kept is not said on the status line: %q", ttytest.StripANSI(held.mapModel.mapStatusLine(held.mapEnv())))
 	}
 }
 
@@ -217,7 +217,7 @@ func refreshed(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
 	later := drawnAt.Add(5 * time.Minute)
 	d.now = func() time.Time { return later }
-	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(later, 18)}})
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(later, 18)}})
 	return m.(Dashboard)
 }
 
@@ -230,8 +230,8 @@ func refreshed(t *testing.T, d Dashboard) Dashboard {
 // own scroll moves the place.
 func TestARefreshKeepsTheReadersPlace(t *testing.T) {
 	d := chartDash(t)
-	d.mapDesc = mapDescInstead
-	d.mapPane.menuAt = 2
+	d.mapModel.mapDesc = mapDescInstead
+	d.mapModel.mapPane.menuAt = 2
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 100, Height: 20}) // the words longer than the window
 	d = m.(Dashboard)
 	rowOf := func(d Dashboard, prefix string) int {
@@ -247,14 +247,14 @@ func TestARefreshKeepsTheReadersPlace(t *testing.T) {
 		at, end := rowOf(d, prefix), max(len(d.modalLines())-d.modalMax(), 0)
 		return d.modalScroll == at || (d.modalScroll == end && at > end && at < end+d.modalMax())
 	}
-	if body, rows := d.mapBodyLines(), d.modalLines(); len(rows) != len(body) {
+	if body, rows := d.mapModel.mapBodyLines(d.mapEnv()), d.modalLines(); len(rows) != len(body) {
 		t.Errorf("the window wrapped the words again into %d rows from %d: text that scrolls is wrapped clear of the rail", len(rows), len(body))
 	}
 	d.modalScroll = rowOf(d, "Status: ")
 	before := d.modalScroll
 	d = workChart(t, refreshed(t, d))
-	if !kept(d, "Status: ") || d.mapPane.menuAt != 2 {
-		t.Errorf("after a refresh the scroll is %d, the status block at row %d, the menu's focus %d; the block at the top and 2 kept", d.modalScroll, rowOf(d, "Status: "), d.mapPane.menuAt)
+	if !kept(d, "Status: ") || d.mapModel.mapPane.menuAt != 2 {
+		t.Errorf("after a refresh the scroll is %d, the status block at row %d, the menu's focus %d; the block at the top and 2 kept", d.modalScroll, rowOf(d, "Status: "), d.mapModel.mapPane.menuAt)
 	}
 	d = workChart(t, stepAhead(t, d, "shift+right"))
 	if !kept(d, "Status: ") {
@@ -265,10 +265,10 @@ func TestARefreshKeepsTheReadersPlace(t *testing.T) {
 	}
 	d = workChart(t, stepAhead(t, d, "n")) // back to now: a target, being worked out again after a refresh
 	d.modalScroll = rowOf(d, "North America: ")
-	d.mapPane.wordsAt, _ = d.wordsTop()
+	d.mapModel.mapPane.wordsAt, _ = d.mapModel.wordsTop(d.mapEnv())
 	later := drawnAt.Add(10 * time.Minute)
 	d.now = func() time.Time { return later }
-	m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(later, 18)}})
+	m, _ = d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(later, 18)}})
 	d = m.(Dashboard)
 	if lineWith(d.modalLines(), "being worked out") < 0 {
 		t.Fatal("control: after a refresh the targets are not being worked out again")
@@ -277,8 +277,8 @@ func TestARefreshKeepsTheReadersPlace(t *testing.T) {
 		t.Errorf("once answered again, North America's sentence is at row %d and the scroll %d; at the top", rowOf(d, "North America: "), d.modalScroll)
 	}
 	m, _ = d.Update(mapKeyMsg(t, "pgup"))
-	if d = m.(Dashboard); d.mapPane.wordsAt.keys != nil && slices.Contains(d.mapPane.wordsAt.keys, "target:North America") && d.modalScroll > 0 {
-		t.Errorf("after the reader's own scroll the place kept is still %v", d.mapPane.wordsAt.keys)
+	if d = m.(Dashboard); d.mapModel.mapPane.wordsAt.keys != nil && slices.Contains(d.mapModel.mapPane.wordsAt.keys, "target:North America") && d.modalScroll > 0 {
+		t.Errorf("after the reader's own scroll the place kept is still %v", d.mapModel.mapPane.wordsAt.keys)
 	}
 }
 
@@ -299,7 +299,7 @@ func TestARefreshIsSaidOnce(t *testing.T) {
 	first.now = func() time.Time { return drawnAt }
 	first = pressMap(t, first, "P")
 	for _, snap := range []ionomaps.Snapshot{stationsSnap(0, ionomaps.StationsNext), stationsSnap(12, ionomaps.Fresh)} {
-		m, _ := first.Update(propUpdatedMsg{gen: first.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+		m, _ := first.Update(propUpdatedMsg{gen: first.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
 		first = m.(Dashboard)
 	}
 	if w := strings.Join(propWordsFrom(t, first), "\n"); strings.Contains(w, "updated at") {
@@ -328,12 +328,12 @@ func TestCaveatsAreSaidOncePerOpen(t *testing.T) {
 			}
 		}
 	}
-	if _, once := d.propStationOnce(); !once || !strings.Contains(words[status], "for the origin and every target, no reporting station") {
+	if _, once := d.mapModel.propStationOnce(d.mapEnv()); !once || !strings.Contains(words[status], "for the origin and every target, no reporting station") {
 		t.Fatalf("every row's station reads the same, and the status block does not say it once: %q", words[status])
 	}
-	d.mapPane.propChart.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 300} // one row's station near: each row says its own
+	d.mapModel.mapPane.propChart.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 300} // one row's station near: each row says its own
 	words = propWordsFrom(t, d)
-	names, rows := d.propChartRows()
+	names, rows := d.mapModel.propChartRows()
 	for i, n := range names {
 		line := words[targetLine(words, n)]
 		far := !rows[i].Nearest.Known || rows[i].Nearest.Km >= propFarKm
@@ -349,7 +349,7 @@ func TestCaveatsAreSaidOncePerOpen(t *testing.T) {
 func TestIdenticalTargetsShareALine(t *testing.T) {
 	d := chartDash(t)
 	words := propWordsFrom(t, d)
-	names, rows := d.propChartRows()
+	names, rows := d.mapModel.propChartRows()
 	lines := map[int]bool{}
 	for _, n := range names {
 		lines[targetLine(words, n)] = true
@@ -382,11 +382,11 @@ func TestIdenticalTargetsShareALine(t *testing.T) {
 func TestTheDayAndItsTurnAreSaid(t *testing.T) {
 	d := chartDash(t)
 	place := propPlace{at: ionomaps.LatLon{Lat: 33.2, Lon: -117.38}, name: "Oceanside", ok: true}
-	if w := d.propDayWords(place, time.Date(2026, 10, 11, 20, 0, 0, 0, time.UTC)); !strings.HasPrefix(w, "It is day at Oceanside; the sun sets there at ") {
+	if w := d.mapModel.propDayWords(place, time.Date(2026, 10, 11, 20, 0, 0, 0, time.UTC), d.mapEnv()); !strings.HasPrefix(w, "It is day at Oceanside; the sun sets there at ") {
 		t.Errorf("Oceanside at its noon: %q", w)
 	}
 	pole := propPlace{at: ionomaps.LatLon{Lat: 89}, name: "the pole", ok: true}
-	if w := d.propDayWords(pole, time.Date(2026, 12, 21, 12, 0, 0, 0, time.UTC)); w != "It is night at the pole, and the sun neither rises nor sets there today." {
+	if w := d.mapModel.propDayWords(pole, time.Date(2026, 12, 21, 12, 0, 0, 0, time.UTC), d.mapEnv()); w != "It is night at the pole, and the sun neither rises nor sets there today." {
 		t.Errorf("the pole at the solstice: %q", w)
 	}
 }
@@ -421,11 +421,11 @@ func TestEachTargetSaysItsStation(t *testing.T) {
 		want string
 	}{
 		{ionomaps.Nearest{}, "no reporting station, about as good as typical here, or worse"},
-		{ionomaps.Nearest{Known: true, Km: 300}, "nearest station " + d.roundDistance(300) + " away"},
-		{ionomaps.Nearest{Known: true, Km: propFarKm}, "nearest station " + d.roundDistance(propFarKm) + " away, about as good as typical here, or worse"},
-		{ionomaps.Nearest{Known: true, Km: 300, Unscored: true}, "nearest station " + d.roundDistance(300) + " away, unscored: verify on air"},
+		{ionomaps.Nearest{Known: true, Km: 300}, "nearest station " + d.mapModel.roundDistance(300, d.mapEnv()) + " away"},
+		{ionomaps.Nearest{Known: true, Km: propFarKm}, "nearest station " + d.mapModel.roundDistance(propFarKm, d.mapEnv()) + " away, about as good as typical here, or worse"},
+		{ionomaps.Nearest{Known: true, Km: 300, Unscored: true}, "nearest station " + d.mapModel.roundDistance(300, d.mapEnv()) + " away, unscored: verify on air"},
 	} {
-		if got := d.propStationWords(c.n); got != c.want {
+		if got := d.mapModel.propStationWords(c.n, d.mapEnv()); got != c.want {
 			t.Errorf("%+v: %q; want %q", c.n, got, c.want)
 		}
 	}
@@ -437,12 +437,12 @@ func TestEachTargetSaysItsStation(t *testing.T) {
 // the sun's turn is.
 func TestTheNightIsSaidAsItIsDrawn(t *testing.T) {
 	d := chartDash(t)
-	words := d.describeLinesAll()
+	words := d.mapModel.describeLinesAll(d.mapEnv())
 	i := lineWith(words, "The night side")
 	if i < 0 {
 		t.Fatalf("the fixture's night is not said:\n%s", strings.Join(words, "\n"))
 	}
-	at := d.mapPane.nightAt.In(d.now().Location())
+	at := d.mapModel.mapPane.nightAt.In(d.now().Location())
 	if want := "The night side's edge is dotted, as at " + d.clockFmt.Time(at) + " " + at.Format("MST") + "."; words[i] != want {
 		t.Errorf("the night is said %q; %q", words[i], want)
 	}
@@ -480,10 +480,10 @@ func TestTheShortNamesAreSaidInFull(t *testing.T) {
 func TestAFailedAnswerSaysHowToAskAgain(t *testing.T) {
 	refused := errors.New("refused")
 	d := heldDash(t)
-	d.mapPane.propChart.err = refused
-	d.mapPane.propReach = propReach{key: d.mapPane.propReachAsked, err: refused}
-	d.mapPane.propCentre.err, d.mapPane.propCentre.bands = refused, nil
-	again := "not available; " + d.firstKey(actMapRefresh) + " tries again"
+	d.mapModel.mapPane.propChart.err = refused
+	d.mapModel.mapPane.propReach = propReach{key: d.mapModel.mapPane.propReachAsked, err: refused}
+	d.mapModel.mapPane.propCentre.err, d.mapModel.mapPane.propCentre.bands = refused, nil
+	again := "not available; " + d.mapModel.firstKey(actMapRefresh) + " tries again"
 	words := strings.Join(propWordsFrom(t, d), "\n")
 	for _, want := range []string{"The best bands are " + again + ".", "its reach: " + again, "The map's centre is " + again + "."} {
 		if !strings.Contains(words, want) {
@@ -493,15 +493,15 @@ func TestAFailedAnswerSaysHowToAskAgain(t *testing.T) {
 	if strings.Contains(words, "being worked out") {
 		t.Errorf("a failed answer is said as being worked out:\n%s", words)
 	}
-	if chart := strings.Join(d.propChartLines(d.opts()), "\n"); !strings.Contains(chart, "The chart is "+again) {
+	if chart := strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"); !strings.Contains(chart, "The chart is "+again) {
 		t.Errorf("the chart window does not say how to ask again:\n%s", chart)
 	}
-	m, _ := d.Update(mapKeyMsg(t, d.firstKey(actMapRefresh)))
+	m, _ := d.Update(mapKeyMsg(t, d.mapModel.firstKey(actMapRefresh)))
 	d = m.(Dashboard)
-	if d.mapPane.propChart.err != nil || d.mapPane.propReach.err != nil || d.mapPane.propCentre.err != nil || d.mapPane.propChart.key != (propChartKey{}) {
+	if d.mapModel.mapPane.propChart.err != nil || d.mapModel.mapPane.propReach.err != nil || d.mapModel.mapPane.propCentre.err != nil || d.mapModel.mapPane.propChart.key != (propChartKey{}) {
 		t.Error("the refresh key left a failed answer held, so it is never asked again")
 	}
-	if !workChart(t, d).propChartShown() {
+	if !mapModel.propChartShown(envOf(workChart(t, d))) {
 		t.Error("asked again, the chart is not answered")
 	}
 }
@@ -531,14 +531,14 @@ func TestDayAndNightAreSaidAsTheLineIsDrawn(t *testing.T) {
 		if !turn.Day {
 			before, after = after, before
 		}
-		if w := d.propDayWords(place, turn.Turns.Add(-time.Minute)); !strings.HasPrefix(w, before) {
+		if w := d.mapModel.propDayWords(place, turn.Turns.Add(-time.Minute), d.mapEnv()); !strings.HasPrefix(w, before) {
 			t.Errorf("a minute before the line passes, from %v: %q; want %q", from, w, before)
 		}
-		if w := d.propDayWords(place, turn.Turns.Add(time.Minute)); !strings.HasPrefix(w, after) {
+		if w := d.mapModel.propDayWords(place, turn.Turns.Add(time.Minute), d.mapEnv()); !strings.HasPrefix(w, after) {
 			t.Errorf("a minute after the line passes, from %v: %q; want %q", from, w, after)
 		}
 	}
-	if w := d.propDayWords(place, time.Time{}); w != "" {
+	if w := d.mapModel.propDayWords(place, time.Time{}, d.mapEnv()); w != "" {
 		t.Errorf("no moment is said %q", w)
 	}
 }
@@ -549,11 +549,11 @@ func TestDayAndNightAreSaidAsTheLineIsDrawn(t *testing.T) {
 // and the next answer finds the place again.
 func TestAKeptPlaceLaysOutNoWordsWhileNothingChanges(t *testing.T) {
 	d := chartDash(t)
-	d.mapDesc = mapDescInstead
+	d.mapModel.mapDesc = mapDescInstead
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 100, Height: 20})
 	d = m.(Dashboard)
 	d.modalScroll = 3
-	d.mapPane.wordsAt, _ = d.wordsTop()
+	d.mapModel.mapPane.wordsAt, _ = d.mapModel.wordsTop(d.mapEnv())
 	m, _ = d.Update(struct{}{}) // anchors the place
 	d = m.(Dashboard)
 	kept := d.modalScroll
@@ -562,7 +562,7 @@ func TestAKeptPlaceLaysOutNoWordsWhileNothingChanges(t *testing.T) {
 	if d = m.(Dashboard); d.modalScroll != 0 {
 		t.Errorf("a message that changed nothing laid the words out again: the scroll moved to %d", d.modalScroll)
 	}
-	d.mapPane.gen++ // an answer, a refresh or an hour step
+	d.mapModel.mapPane.gen++ // an answer, a refresh or an hour step
 	m, _ = d.Update(struct{}{})
 	if d = m.(Dashboard); d.modalScroll != kept {
 		t.Errorf("after the words changed the place is at %d; found again at %d", d.modalScroll, kept)
@@ -574,8 +574,8 @@ func TestAKeptPlaceLaysOutNoWordsWhileNothingChanges(t *testing.T) {
 // figures under that hour's name.
 func TestAnHourAheadIsNotSaidBeforeItIsWorkedOut(t *testing.T) {
 	d := chartDash(t)
-	d.mapPane.propAhead, d.mapPane.propAheadSnaps = 3, nil
-	w := strings.Join(d.propOriginWords(), " ")
+	d.mapModel.mapPane.propAhead, d.mapModel.mapPane.propAheadSnaps = 3, nil
+	w := strings.Join(d.mapModel.propOriginWords(d.mapEnv()), " ")
 	if !strings.Contains(w, "3 hours ahead: being worked out") || strings.Contains(w, "MUF(3000)") {
 		t.Errorf("an hour ahead not yet worked out is said %q", w)
 	}
@@ -588,23 +588,23 @@ func TestAnHourAheadIsNotSaidBeforeItIsWorkedOut(t *testing.T) {
 // picture, not with the clock.
 func TestTheWordsAndTheNightShareAMoment(t *testing.T) {
 	d := chartDash(t)
-	if !d.mapPane.propOrigin.ok {
+	if !d.mapModel.mapPane.propOrigin.ok {
 		t.Fatal("control: the chart's fixture has no origin")
 	}
-	place := tuimaps.LonLat{Lon: d.mapPane.propOrigin.at.Lon, Lat: d.mapPane.propOrigin.at.Lat}
-	turn := tuimaps.DaylightAt(place, d.mapPane.propSnap.Computed).Turns
+	place := tuimaps.LonLat{Lon: d.mapModel.mapPane.propOrigin.at.Lon, Lat: d.mapModel.mapPane.propOrigin.at.Lat}
+	turn := tuimaps.DaylightAt(place, d.mapModel.mapPane.propSnap.Computed).Turns
 	at := turn.Add(10 * time.Second)
 	if turn.IsZero() || !at.Truncate(nightStep).Before(turn) {
 		t.Fatalf("control: the turn at %v falls on the night's step; the check needs one inside a step", turn)
 	}
-	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(at, 18)}, correct: d.mapPane.propSnapCorrect})
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: propSnapAt(at, 18)}, correct: d.mapModel.mapPane.propSnapCorrect})
 	d = m.(Dashboard)
-	drawn := tuimaps.DaylightAt(place, d.propNightMoment())
+	drawn := tuimaps.DaylightAt(place, d.mapModel.propNightMoment(d.mapEnv()))
 	if drawn.Day == tuimaps.DaylightAt(place, at).Day {
-		t.Fatalf("control: the drawn moment %v and the hour's %v say the same", d.propNightMoment(), at)
+		t.Fatalf("control: the drawn moment %v and the hour's %v say the same", d.mapModel.propNightMoment(d.mapEnv()), at)
 	}
 	want := map[bool]string{true: "It is day at ", false: "It is night at "}[drawn.Day]
-	if words := strings.Join(d.propOriginWords(), " "); !strings.Contains(words, want) {
-		t.Errorf("ten seconds after the line passed, the night drawn at %v: %q; want %q, as drawn", d.propNightMoment(), words, want)
+	if words := strings.Join(d.mapModel.propOriginWords(d.mapEnv()), " "); !strings.Contains(words, want) {
+		t.Errorf("ten seconds after the line passed, the night drawn at %v: %q; want %q, as drawn", d.mapModel.propNightMoment(d.mapEnv()), words, want)
 	}
 }

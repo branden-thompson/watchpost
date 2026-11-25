@@ -27,13 +27,13 @@ func legendDash(t *testing.T, cfg Config) Dashboard {
 // Propagation mode's layer now (0.19.0 D-155).
 func TestTheLegendBoxIsRetired(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	if act, bound := d.mapKeys.Lookup("L"); bound && act != actMapLayer {
+	if act, bound := d.mapModel.mapKeys.Lookup("L"); bound && act != actMapLayer {
 		t.Errorf("L is bound to %s in the map window; it is the Propagation layer's (D-155)", act)
 	}
-	if strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Legend") {
+	if strings.Contains(ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), "Legend") {
 		t.Error("the chips still offer the legend")
 	}
-	for _, r := range mapHelpRows(d.mapKeys, false) {
+	for _, r := range mapHelpRows(d.mapModel.mapKeys, false) {
 		if strings.Contains(r.help, "Legend") {
 			t.Errorf("Help still lists %q", r.help)
 		}
@@ -58,7 +58,7 @@ func TestClearMapDataEmptiesTheLiveMapAndAsksTheApp(t *testing.T) {
 	asked := 0
 	d := legendDash(t, Config{Map: &Hooks{ClearMapData: func() MapCleared { asked++; return MapCleared{Files: 7, Zones: 3} }}})
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d, _ = pressKey(d, "esc")
 	d = d.openSetupAt(rowMapClear)
 	m, cmd, handled := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})

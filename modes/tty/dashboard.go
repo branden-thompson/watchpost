@@ -647,28 +647,18 @@ type Dashboard struct {
 	// say so (D-156).
 	liveOffset int
 
-	mapPane mapPane
-	// mapCloses counts the map's closings: a release carries the count it was
-	// scheduled at, so only the newest close's lets the map go (D-221).
-	mapCloses uint64
-	// mapReleaseAfter is how long the map stays closed before it is let go.
-	mapReleaseAfter time.Duration
-	// mapModel is the map's own state (0.19.6 D-78), embedded so its fields
-	// read as d.mapHooks and the rest.
-	mapModel
-	// The Settings, in three groups, each built from the Config by its own
-	// keyed literal (0.19.5 D-14, A-16): the map's, the UI's and the radio's.
-	// Embedded, so d.mapDesc and the rest read as they always have.
-	mapChoices
+	// mapModel is the map's own state: its pane, its Settings, its cost, its
+	// closings, its keymaps and its hooks (map_model.go). A named field, so
+	// nothing of the map's is promoted onto the Dashboard (0.19.6 design MS-1,
+	// D-78, D-81).
+	mapModel mapModel
+	// The UI's and the radio's Settings, each built from the Config by its own
+	// keyed literal (0.19.5 D-14, A-16); the map's are the map model's.
+	// Embedded, so d.reduceMotion and the rest read as they always have.
 	uiChoices
 	radioChoices
-	// mapCost is the last estimate of a refresh's cost, asked in Update and read
-	// by the frame (0.18.0 batch 9).
-	mapCost   MapCost
-	mapKeys   term.KeyMap
-	chartKeys term.KeyMap // the Bands chart window's own scope (D-256)
-	modal     modal       // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode   string      // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -948,27 +938,23 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 		return Dashboard{}, err
 	}
 	d := Dashboard{
-		cfg:             cfg,
-		keys:            keys,
-		mapKeys:         mapKeys,
-		chartKeys:       chartKeys,
-		mapChoices:      mapChoicesOf(cfg),
-		uiChoices:       uiChoicesOf(cfg),
-		radioChoices:    radioChoicesOf(cfg),
-		consoleKeys:     console,
-		keysWithheld:    withheld,
-		width:           80,
-		height:          24,
-		darkBG:          true,
-		mapReleaseAfter: mapReleaseAfter,
-		mapModel:        mapModel{mapHooks: cfg.Map},
-		memo:            &bodyMemo{},
-		mmemo:           &modalMemo{},
-		tickerScrolls:   map[TickerCategory]int{},
-		now:             time.Now,
+		cfg:           cfg,
+		keys:          keys,
+		uiChoices:     uiChoicesOf(cfg),
+		radioChoices:  radioChoicesOf(cfg),
+		consoleKeys:   console,
+		keysWithheld:  withheld,
+		width:         80,
+		height:        24,
+		darkBG:        true,
+		mapModel:      mapModel{mapHooks: cfg.Map, mapChoices: mapChoicesOf(cfg), mapKeys: mapKeys, chartKeys: chartKeys, mapReleaseAfter: mapReleaseAfter, ackSeen: cfg.PropagationAck},
+		memo:          &bodyMemo{},
+		mmemo:         &modalMemo{},
+		tickerScrolls: map[TickerCategory]int{},
+		now:           time.Now,
 	}
-	if d.mapHooks == nil {
-		d.mapHooks = &noHooks // every read sees nil, as an unset Config field did
+	if d.mapModel.mapHooks == nil {
+		d.mapModel.mapHooks = &noHooks // every read sees nil, as an unset Config field did
 	}
 	d.cfg.Map = nil
 	if cfg.OpenSetup {
@@ -1018,9 +1004,13 @@ type committedMsg struct {
 
 // after is a timed message on the Observer: m after d, made by the model's
 // tick maker when a test set one.
-func (d Dashboard) after(dur time.Duration, m tea.Msg) tea.Cmd {
-	if d.ticks != nil {
-		return d.ticks(dur, m)
+func (d Dashboard) after(dur time.Duration, m tea.Msg) tea.Cmd { return tickAfter(d.ticks, dur, m) }
+
+// tickAfter is a tick through a model's tick hook, or the frame's own where
+// none is set (0.19.6 design MS-2): the Dashboard's and the map's.
+func tickAfter(ticks func(time.Duration, tea.Msg) tea.Cmd, dur time.Duration, m tea.Msg) tea.Cmd {
+	if ticks != nil {
+		return ticks(dur, m)
 	}
 	return frame.TickEvery(dur, m)
 }
@@ -1036,15 +1026,15 @@ func (d Dashboard) tickNeeded() bool {
 	switch {
 	case d.volFlash != "": // pending or just expired — the tick after expiry clears it
 		return true
-	case d.mapPane.flash != "": // U1-11: the controls' blink, same rule
+	case d.mapModel.mapPane.flash != "": // U1-11: the controls' blink, same rule
 		return true
 	case d.setup.flash != flashNone: // the picker's press blink, same rule
 		return true
-	case d.mapPane.menuFlash != flashNone: // the Overlays menu's picker blink (D-147), same rule (W14, C-3)
+	case d.mapModel.mapPane.menuFlash != flashNone: // the Overlays menu's picker blink (D-147), same rule (W14, C-3)
 		return true
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
 		return true
-	case d.propAgeShown(): // the Propagation snapshot's "N min ago" (D-166)
+	case d.mapModel.propAgeShown(d.mapEnv()): // the Propagation snapshot's "N min ago" (D-166)
 		return true
 	// ITS CLOCK RUNS DOWN ON ITS OWN AND ACTS AT ZERO (MVS-D-76). Without this
 	// the window opens with no tick armed, so stepRelayFault is never called:
@@ -1092,16 +1082,18 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return d.update(ms
 // itself, so nothing here copies the model into an interface (0.19.5 PF-1).
 func (d Dashboard) update(msg tea.Msg) (Dashboard, tea.Cmd) {
 	next, cmd := d.dispatch(msg)
-	next, resumeCmd := next.resume()          // D-107: a window returned to picks up where it was
-	next = next.mapPanicked()                 // QA-11: a panic a map call or command stopped marks the map failed
-	next, mapCmd := next.armMapTick()         // 0.18.0 W2.2: the map's clock, armed after every Update
-	next = next.followNight()                 // go-tuiMaps P4, D-199: the night moves with the moment shown
-	next, chartCmd := next.armPropChart()     // W5.1: the chart's answers, asked when what they come from changes
-	next, reachCmd := next.armPropReach()     // W5.2: and the frequency's reach
-	next, aheadCmd := next.armPropAhead()     // W5.4: and the hour ahead shown
-	next, centreCmd := next.armPropCentre()   // and the map centre's answer
-	next, optsCmd := next.armPropOptions()    // D-187, D-105: a snapshot made with other options than the Settings' asked again
-	next, refreshCmd := next.armPropRefresh() // D-120: the refresh tick follows its Setting
+	next, resumeCmd := next.resume()       // D-107: a window returned to picks up where it was
+	e, mm := next.mapEnv(), next.mapModel  // one Env for the nine: none of them changes the Dashboard (0.19.6 design MS-5)
+	mm = mm.mapPanicked(e)                 // QA-11: a panic a map call or command stopped marks the map failed
+	mm, mapCmd := mm.armMapTick(e)         // 0.18.0 W2.2: the map's clock, armed after every Update
+	mm = mm.followNight(e)                 // go-tuiMaps P4, D-199: the night moves with the moment shown
+	mm, chartCmd := mm.armPropChart(e)     // W5.1: the chart's answers, asked when what they come from changes
+	mm, reachCmd := mm.armPropReach(e)     // W5.2: and the frequency's reach
+	mm, aheadCmd := mm.armPropAhead()      // W5.4: and the hour ahead shown
+	mm, centreCmd := mm.armPropCentre(e)   // and the map centre's answer
+	mm, optsCmd := mm.armPropOptions(e)    // D-187, D-105: a snapshot made with other options than the Settings' asked again
+	mm, refreshCmd := mm.armPropRefresh(e) // D-120: the refresh tick follows its Setting
+	next.mapModel = mm
 	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd, chartCmd, reachCmd, aheadCmd, centreCmd, optsCmd, refreshCmd))
 }
 
@@ -1130,9 +1122,11 @@ func (d Dashboard) handleTicker(msg tea.Msg) (Dashboard, tea.Cmd) {
 // dispatch routes one message to its handler, keeping a reader's place in
 // the Propagation mode's words across whatever it changes (D-211).
 func (d Dashboard) dispatch(msg tea.Msg) (Dashboard, tea.Cmd) {
-	place, keep := d.wordsPlaceNow(msg)
+	place, keep := d.mapModel.wordsPlaceNow(msg, d.mapEnv())
 	next, cmd := d.route(msg)
-	return next.followReader(msg, place, keep), cmd
+	mm, w := next.mapModel.followReader(msg, place, keep, next.mapEnv())
+	next.mapModel = mm
+	return next.applyMapWant(w, cmd)
 }
 
 // route sends one message to its handler.
@@ -1141,16 +1135,20 @@ func (d Dashboard) route(msg tea.Msg) (Dashboard, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
 		if d.modal == modalMap {
-			d, settle := d.boundMap().viewMoved() // a new size is a new view: its alerts are asked once it settles (D-66); marked before it is drawn
-			return d.renderMap(), settle          // the bound's least zoom depends on the size; drawn at the window's new size, in Update (D-41, D-45's size row)
+			e := d.mapEnv()
+			mm, settle := d.mapModel.boundMap(e).viewMoved(e) // a new size is a new view: its alerts are asked once it settles (D-66); marked before it is drawn
+			d.mapModel = mm.renderMap(e)                      // the bound's least zoom depends on the size; drawn at the window's new size, in Update (D-41, D-45's size row)
+			return d, settle
 		}
 		return d, nil
 	case SnapshotMsg:
 		next, cmd := d.applySnapshot(v)
 		if next.modal == modalMap {
-			next, feed := next.requestFeed().askFeed() // new data, so the map's alerts are asked again (D-45's data row) - one ask in flight (D-157)
-			next, radar := next.refreshRadar()         // and the radar, once its loop has stood two minutes (D-85)
-			next, temp := next.refreshTemp()           // and the temperature, as it stands or the hour turns (W10)
+			e := next.mapEnv()
+			mm, feed := next.mapModel.requestFeed().askFeed(e) // new data, so the map's alerts are asked again (D-45's data row) - one ask in flight (D-157)
+			mm, radar := mm.refreshRadar(e)                    // and the radar, once its loop has stood two minutes (D-85)
+			mm, temp := mm.refreshTemp(e)                      // and the temperature, as it stands or the hour turns (W10)
+			next.mapModel = mm
 			return next, tea.Batch(cmd, feed, radar, temp)
 		}
 		return next, cmd
@@ -1193,48 +1191,17 @@ func (d Dashboard) route(msg tea.Msg) (Dashboard, tea.Cmd) {
 	return d, nil
 }
 
-// routeMap sends the map's messages to their handlers - its feeds, its
-// clock, the Propagation mode's update and answers - each set and drawn in
-// Update (D-41); false for a message that is none of them.
+// routeMap hands the map its own messages (mapModel.answer) and does what it
+// asks; false for a message that is none of them.
 func (d Dashboard) routeMap(msg tea.Msg) (Dashboard, tea.Cmd, bool) {
-	switch v := msg.(type) {
-	case mapClearedMsg:
-		return d.applyMapCleared(v), nil, true // 0.18.0 W3.8: Settings says what went
-	case mapFeedMsg:
-		return routed(d.applyMapFeed(v)) // the alerts, set and drawn in Update (D-41)
-	case mapRadarMsg:
-		return routed(d.applyMapRadar(v)) // W8: the radar, set and drawn in Update (D-41)
-	case mapRadarAgainMsg:
-		return routed(d.applyRadarAgain(v)) // D-204: the hours ahead owed
-	case mapTempMsg:
-		return routed(d.applyMapTemp(v)) // W10: the temperature, set and drawn in Update (D-41)
-	case forecastTickMsg:
-		return routed(d.applyForecastTick(v)) // D-94: Forecast mode's playback
-	case propChartMsg, propReachMsg, propCentreMsg:
-		return d.applyPropAnswer(v), nil, true // W5: the chart, the reach, the centre
-	case propAheadMsg:
-		return d.applyPropAhead(v), nil, true
-	case propFoundMsg:
-		return routed(d.applyPropFound(v)) // FR-1.10: a find's answer, kept in Update
-	case propUpdatedMsg:
-		return routed(d.applyPropUpdated(v)) // W4.1: the Propagation mode's update, kept in Update
-	case propTickMsg:
-		return routed(d.applyPropTick(v)) // FR-4.10: its refresh
-	case mapWorkedMsg:
-		return routed(d.applyMapWorked(v)) // what a Work command landed is drawn here, in Update (D-41)
-	case mapTickMsg:
-		return d.applyMapTick(v), nil, true // 0.18.0 W2.2: the library asked to be drawn now
-	case mapReleaseMsg:
-		return d.applyMapRelease(v), nil, true // D-221: the map closed a while is let go
-	case mapViewSettledMsg:
-		return routed(d.applyViewSettled(v)) // 0.18.0 D-66: the view stood still - its alerts are asked
-	default:
+	mm, cmd, w, ok := d.mapModel.answer(msg, d.mapEnv())
+	if !ok {
 		return d, nil, false
 	}
+	d.mapModel = mm
+	d, cmd = d.applyMapWant(w, cmd)
+	return d, cmd, true
 }
-
-// routed is a handler's answer as routeMap gives it: answered.
-func routed(d Dashboard, cmd tea.Cmd) (Dashboard, tea.Cmd, bool) { return d, cmd, true }
 
 // handleSettingsSaved applies one apply-on-close outcome from the Settings
 // window — the cast and tones, or the display preferences.
@@ -1335,12 +1302,12 @@ func (d Dashboard) applyTick() Dashboard {
 	if d.volFlash != "" && !d.clock().Before(d.volFlashEnd) {
 		d.volFlash = "" // the blink clears on the first tick after it expires (UAT 41)
 	}
-	if d.mapPane.flash != "" && !d.clock().Before(d.mapPane.flashEnd) {
-		d.mapPane.flash = "" // U1-11: the controls' blink ends on the tick after it expires
+	if d.mapModel.mapPane.flash != "" && !d.clock().Before(d.mapModel.mapPane.flashEnd) {
+		d.mapModel.mapPane.flash = "" // U1-11: the controls' blink ends on the tick after it expires
 	}
-	if d.mapPane.menuFlash != flashNone && !d.clock().Before(d.mapPane.menuFlashEnd) {
-		d.mapPane.menuFlash = flashNone // the menu's picker blink ends as Settings' does (D-147)
-		d.mapPane.gen++
+	if d.mapModel.mapPane.menuFlash != flashNone && !d.clock().Before(d.mapModel.mapPane.menuFlashEnd) {
+		d.mapModel.mapPane.menuFlash = flashNone // the menu's picker blink ends as Settings' does (D-147)
+		d.mapModel.mapPane.gen++
 	}
 	if d.setup.flash != flashNone && !d.clock().Before(d.setup.flashEnd) {
 		// Without this the blink stays lit until something ELSE happens to
@@ -1391,7 +1358,7 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 			d.units = render.UnitC
 		}
 		if d.modal == modalMap {
-			d = d.renderMap() // 0.18.0 D-45's units row: the description's distances follow the units
+			d.mapModel = d.mapModel.renderMap(d.mapEnv()) // 0.18.0 D-45's units row: the description's distances follow the units
 		}
 		d.setup.uiDirty = true // kept, as Settings' units are (U2-61)
 		save := d.uiApplyCmd()
@@ -1601,13 +1568,13 @@ func (d Dashboard) tellMapClosed(was bool) Dashboard {
 	if !was || d.mapShown() {
 		return d
 	}
-	if d.mapHooks.MapClosed != nil {
-		d.mapHooks.MapClosed()
+	if d.mapModel.mapHooks.MapClosed != nil {
+		d.mapModel.mapHooks.MapClosed()
 	}
-	d = d.stopPropagation() // nothing is fetched for a map no longer shown (FR-4.2)
-	d.mapCloses++
-	gen := d.mapCloses
-	return d.withCmd(tea.Batch(d.pendingCmd, d.after(d.mapReleaseAfter, mapReleaseMsg{gen: gen})))
+	d.mapModel = d.mapModel.stopPropagation(d.mapEnv()) // nothing is fetched for a map no longer shown (FR-4.2)
+	d.mapModel.mapCloses++
+	gen := d.mapModel.mapCloses
+	return d.withCmd(tea.Batch(d.pendingCmd, d.after(d.mapModel.mapReleaseAfter, mapReleaseMsg{gen: gen})))
 }
 
 // closeWindow is close's work: back to the window under it, or to none.
@@ -1633,13 +1600,15 @@ func (d Dashboard) closeWindow() Dashboard {
 func (d Dashboard) resume() (Dashboard, tea.Cmd) {
 	m := d.resumed
 	d.resumed = modalNone
-	if m != modalMap || d.modal != modalMap || d.mapPane.m == nil {
+	if m != modalMap || d.modal != modalMap || d.mapModel.mapPane.m == nil {
 		return d, nil
 	}
-	d = d.renderMap()
-	d, radar := d.refreshRadar()
-	d, temp := d.refreshTemp()
-	return d, tea.Batch(d.mapWorkCmd(), radar, temp)
+	e := d.mapEnv()
+	mm := d.mapModel.renderMap(e)
+	mm, radar := mm.refreshRadar(e)
+	mm, temp := mm.refreshTemp(e)
+	d.mapModel = mm
+	return d, tea.Batch(mm.mapWorkCmd(e), radar, temp)
 }
 
 // handleRadio owns the messages the radio sends the dashboard: the deck's

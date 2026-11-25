@@ -59,20 +59,20 @@ func mapDepthLabel(c mapDepth) string {
 
 // cycleMapDepth moves the colour-depth picker, and round again; the map
 // takes it at its next frame.
-func (d Dashboard) cycleMapDepth(forward bool) Dashboard {
-	d.mapDepth = cycleIn(mapDepthChoices, itself, d.mapDepth, forward)
-	return d.uiTouched()
+func (mm mapModel) cycleMapDepth(forward bool) (mapModel, mapWant) {
+	mm.mapDepth = cycleIn(mapDepthChoices, itself, mm.mapDepth, forward)
+	return mm.wantTouched()
 }
 
 // mapDepthHint is the depth the map is hinted: the choice, or with NO_COLOR
 // set or Automatic chosen, go-tuiMaps' own reading of the terminal, which
 // honours NO_COLOR (D-207); under the Monochrome theme Automatic is no colour,
 // so the hatch and the digits carry what colour would (F-196).
-func (d Dashboard) mapDepthHint() tuimaps.Depth {
-	if d.cfg.NoColor {
+func (mm mapModel) mapDepthHint(e mapEnv) tuimaps.Depth {
+	if e.NoColor {
 		return tuimaps.TerminalDepth
 	}
-	switch d.mapDepth {
+	switch mm.mapDepth {
 	case depthTruecolor:
 		return tuimaps.Truecolor
 	case depth256:

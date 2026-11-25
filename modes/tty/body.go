@@ -91,11 +91,15 @@ func (d Dashboard) headerControls(o render.Opts, form int) string {
 }
 
 // clock is the model's clock (time.Now unless a test pinned one).
-func (d Dashboard) clock() time.Time {
-	if d.now == nil {
+func (d Dashboard) clock() time.Time { return clockOf(d.now) }
+
+// clockOf is a model's clock read: now, or time.Now where none is set, for
+// the Dashboard and the map alike (0.19.6 design MS-2).
+func clockOf(now func() time.Time) time.Time {
+	if now == nil {
 		return time.Now()
 	}
-	return d.now()
+	return now()
 }
 
 // apiSummary counts the providers by health: ✔ ok · ⚠ degraded but has

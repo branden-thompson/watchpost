@@ -47,7 +47,7 @@ func viewFeed(_ context.Context, _ MapAsk) MapFeed {
 
 // boxText is the Description box's words as one run.
 func boxText(d Dashboard) string {
-	return unwrapped(ttytest.StripANSI(strings.Join(d.descriptionBox(d.mapBodySize()), "\n")))
+	return unwrapped(ttytest.StripANSI(strings.Join(d.mapModel.descriptionBox(d.mapModel.mapBodySize(d.mapEnv()), d.mapEnv()), "\n")))
 }
 
 func TestTheBoxListsTheAlertsInViewMostSevereFirst(t *testing.T) {
@@ -78,19 +78,19 @@ func TestTheBoxFollowsTheViewAwayFromThePlace(t *testing.T) {
 	for range 30 { // east, until Oceanside is behind
 		m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 		d = m.(Dashboard)
-		if !d.viewBox(d.mapBodySize()).Contains(33.2, -117.38) {
+		if !d.mapModel.viewBox(d.mapModel.mapBodySize(d.mapEnv())).Contains(33.2, -117.38) {
 			break
 		}
 	}
 	d = pressCode(d, '+', "+")
 	d = pressCode(d, '+', "+")
-	if d.viewBox(d.mapBodySize()).Contains(33.2, -117.38) {
+	if d.mapModel.viewBox(d.mapModel.mapBodySize(d.mapEnv())).Contains(33.2, -117.38) {
 		t.Fatal("the view never left Oceanside")
 	}
 	if text := boxText(d); !strings.Contains(text, "Alerts for the map are loading.") || strings.Contains(text, "No alerts in view") {
 		t.Errorf("before the moved view's alerts land, the box says:\n%s\nwant them loading, never none (D-266)", text)
 	}
-	m, _ := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen}) // the view stood still: its alerts are asked and land
+	m, _ := d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen}) // the view stood still: its alerts are asked and land
 	d = feedAndSettle(t, m.(Dashboard))
 	text := boxText(d)
 	if strings.Contains(text, "Oceanside") || strings.Contains(text, "Currently") {
@@ -105,7 +105,7 @@ func TestTheBoxFollowsTheViewAwayFromThePlace(t *testing.T) {
 	if !strings.Contains(text, "No alerts in view") {
 		t.Errorf("an empty view does not say so:\n%s", text)
 	}
-	if got := d.mapTitle(); strings.Contains(got, "Oceanside") {
+	if got := d.mapModel.mapTitle(d.mapEnv()); strings.Contains(got, "Oceanside") {
 		t.Errorf("away from the place, the title still names it: %q", got)
 	}
 }
@@ -125,7 +125,7 @@ func TestAFullBoxSaysHowManyMore(t *testing.T) {
 	if !strings.Contains(text, "more in view") {
 		t.Errorf("thirty alerts fill the box and it does not say how many more:\n%s", text)
 	}
-	full := strings.Join(d.describeLinesAll(), " ")
+	full := strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), " ")
 	if n := strings.Count(full, "Small Craft Advisory"); n != 30 {
 		t.Errorf("the full description names %d of the 30 alerts in view", n)
 	}

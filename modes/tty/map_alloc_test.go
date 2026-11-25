@@ -33,11 +33,11 @@ func mapBench(tb testing.TB) Dashboard {
 	h.NewMap, h.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
 	m, _ := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = m.(Dashboard)
-	if cmd := d.mapFeedCmd(laneAlerts); cmd != nil {
+	if cmd := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv()); cmd != nil {
 		m, _ = d.Update(cmd())
 		d = m.(Dashboard)
 	}
-	for cmd := d.mapWorkCmd(); cmd != nil; cmd = d.mapWorkCmd() {
+	for cmd := d.mapModel.mapWorkCmd(d.mapEnv()); cmd != nil; cmd = d.mapModel.mapWorkCmd(d.mapEnv()) {
 		m, _ = d.Update(cmd())
 		d = m.(Dashboard)
 	}
@@ -61,7 +61,7 @@ func TestMapFrameAllocBudget(t *testing.T) {
 		t.Fatal("the fixture drew no map: this measures nothing")
 	}
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	hit := allocpin.Pin(t, "map window hit", 20, func() { _ = d.View().Content })
 	if len(*calls) != 0 {
 		t.Errorf("a memo hit called the library: %v", *calls)

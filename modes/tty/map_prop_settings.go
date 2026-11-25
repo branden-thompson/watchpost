@@ -55,12 +55,12 @@ func (r propRefresh) staleAfter() time.Duration { return time.Hour + r.every() }
 
 // propRefreshLabel is the choice as the Settings say it, the refresh-now key
 // named as bound.
-func (d Dashboard) propRefreshLabel() string {
-	switch d.mapPropRefresh {
+func (mm mapModel) propRefreshLabel() string {
+	switch mm.mapPropRefresh {
 	case refreshEvery10:
 		return "Every 10 min"
 	case refreshOnDemand:
-		return "On demand (" + d.firstKey(actMapRefresh) + ")"
+		return "On demand (" + mm.firstKey(actMapRefresh) + ")"
 	}
 	return "Hourly"
 }
@@ -80,9 +80,9 @@ func propRefreshNote(r propRefresh) string {
 
 // cyclePropRefresh moves the refresh picker, and round again; an open mode
 // sets its next tick by the new choice (armPropRefresh).
-func (d Dashboard) cyclePropRefresh(forward bool) Dashboard {
-	d.mapPropRefresh = cycleIn(propRefreshChoices, itself, d.mapPropRefresh, forward)
-	return d.uiTouched()
+func (mm mapModel) cyclePropRefresh(forward bool) (mapModel, mapWant) {
+	mm.mapPropRefresh = cycleIn(propRefreshChoices, itself, mm.mapPropRefresh, forward)
+	return mm.wantTouched()
 }
 
 // noReadingsKey is the file's word for the no-readings correction (D-105):
@@ -109,9 +109,9 @@ func noReadingsLabel(corrected bool) string {
 // togglePropCorrect switches the no-readings correction; an open mode asks
 // for its snapshot with it, which go-ionomaps answers without a request
 // (armPropOptions).
-func (d Dashboard) togglePropCorrect() Dashboard {
-	d.mapPropCorrect = !d.mapPropCorrect
-	return d.uiTouched()
+func (mm mapModel) togglePropCorrect() (mapModel, mapWant) {
+	mm.mapPropCorrect = !mm.mapPropCorrect
+	return mm.wantTouched()
 }
 
 // noStationsKey is the file's word for no GIRO (D-214); empty asks GIRO, the
@@ -147,7 +147,7 @@ func stationsNote(noGIRO bool) string {
 // togglePropStations switches GIRO's stations; an open mode asks for its
 // snapshot with the choice, which go-ionomaps answers without a request
 // (armPropOptions).
-func (d Dashboard) togglePropStations() Dashboard {
-	d.mapPropNoGIRO = !d.mapPropNoGIRO
-	return d.uiTouched()
+func (mm mapModel) togglePropStations() (mapModel, mapWant) {
+	mm.mapPropNoGIRO = !mm.mapPropNoGIRO
+	return mm.wantTouched()
 }

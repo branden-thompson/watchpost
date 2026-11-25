@@ -189,15 +189,15 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 			b.at, b.end = svc, len(b.lines)
 		}
 	case groupMap:
-		ml, mAt := d.mapSettingLines(o, nil, 0)
+		ml, mAt := d.mapModel.mapSettingLines(o, d.mapSettings(), nil, 0, d.mapEnv())
 		b.lines = append(b.lines, ml...)
 		b.at, b.end = at+mAt, len(b.lines)
 	case groupLayers:
-		ll, lAt := d.layerLines(o)
+		ll, lAt := d.mapModel.layerLines(o, d.mapSettings(), d.mapEnv())
 		b.lines = append(b.lines, ll...)
 		b.at, b.end = at+lAt, at+lAt+1
 	case groupMapLayers:
-		ml, mAt := d.mapLayerLines(o, nil, 0)
+		ml, mAt := d.mapModel.mapLayerLines(o, d.mapSettings(), nil, 0)
 		b.lines = append(b.lines, ml...)
 		b.at, b.end = at+mAt, len(b.lines)
 	case groupHistory:

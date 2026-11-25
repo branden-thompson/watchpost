@@ -85,14 +85,14 @@ func TestTheRadarIsShownWhole(t *testing.T) {
 	if strings.Join(asked, ",") != "loop" {
 		t.Fatalf("the radar was asked %v; want the whole loop, once (D-85)", asked)
 	}
-	if o, ok := d.mapPane.radarGiven[RadarLayer+"/us-a"]; !ok || len(o.Image.Frames) != 12 {
-		t.Fatalf("the loop was not handed in: %v", d.mapPane.radarGiven)
+	if o, ok := d.mapModel.mapPane.radarGiven[RadarLayer+"/us-a"]; !ok || len(o.Image.Frames) != 12 {
+		t.Fatalf("the loop was not handed in: %v", d.mapModel.mapPane.radarGiven)
 	}
-	if st := d.mapPane.m.Loop(); st.Count != 12 || st.Playing {
+	if st := d.mapModel.mapPane.m.Loop(); st.Count != 12 || st.Playing {
 		t.Errorf("the map opens on %+v; want the loop, stopped on the newest", st)
 	}
-	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Radar   MRMS≈  ") {
-		t.Errorf("the status line does not say the loop: %q", ttytest.StripANSI(d.mapStatusLine()))
+	if !strings.Contains(ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), "Radar   MRMS≈  ") {
+		t.Errorf("the status line does not say the loop: %q", ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())))
 	}
 }
 
@@ -120,8 +120,8 @@ func TestSwitchingRadarOffTakesItAway(t *testing.T) {
 	d := openRadarMap(t, "MRMS", &asked)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // D-94: R is the mode; the Overlays menu does not list radar
 	d = settleRadar(t, m, cmd)
-	if len(d.mapPane.radarGiven) != 0 || d.radarChipText() != "" {
-		t.Errorf("radar off left %v and the chip %q", d.mapPane.radarGiven, d.radarChipText())
+	if len(d.mapModel.mapPane.radarGiven) != 0 || d.mapModel.radarChipText(d.mapEnv()) != "" {
+		t.Errorf("radar off left %v and the chip %q", d.mapModel.mapPane.radarGiven, d.mapModel.radarChipText(d.mapEnv()))
 	}
 }
 
@@ -129,24 +129,24 @@ func TestThePlaybackKeysDriveTheLoop(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "IEM", &asked)
 	d = shiftKey(d, tea.KeyLeft)
-	if st := d.mapPane.m.Loop(); st.Index != 10 {
+	if st := d.mapModel.mapPane.m.Loop(); st.Index != 10 {
 		t.Errorf("shift+← from the newest went to frame %d, want 10", st.Index)
 	}
 	d = shiftKey(d, tea.KeyRight)
-	if d.mapPane.m.Loop().Index != 11 {
+	if d.mapModel.mapPane.m.Loop().Index != 11 {
 		t.Error("shift+→ did not step on")
 	}
 	d = shiftKey(d, tea.KeyLeft)
 	d = pressCode(d, 'n', "n")
-	if d.mapPane.m.Loop().Index != 11 {
+	if d.mapModel.mapPane.m.Loop().Index != 11 {
 		t.Error("'n' did not return to the newest")
 	}
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if !m.(Dashboard).mapPane.m.Loop().Playing {
+	if !m.(Dashboard).mapModel.mapPane.m.Loop().Playing {
 		t.Error("space did not play")
 	}
 	m, _ = m.(Dashboard).Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if m.(Dashboard).mapPane.m.Loop().Playing {
+	if m.(Dashboard).mapModel.mapPane.m.Loop().Playing {
 		t.Error("space again did not stop")
 	}
 	var help []string
@@ -166,10 +166,10 @@ func TestTheLower48sRadarSourceIsASetting(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if !d.mapRadarIEM || d.radarSourceLabel() != "IEM (lower 48)" || !d.mapAsk().RadarIEM {
-		t.Errorf("→ gave %q; want IEM for the lower 48, in the ask", d.radarSourceLabel())
+	if !d.mapModel.mapRadarIEM || d.mapModel.radarSourceLabel() != "IEM (lower 48)" || !d.mapModel.mapAsk(d.mapEnv()).RadarIEM {
+		t.Errorf("→ gave %q; want IEM for the lower 48, in the ask", d.mapModel.radarSourceLabel())
 	}
-	if back, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}); back.mapRadarIEM {
+	if back, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}); back.mapModel.mapRadarIEM {
 		t.Error("← did not go back to MRMS")
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -177,7 +177,7 @@ func TestTheLower48sRadarSourceIsASetting(t *testing.T) {
 	if got.MapRadarSource != "iem" {
 		t.Errorf("esc wrote %q, want iem", got.MapRadarSource)
 	}
-	if mapDash(t, Config{MapRadarSource: "iem"}).mapRadarIEM != true || mapDash(t, Config{}).mapRadarIEM {
+	if mapDash(t, Config{MapRadarSource: "iem"}).mapModel.mapRadarIEM != true || mapDash(t, Config{}).mapModel.mapRadarIEM {
 		t.Error("the file's word does not open the window as chosen")
 	}
 	_ = geo.RegionContiguous
@@ -190,8 +190,8 @@ func TestTheLower48sRadarSourceIsASetting(t *testing.T) {
 func TestTheNewestFramesAgeIsAlwaysSaid(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	d.mapPane.radarNote = "MRMS radar's colours are approximate: its scale is read from its legend."
-	d = d.renderMap()
+	d.mapModel.mapPane.radarNote = "MRMS radar's colours are approximate: its scale is read from its legend."
+	d.mapModel = d.mapModel.renderMap(d.mapEnv())
 	if line := strings.ToUpper(ttytest.StripANSI(d.View().Content)); !strings.Contains(line, "NEWEST 5 MIN AGO") || strings.Contains(line, "STALE") { // as drawn: the timeline, which the status line gives way to (D-86)
 		t.Errorf("five minutes on, the line is %q", line)
 	}
@@ -199,7 +199,7 @@ func TestTheNewestFramesAgeIsAlwaysSaid(t *testing.T) {
 		t.Error("MRMS's note is not under the map")
 	}
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 30, 0, 0, time.UTC) }
-	d = d.renderMap()
+	d.mapModel = d.mapModel.renderMap(d.mapEnv())
 	if line := strings.ToUpper(ttytest.StripANSI(d.View().Content)); !strings.Contains(line, "35 MIN AGO, STALE") {
 		t.Errorf("thirty-five minutes on, the line is %q", line)
 	}
@@ -217,16 +217,18 @@ func TestEveryPlaybackEventDrawsTheFrame(t *testing.T) {
 			return m.(Dashboard)
 		},
 		"the radar lands": func(d Dashboard) Dashboard {
-			r := radarFeed(t, "IEM", &asked)(context.Background(), d.mapAsk())
+			r := radarFeed(t, "IEM", &asked)(context.Background(), d.mapModel.mapAsk(d.mapEnv()))
 			r.Overlays[0].Image.Frames = r.Overlays[0].Image.Frames[1:] // a refresh: the loop changed
-			m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
+			m := d
+			var cmd tea.Cmd
+			m.mapModel, cmd = d.mapModel.applyMapRadar(mapRadarMsg{radar: r, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 			return settleRadar(t, m, cmd)
 		},
 	} {
 		d := openRadarMap(t, "IEM", &asked)
-		gen := d.mapPane.gen
+		gen := d.mapModel.mapPane.gen
 		d = event(d)
-		if d.mapPane.gen == gen {
+		if d.mapModel.mapPane.gen == gen {
 			t.Errorf("%s did not draw the map", name)
 		}
 		assertFresh(t, d, name)
@@ -247,11 +249,12 @@ func TestALaterAskWaitsForTheLoop(t *testing.T) {
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked)}, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = feedAndSettle(t, m.(Dashboard))
-	if !d.mapPane.radarBusy || !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Radar loading") {
-		t.Fatalf("while the loop loads the line is %q (busy %v)", ttytest.StripANSI(d.mapStatusLine()), d.mapPane.radarBusy)
+	if !d.mapModel.mapPane.radarBusy || !strings.Contains(ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), "Radar loading") {
+		t.Fatalf("while the loop loads the line is %q (busy %v)", ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), d.mapModel.mapPane.radarBusy)
 	}
-	d, again := d.askRadar() // a settle while the first ask runs
-	if again != nil || !d.mapPane.radarAgain {
+	var again tea.Cmd
+	d.mapModel, again = d.mapModel.askRadar(d.mapEnv()) // a settle while the first ask runs
+	if again != nil || !d.mapModel.mapPane.radarAgain {
 		t.Fatal("a second ask started while the first was running")
 	}
 	var answer mapRadarMsg
@@ -260,21 +263,22 @@ func TestALaterAskWaitsForTheLoop(t *testing.T) {
 			answer = r
 		}
 	}
-	m, next := d.applyMapRadar(answer)
+	mm, next := d.mapModel.applyMapRadar(answer, d.mapEnv())
+	m = withModel(d, mm)
 	d = m.(Dashboard)
-	if len(d.mapPane.radarGiven) == 0 {
+	if len(d.mapModel.mapPane.radarGiven) == 0 {
 		t.Fatal("the answer was not applied")
 	}
-	if next == nil || !d.mapPane.radarBusy || d.mapPane.radarAgain {
+	if next == nil || !d.mapModel.mapPane.radarBusy || d.mapModel.mapPane.radarAgain {
 		t.Error("the kept ask was not asked when the answer landed")
 	}
-	d.mapPane.radarBusy = false
-	d.now = func() time.Time { return d.mapPane.radarAt.Add(time.Minute) }
-	if _, c := d.refreshRadar(); c != nil {
+	d.mapModel.mapPane.radarBusy = false
+	d.now = func() time.Time { return d.mapModel.mapPane.radarAt.Add(time.Minute) }
+	if _, c := d.mapModel.refreshRadar(d.mapEnv()); c != nil {
 		t.Error("new data a minute after a load asked for the radar again")
 	}
-	d.now = func() time.Time { return d.mapPane.radarAt.Add(3 * time.Minute) }
-	if _, c := d.refreshRadar(); c == nil {
+	d.now = func() time.Time { return d.mapModel.mapPane.radarAt.Add(3 * time.Minute) }
+	if _, c := d.mapModel.refreshRadar(d.mapEnv()); c == nil {
 		t.Error("new data three minutes after a load did not ask again")
 	}
 }
@@ -285,7 +289,7 @@ func TestALaterAskWaitsForTheLoop(t *testing.T) {
 func TestTheTimelineShowsWhereTheLoopIs(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	tl := d.mapPane.radarTimeline
+	tl := d.mapModel.mapPane.radarTimeline
 	if len(tl) != 3 {
 		t.Fatalf("the timeline is %q", tl)
 	}
@@ -306,12 +310,12 @@ func TestTheTimelineShowsWhereTheLoopIs(t *testing.T) {
 	was := strings.Index(bar, "█")
 	d = shiftKey(d, tea.KeyLeft)
 	d = shiftKey(d, tea.KeyLeft)
-	now := ttytest.StripANSI(d.mapPane.radarTimeline[1])
+	now := ttytest.StripANSI(d.mapModel.mapPane.radarTimeline[1])
 	if strings.Index(now, "█") >= was {
 		t.Errorf("two steps back left the mark where it was: %q then %q", bar, now)
 	}
-	if !strings.Contains(ttytest.StripANSI(d.mapPane.radarTimeline[0]), "12:45 AM") {
-		t.Errorf("two steps back the time reads %q", ttytest.StripANSI(d.mapPane.radarTimeline[0]))
+	if !strings.Contains(ttytest.StripANSI(d.mapModel.mapPane.radarTimeline[0]), "12:45 AM") {
+		t.Errorf("two steps back the time reads %q", ttytest.StripANSI(d.mapModel.mapPane.radarTimeline[0]))
 	}
 	if !strings.Contains(bodyText(d), "OBSERVED") {
 		t.Error("the timeline is not under the map")
@@ -326,7 +330,8 @@ func TestTheTimelineNeverMakesTheWindowScroll(t *testing.T) {
 	for _, size := range [][2]int{{133, 44}, {100, 30}, {80, 24}} {
 		d := openRadarMap(t, "MRMS", &asked)
 		m, _ := d.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		d = settleMap(t, m.(Dashboard).renderMap())
+		md := m.(Dashboard)
+		d = settleMap(t, withModel(md, md.mapModel.renderMap(md.mapEnv())))
 		if n, most := len(d.modalLines()), d.modalMax(); n > most {
 			t.Errorf("%dx%d: the window's body is %d lines against %d: it scrolls", size[0], size[1], n, most)
 		}
@@ -341,15 +346,17 @@ func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	var asked, problems []string
 	d := openRadarMap(t, "MRMS", &asked)
 	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
-	d.mapPane.call("SetImageBudget", func() { _ = d.mapPane.m.SetImageBudget(1000) })
-	r := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
+	d.mapModel.mapPane.call("SetImageBudget", func() { _ = d.mapModel.mapPane.m.SetImageBudget(1000) })
+	r := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapModel.mapAsk(d.mapEnv()))
 	r.Overlays[0].ID = RadarLayer + "/us-b" // a new box: it must fit the budget whole
-	d.mapPane.radarGiven = nil
-	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
+	d.mapModel.mapPane.radarGiven = nil
+	m := d
+	var cmd tea.Cmd
+	m.mapModel, cmd = d.mapModel.applyMapRadar(mapRadarMsg{radar: r, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = settleRadar(t, m, cmd)
-	line := ttytest.StripANSI(d.mapStatusLine())
-	if strings.Contains(line, "loading") || strings.Contains(line, "could not") || d.radarChipText() != "" {
-		t.Errorf("a refused loop reads %q with the chip %q", line, d.radarChipText())
+	line := ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv()))
+	if strings.Contains(line, "loading") || strings.Contains(line, "could not") || d.mapModel.radarChipText(d.mapEnv()) != "" {
+		t.Errorf("a refused loop reads %q with the chip %q", line, d.mapModel.radarChipText(d.mapEnv()))
 	}
 	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Radar") {
 		t.Errorf("the diagnostics were told %q; want the radar's refusal", problems)
@@ -373,7 +380,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
-	lines := d.mapBodyLines()
+	lines := d.mapModel.mapBodyLines(d.mapEnv())
 	plain := make([]string, len(lines))
 	for i, l := range lines {
 		plain[i] = ttytest.StripANSI(l)
@@ -426,7 +433,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 	if !strings.Contains(plain[warn], "Adjust layers/zoom to improve experience.") || strings.Contains(plain[warn], "Est.") {
 		t.Errorf("the warning is %q: one line, the estimate on its own row", plain[warn])
 	}
-	for i := 0; i < d.mapBodySize().Rows && i < len(plain); i++ {
+	for i := 0; i < d.mapModel.mapBodySize(d.mapEnv()).Rows && i < len(plain); i++ {
 		if strings.Contains(plain[i], "Controls") {
 			t.Fatal("the controls box is still on the map")
 		}
@@ -441,12 +448,12 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 func TestTheColourRowSaysItsClassesWithoutColour(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	row := d.radarLegendRow(120)
+	row := d.mapModel.radarLegendRow(120)
 	if row == "" || !strings.Contains(row, "LIGHTER") || strings.Contains(row, "\x1b[") {
 		t.Fatalf("without colour the row is %q", row)
 	}
 	var first string
-	for _, e := range d.mapPane.legend {
+	for _, e := range d.mapModel.mapPane.legend {
 		if e.Preset == "radar" && len(e.Classes) > 0 {
 			first = e.Classes[0].Label
 		}
@@ -464,8 +471,8 @@ func TestALoopStillPreparingSaysLoadingWithItsSource(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(rendering.ResetColorEnabledForTest)
 	d := openMap(t, Config{Map: &Hooks{MapRadar: radarFeed(t, "IEM", &[]string{})}, MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}}}, 133, 44)
-	d.mapPane.radarSource = "IEM"
-	got := d.radarStatus()
+	d.mapModel.mapPane.radarSource = "IEM"
+	got := d.mapModel.radarStatus(d.mapEnv())
 	if !strings.Contains(ttytest.StripANSI(got), "Radar   IEM   loading") || !strings.Contains(got, render.Tok(render.MapRadarIEMBG)) {
 		t.Errorf("a loop not yet prepared reads %q", got)
 	}
@@ -485,7 +492,7 @@ func TestTheRadarBadgeIsATab(t *testing.T) {
 	calls := &[]string{}
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
@@ -512,7 +519,7 @@ func TestTheRadarBadgeIsATab(t *testing.T) {
 		t.Error("the badge's chip is not in the source's colours")
 	}
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 30, 0, 0, time.UTC) }
-	d = d.renderMap()
+	d.mapModel = d.mapModel.renderMap(d.mapEnv())
 	if tab := ttytest.StripANSI(strings.Split(d.mapWindow(d.opts()), "\n")[1]); !strings.Contains(tab, "STALE 12:55 AM") {
 		t.Errorf("an old loop's tab reads %q", tab)
 	}
@@ -552,25 +559,25 @@ func TestTheLoopSaysWhenItIsAhead(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
-	if st := d.mapPane.m.Loop(); st.Count != 16 || st.Forecast {
+	if st := d.mapModel.mapPane.m.Loop(); st.Count != 16 || st.Forecast {
 		t.Fatalf("the loop is %d frames, at a forecast %v; want 12 observed and 4 ahead, opened at now", st.Count, st.Forecast)
 	}
-	badge := func() string { return ttytest.StripANSI(d.radarBadge()) }
+	badge := func() string { return ttytest.StripANSI(d.mapModel.radarBadge(d.mapEnv())) }
 	if !strings.Contains(badge(), "RADAR DATA") || !strings.Contains(badge(), "MRMS") {
 		t.Errorf("at now the badge is %q", badge())
 	}
 	d = shiftKey(d, tea.KeyRight)
-	if !d.mapPane.m.Loop().Forecast {
+	if !d.mapModel.mapPane.m.Loop().Forecast {
 		t.Fatal("⇧→ from now did not step into the hours ahead")
 	}
 	if !strings.Contains(badge(), "RADAR FCST") || !strings.Contains(badge(), "HRRR") {
 		t.Errorf("ahead of now the badge is %q; want RADAR FCST and HRRR", badge())
 	}
-	if row := ttytest.StripANSI(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST   HRRR  ") {
+	if row := ttytest.StripANSI(d.mapModel.loopRow(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())); !strings.Contains(row, "FORECAST   HRRR  ") {
 		t.Errorf("ahead of now the loop's row is %q; want it to lead FORECAST HRRR", row)
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'n', Text: "n"})
-	if d = m.(Dashboard); d.mapPane.m.Loop().Forecast || !strings.Contains(badge(), "RADAR DATA") {
+	if d = m.(Dashboard); d.mapModel.mapPane.m.Loop().Forecast || !strings.Contains(badge(), "RADAR DATA") {
 		t.Error("n did not return to now")
 	}
 }
@@ -585,15 +592,15 @@ func TestTheHoursAheadAreASetting(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapRadarAhead != 6 || d.mapAsk().RadarAhead != 6 {
-		t.Errorf("→ gave %d; want 6, in the ask", d.mapRadarAhead)
+	if d.mapModel.mapRadarAhead != 6 || d.mapModel.mapAsk(d.mapEnv()).RadarAhead != 6 {
+		t.Errorf("→ gave %d; want 6, in the ask", d.mapModel.mapRadarAhead)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
 	if got.MapRadarAhead != 6 {
 		t.Errorf("esc wrote %d, want 6", got.MapRadarAhead)
 	}
-	if mapDash(t, Config{MapRadarAhead: 12}).mapRadarAhead != 12 || mapDash(t, Config{}).mapRadarAhead != 3 || mapDash(t, Config{MapRadarAhead: 5}).mapRadarAhead != 3 {
+	if mapDash(t, Config{MapRadarAhead: 12}).mapModel.mapRadarAhead != 12 || mapDash(t, Config{}).mapModel.mapRadarAhead != 3 || mapDash(t, Config{MapRadarAhead: 5}).mapModel.mapRadarAhead != 3 {
 		t.Error("the file's number does not open as chosen, or a number not offered is not the default")
 	}
 }
@@ -609,17 +616,17 @@ func TestTheNewestIsTheNewestObservedFrame(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = shiftKey(settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd), tea.KeyRight)
-	if row := ttytest.StripANSI(d.loopRow(d.scrubW())); !strings.Contains(row, "NEWEST 5 MIN AGO") {
+	if row := ttytest.StripANSI(d.mapModel.loopRow(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())); !strings.Contains(row, "NEWEST 5 MIN AGO") {
 		t.Errorf("ahead of now the loop's row is %q; want the newest observed frame's age, 5 minutes", row)
 	}
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 30, 0, 0, time.UTC) } // the newest observed 35 minutes old; the forecast's end still ahead
-	if row := ttytest.StripANSI(d.loopRow(d.scrubW())); !strings.Contains(row, "STALE") {
+	if row := ttytest.StripANSI(d.mapModel.loopRow(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())); !strings.Contains(row, "STALE") {
 		t.Errorf("35 minutes on, the loop's row is %q; want STALE", row)
 	}
-	if line := d.radarStatus(); !strings.Contains(line, "35 min ago, stale") {
+	if line := d.mapModel.radarStatus(d.mapEnv()); !strings.Contains(line, "35 min ago, stale") {
 		t.Errorf("35 minutes on, the status line is %q; want stale", line)
 	}
-	if badge := ttytest.StripANSI(d.radarBadgeTimeNow()); !strings.Contains(badge, "STALE") {
+	if badge := ttytest.StripANSI(d.mapModel.radarBadgeTimeNow(d.mapEnv())); !strings.Contains(badge, "STALE") {
 		t.Errorf("35 minutes on, the badge is %q; want STALE", badge)
 	}
 }
@@ -631,7 +638,7 @@ func TestALongTitleGivesWayToTheTab(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
 	d.width, d.height = 80, 24
-	d.mapPane.title = "the contiguous United States " + d.opts().Glyphs().Dot + " Oceanside, California, far too long a name"
+	d.mapModel.mapPane.title = "the contiguous United States " + d.opts().Glyphs().Dot + " Oceanside, California, far too long a name"
 	rows := strings.Split(ttytest.StripANSI(d.mapWindow(d.opts())), "\n")
 	top := []rune(strings.TrimRight(rows[0], " "))
 	tee := strings.LastIndex(string(top), "┬")
@@ -659,20 +666,20 @@ func TestTheScrubbersNowIsWhereNowIs(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
-	s, ok := d.radarScrubber()
+	s, ok := d.mapModel.radarScrubber(d.mapEnv())
 	if !ok || len(s.ticks) != 1 {
 		t.Fatalf("the scrubber is %+v (%v); want NOW's tick", s, ok)
 	}
 	if math.Abs(s.cursor-s.ticks[0]) > 1e-9 {
 		t.Errorf("at now the cursor is at %.3f and NOW at %.3f; want them one", s.cursor, s.ticks[0])
 	}
-	st := d.mapPane.m.Loop()
+	st := d.mapModel.mapPane.m.Loop()
 	want := float64(st.Now.Sub(st.Oldest)) / float64(st.Newest.Sub(st.Oldest))
 	if math.Abs(s.ticks[0]-want) > 1e-9 {
 		t.Errorf("NOW is at %.3f; want %.3f, its time along the loop's", s.ticks[0], want)
 	}
 	d = shiftKey(d, tea.KeyRight)
-	if s, _ := d.radarScrubber(); s.cursor <= s.ticks[0] {
+	if s, _ := d.mapModel.radarScrubber(d.mapEnv()); s.cursor <= s.ticks[0] {
 		t.Errorf("a forecast frame is at %.3f, NOW at %.3f; want it past NOW", s.cursor, s.ticks[0])
 	}
 }
@@ -701,16 +708,17 @@ func TestARegionLeftCancelsItsLoop(t *testing.T) {
 	m, _ := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = feedAndSettle(t, m.(Dashboard))
 	d = pressCode(d, '1', "1")
-	d.mapPane.radarBusy = false // the lower 48's loop, asked afresh and left running
-	d, first := d.askRadar()
-	if first == nil || d.mapPane.region.Name != geo.RegionContiguous {
-		t.Fatalf("no loop asked for the lower 48 (region %s)", d.mapPane.region.Name)
+	d.mapModel.mapPane.radarBusy = false // the lower 48's loop, asked afresh and left running
+	var first tea.Cmd
+	d.mapModel, first = d.mapModel.askRadar(d.mapEnv())
+	if first == nil || d.mapModel.mapPane.region.Name != geo.RegionContiguous {
+		t.Fatalf("no loop asked for the lower 48 (region %s)", d.mapModel.mapPane.region.Name)
 	}
 	landed := make(chan tea.Msg, 1)
 	go func() { landed <- first() }()
 	time.Sleep(50 * time.Millisecond) // the fetch is under way
 	d = pressCode(d, '2', "2")
-	d, _ = d.askRadar() // what the region's settle asks
+	d.mapModel, _ = d.mapModel.askRadar(d.mapEnv()) // what the region's settle asks
 	select {
 	case r := <-cancelled:
 		if r != geo.RegionContiguous {
@@ -720,12 +728,13 @@ func TestARegionLeftCancelsItsLoop(t *testing.T) {
 		t.Fatal("the fetch never ended")
 	}
 	msg := (<-landed).(mapRadarMsg)
-	m, next := d.applyMapRadar(msg)
+	mm, next := d.mapModel.applyMapRadar(msg, d.mapEnv())
+	m = withModel(d, mm)
 	d = m.(Dashboard)
-	if len(d.mapPane.radarGiven) != 0 {
-		t.Errorf("the left region's answer was handed to the map: %v", d.mapPane.radarGiven)
+	if len(d.mapModel.mapPane.radarGiven) != 0 {
+		t.Errorf("the left region's answer was handed to the map: %v", d.mapModel.mapPane.radarGiven)
 	}
-	if next == nil || !d.mapPane.radarBusy {
+	if next == nil || !d.mapModel.mapPane.radarBusy {
 		t.Error("Alaska's loop was not asked when the left region's answer landed")
 	}
 }

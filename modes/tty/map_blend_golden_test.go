@@ -21,7 +21,7 @@ import (
 func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	size := d.mapBodySize()
+	size := d.mapModel.mapBodySize(d.mapEnv())
 	at := time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC)
 	depths := []struct {
 		name  string
@@ -30,8 +30,8 @@ func TestRadarOverAnAlertAtEachDepth(t *testing.T) {
 	var furniture []string // truecolor's characters: radar is colour alone there, so this is everything else
 	digits := 0            // truecolor's severity digits: the outline's every one, which no depth may lose
 	for _, dp := range depths {
-		d.mapPane.m.ColourDepth(dp.depth)
-		f, err := d.mapPane.m.Render(size, at)
+		d.mapModel.mapPane.m.ColourDepth(dp.depth)
+		f, err := d.mapModel.mapPane.m.Render(size, at)
 		if err != nil {
 			t.Fatal(err)
 		}

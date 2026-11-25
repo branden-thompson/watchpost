@@ -20,16 +20,16 @@ import (
 func TestTheViewBoxIsTheLibrarysView(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	m := d.mapPane.m
+	m := d.mapModel.mapPane.m
 	if m == nil {
 		t.Fatal("no map: this measures nothing")
 	}
-	size := d.mapBodySize()
+	size := d.mapModel.mapBodySize(d.mapEnv())
 	for _, zoom := range []float64{6, 9} {
 		if err := m.Zoom(zoom); err != nil {
 			t.Fatal(err)
 		}
-		v := d.viewBox(size)
+		v := d.mapModel.viewBox(size)
 		dx, dy := (v.E-v.W)*0.02, (v.N-v.S)*0.02
 		square := func(id string, lon, lat float64) tuimaps.Overlay {
 			ring := []tuimaps.LonLat{{Lon: lon - dx/4, Lat: lat - dy/4}, {Lon: lon + dx/4, Lat: lat - dy/4},

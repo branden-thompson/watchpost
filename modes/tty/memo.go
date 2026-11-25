@@ -339,8 +339,8 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		surface:  d.surface,
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
-		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
-		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapPropRadius: d.propRadiusKm(), mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
+		mapsOff: d.mapModel.mapsOff, mapDesc: d.mapModel.mapDesc,
+		mapScale: d.mapModel.mapScale, mapNearby: d.mapModel.mapNearbyKm, mapPropRadius: d.mapModel.propRadiusKm(d.mapEnv()), mapLayers: d.mapModel.mapLayerChoice, mapCost: d.mapModel.mapCost, mapDetail: d.mapModel.mapDetailChoice, mapLevel: d.mapModel.mapDetailLevel.String(),
 		mapWords: d.cfg.MapRetention, // the map's sources are the Status window's, which keys on its own inputs
 	}
 	switch d.modal {
@@ -410,27 +410,27 @@ func (d Dashboard) formModalKey(k modalKey) modalKey {
 func (d Dashboard) mapModalKey(k modalKey) modalKey {
 	switch d.modal {
 	case modalPropChart:
-		k.propChart, k.chartRow, k.mapGen = d.mapPane.propChart.key, d.mapPane.propChartRow, d.mapPane.gen
-		k.freqHeld = d.mapPane.propFreqMHz
+		k.propChart, k.chartRow, k.mapGen = d.mapModel.mapPane.propChart.key, d.mapModel.mapPane.propChartRow, d.mapModel.mapPane.gen
+		k.freqHeld = d.mapModel.mapPane.propFreqMHz
 	case modalPropFreq:
-		k.freqQuery, k.freqErr, k.freqHeld = d.mapPane.propFreqQuery, d.mapPane.propFreqErr, d.mapPane.propFreqMHz
+		k.freqQuery, k.freqErr, k.freqHeld = d.mapModel.mapPane.propFreqQuery, d.mapModel.mapPane.propFreqErr, d.mapModel.mapPane.propFreqMHz
 	case modalPropFind:
-		k.findQuery, k.findErr, k.findBusy = d.mapPane.propFindQuery, d.mapPane.propFindErr, d.mapPane.propFindBusy
-		if f := d.mapPane.propFound; f != nil {
+		k.findQuery, k.findErr, k.findBusy = d.mapModel.mapPane.propFindQuery, d.mapModel.mapPane.propFindErr, d.mapModel.mapPane.propFindBusy
+		if f := d.mapModel.mapPane.propFound; f != nil {
 			k.findLabel = f.Label
 		}
 	case modalMap:
-		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
-		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
-		k.mapOutside, k.mapNotes, k.mapProp = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n"), d.mapPane.prop
-		k.mapPropSay, k.mapPropLyr = d.propStatusWords(), d.mapPane.propLayer // the words carry the age, to the minute, and STALE past the hour (D-166, FR-5.1)
-		k.mapLegend = d.mapPane.modeChip
-		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
-		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown
-		k.mapRadarSource, k.mapRadarLine = d.mapPane.radarSource+"|"+d.mapPane.radarAhead, d.mapPane.radarLine
-		k.mapRadarTimeline = strings.Join(d.mapPane.radarTimeline, "\n") + "\n" + d.mapPane.radarBadgeTime
-		k.mapTitle = d.mapPane.title
-		k.mapTemp = d.tempMemoKey()
+		k.mapGen, k.mapFailed = d.mapModel.mapPane.gen, d.mapModel.mapPane.failed
+		k.mapOffline, k.mapStatus, k.mapPending = d.mapModel.mapPane.offline, d.mapModel.mapPane.status, d.mapModel.mapPane.pending
+		k.mapOutside, k.mapNotes, k.mapProp = d.mapModel.mapPane.outside, strings.Join(d.mapModel.mapPane.notes, "\n"), d.mapModel.mapPane.prop
+		k.mapPropSay, k.mapPropLyr = d.mapModel.propStatusWords(d.mapEnv()), d.mapModel.mapPane.propLayer // the words carry the age, to the minute, and STALE past the hour (D-166, FR-5.1)
+		k.mapLegend = d.mapModel.mapPane.modeChip
+		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapModel.mapPane.alertsOn, d.mapModel.mapPane.menuOn, d.mapModel.mapPane.menuAt, d.mapModel.mapPane.flash
+		k.mapEdge, k.mapEdgeOn = d.mapModel.mapPane.edge, d.mapModel.mapPane.edgeShown
+		k.mapRadarSource, k.mapRadarLine = d.mapModel.mapPane.radarSource+"|"+d.mapModel.mapPane.radarAhead, d.mapModel.mapPane.radarLine
+		k.mapRadarTimeline = strings.Join(d.mapModel.mapPane.radarTimeline, "\n") + "\n" + d.mapModel.mapPane.radarBadgeTime
+		k.mapTitle = d.mapModel.mapPane.title
+		k.mapTemp = d.mapModel.tempMemoKey(d.mapEnv())
 	}
 	return k
 }

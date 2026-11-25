@@ -16,7 +16,7 @@ import (
 // hasArea reports whether the drawn lines carry the alert's severity digit,
 // which the outline repeats.
 func hasArea(d Dashboard) bool {
-	return strings.Contains(ttytest.StripANSI(strings.Join(d.mapPane.lines, "\n")), "3")
+	return strings.Contains(ttytest.StripANSI(strings.Join(d.mapModel.mapPane.lines, "\n")), "3")
 }
 
 func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {
@@ -28,19 +28,19 @@ func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {
 	for i := range 20 {
 		m, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 		d = m.(Dashboard)
-		m, _ = d.Update(mapFeedMsg{gen: d.mapPane.feedGen, seq: d.mapPane.lanes[laneAlerts].seq, feed: feed(context.Background(), d.mapAsk())})
+		m, _ = d.Update(mapFeedMsg{gen: d.mapModel.mapPane.feedGen, seq: d.mapModel.mapPane.lanes[laneAlerts].seq, feed: feed(context.Background(), d.mapModel.mapAsk(d.mapEnv()))})
 		d = m.(Dashboard)
 		if !hasArea(d) {
 			t.Fatalf("refresh %d: the frame drawn as the same alert came back does not show it", i)
 		}
-		if at := d.mapPane.tickAt; !at.IsZero() {
+		if at := d.mapModel.mapPane.tickAt; !at.IsZero() {
 			m, _ = d.Update(mapTickMsg{at: at})
 			d = m.(Dashboard)
 			if !hasArea(d) {
 				t.Fatalf("refresh %d: the clock's frame does not show it", i)
 			}
 		}
-		for w := d.mapWorkCmd(); w != nil; w = d.mapWorkCmd() {
+		for w := d.mapModel.mapWorkCmd(d.mapEnv()); w != nil; w = d.mapModel.mapWorkCmd(d.mapEnv()) {
 			m, _ = d.Update(w())
 			d = m.(Dashboard)
 			if !hasArea(d) {
@@ -55,15 +55,15 @@ func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {
 func TestAChangedAlertIsHandedInAgain(t *testing.T) {
 	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
 	calls := &[]string{}
-	d.mapPane.calls = calls
-	same := boxFeed(-117.6, -117.1, false)(context.Background(), d.mapAsk())
-	m, _ := d.Update(mapFeedMsg{gen: d.mapPane.feedGen, seq: d.mapPane.lanes[laneAlerts].seq, feed: same})
+	d.mapModel.mapPane.calls = calls
+	same := boxFeed(-117.6, -117.1, false)(context.Background(), d.mapModel.mapAsk(d.mapEnv()))
+	m, _ := d.Update(mapFeedMsg{gen: d.mapModel.mapPane.feedGen, seq: d.mapModel.mapPane.lanes[laneAlerts].seq, feed: same})
 	d = m.(Dashboard)
 	if strings.Contains(strings.Join(*calls, " "), "Set") {
 		t.Fatalf("an unchanged alert was handed in again: %v", *calls)
 	}
-	moved := boxFeed(-117.7, -117.2, false)(context.Background(), d.mapAsk())
-	d.Update(mapFeedMsg{gen: d.mapPane.feedGen, seq: d.mapPane.lanes[laneAlerts].seq, feed: moved})
+	moved := boxFeed(-117.7, -117.2, false)(context.Background(), d.mapModel.mapAsk(d.mapEnv()))
+	d.Update(mapFeedMsg{gen: d.mapModel.mapPane.feedGen, seq: d.mapModel.mapPane.lanes[laneAlerts].seq, feed: moved})
 	if !strings.Contains(strings.Join(*calls, " "), "Set") {
 		t.Errorf("an alert whose area moved was not handed in: %v", *calls)
 	}

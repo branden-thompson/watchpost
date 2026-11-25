@@ -28,19 +28,19 @@ type wordsPlace struct {
 
 // wordsShown reports whether the window shows the Propagation mode's words
 // in place of the picture: the only time a place is kept.
-func (d Dashboard) wordsShown() bool {
-	return d.modal == modalMap && d.mapMode() == modePropagation && !d.mapPicture() && !d.mapPane.menuOn
+func (mm mapModel) wordsShown(e mapEnv) bool {
+	return e.Window == mapModalMap && mm.mapMode(e) == modePropagation && !mm.mapPicture(e) && !mm.mapPane.menuOn
 }
 
 // wordSentencesAll are the window's sentences in the Propagation mode, with
 // their kinds: the mode's, then the place's heading and the layers' (D-210).
-func (d Dashboard) wordSentencesAll() []wordSentence {
-	all := d.describeLinesAll()
-	loc := d.mapPlace()
+func (mm mapModel) wordSentencesAll(e mapEnv) []wordSentence {
+	all := mm.describeLinesAll(e)
+	loc := mm.mapPlace(e)
 	if loc == nil {
 		return nil
 	}
-	out := d.propSentences(loc.Lat, loc.Lon)
+	out := mm.propSentences(loc.Lat, loc.Lon, e)
 	for i, l := range all[min(len(out), len(all)):] {
 		out = append(out, said("after:"+strconv.Itoa(i), l)) // the heading, then each layer's sentence
 	}
@@ -50,7 +50,7 @@ func (d Dashboard) wordSentencesAll() []wordSentence {
 // sentenceStarts are the rows of the window's lines each sentence begins at,
 // in order - a row that begins a sentence is the start of its text, however
 // the window wrapped it - and -1 for one not found.
-func (d Dashboard) sentenceStarts(lines []string, sentences []wordSentence) []int {
+func (mm mapModel) sentenceStarts(lines []string, sentences []wordSentence) []int {
 	starts := make([]int, len(sentences))
 	from := 0
 	for i, s := range sentences {
@@ -77,12 +77,12 @@ func sentenceRows(starts []int, i, lines int) int {
 }
 
 // readersScroll reports whether a message is the reader's own scroll.
-func (d Dashboard) readersScroll(msg tea.Msg) bool {
+func (mm mapModel) readersScroll(msg tea.Msg, e mapEnv) bool {
 	key, ok := msg.(tea.KeyPressMsg)
-	if !ok || d.modal != modalMap {
+	if !ok || e.Window != mapModalMap {
 		return false
 	}
-	act, bound := d.mapKeys.Lookup(key.String())
+	act, bound := mm.mapKeys.Lookup(key.String())
 	return bound && (act == actMapScrollUp || act == actMapScrollDown)
 }
 
@@ -91,59 +91,60 @@ func (d Dashboard) readersScroll(msg tea.Msg) bool {
 // enough to need no scroll, and found again when they grow back - else the
 // sentence at the top now; false when none is kept: the words not shown, at
 // their top, or the message the reader's own scroll.
-func (d Dashboard) wordsPlaceNow(msg tea.Msg) (wordsPlace, bool) {
-	if !d.wordsShown() || d.readersScroll(msg) {
+func (mm mapModel) wordsPlaceNow(msg tea.Msg, e mapEnv) (wordsPlace, bool) {
+	if !mm.wordsShown(e) || mm.readersScroll(msg, e) {
 		return wordsPlace{}, false
 	}
-	if kept := d.mapPane.wordsAt; len(kept.keys) > 0 {
+	if kept := mm.mapPane.wordsAt; len(kept.keys) > 0 {
 		return kept, true
 	}
-	if d.modalScroll == 0 {
+	if e.Scroll == 0 {
 		return wordsPlace{}, false
 	}
-	return d.wordsTop()
+	return mm.wordsTop(e)
 }
 
 // wordsTop is the sentence at the window's top and the rows of it scrolled
 // past.
-func (d Dashboard) wordsTop() (wordsPlace, bool) {
-	sentences := d.wordSentencesAll()
-	starts := d.sentenceStarts(d.modalLines(), sentences)
+func (mm mapModel) wordsTop(e mapEnv) (wordsPlace, bool) {
+	sentences := mm.wordSentencesAll(e)
+	starts := mm.sentenceStarts(mm.windowLines(e), sentences)
 	top := -1
 	for i, at := range starts {
-		if at >= 0 && at <= d.modalScroll {
+		if at >= 0 && at <= e.Scroll {
 			top = i
 		}
 	}
 	if top < 0 {
 		return wordsPlace{}, false
 	}
-	return wordsPlace{keys: sentences[top].keys, within: d.modalScroll - starts[top]}, true
+	return wordsPlace{keys: sentences[top].keys, within: e.Scroll - starts[top]}, true
 }
 
 // followReader keeps the reader's place after a message (D-211): after
 // their own scroll, the place they scrolled to; after anything else, the
 // place they were at, put back at the top.
-func (d Dashboard) followReader(msg tea.Msg, place wordsPlace, keep bool) Dashboard {
+func (mm mapModel) followReader(msg tea.Msg, place wordsPlace, keep bool, e mapEnv) (mapModel, mapWant) {
+	var w mapWant
 	switch {
-	case !d.wordsShown():
-		d.mapPane.wordsAt = wordsPlace{} // the words not shown: nothing to keep
-	case d.readersScroll(msg) && d.modalScroll == 0:
-		d.mapPane.wordsAt = wordsPlace{} // scrolled to the top: the reader is at the start
-	case d.readersScroll(msg):
-		top, ok := d.wordsTop()
+	case !mm.wordsShown(e):
+		mm.mapPane.wordsAt = wordsPlace{} // the words not shown: nothing to keep
+	case mm.readersScroll(msg, e) && e.Scroll == 0:
+		mm.mapPane.wordsAt = wordsPlace{} // scrolled to the top: the reader is at the start
+	case mm.readersScroll(msg, e):
+		top, ok := mm.wordsTop(e)
 		if !ok {
 			top = wordsPlace{} // no sentence at the top to keep
 		}
-		d.mapPane.wordsAt = top
+		mm.mapPane.wordsAt = top
 	case keep:
-		if anchor := d.wordsAnchorNow(); anchor != d.mapPane.wordsAnchored {
-			d = d.keepWordsPlace(place) // the words may have moved: find the place again
-			d.mapPane.wordsAnchored = anchor
+		if anchor := mm.wordsAnchorNow(e); anchor != mm.mapPane.wordsAnchored {
+			w = mm.keepWordsPlace(place, e) // the words may have moved: find the place again
+			mm.mapPane.wordsAnchored = anchor
 		}
-		d.mapPane.wordsAt = place
+		mm.mapPane.wordsAt = place
 	}
-	return d
+	return mm, w
 }
 
 // wordsAnchor is what the words' layout is made from: the map's generation,
@@ -158,20 +159,20 @@ type wordsAnchor struct {
 }
 
 // wordsAnchorNow is the words' anchor as the dashboard stands.
-func (d Dashboard) wordsAnchorNow() wordsAnchor {
-	return wordsAnchor{gen: d.mapPane.gen, w: d.width, h: d.height, minute: d.now().Truncate(time.Minute)}
+func (mm mapModel) wordsAnchorNow(e mapEnv) wordsAnchor {
+	return wordsAnchor{gen: mm.mapPane.gen, w: e.Width, h: e.Height, minute: e.Now().Truncate(time.Minute)}
 }
 
 // keepWordsPlace puts the sentence the reader was at back at the window's
 // top: by its own kind first - a target by its first name - then by any
 // kind it shared, else the scroll is left as it is.
-func (d Dashboard) keepWordsPlace(p wordsPlace) Dashboard {
-	if !d.wordsShown() || len(p.keys) == 0 {
-		return d
+func (mm mapModel) keepWordsPlace(p wordsPlace, e mapEnv) mapWant {
+	if !mm.wordsShown(e) || len(p.keys) == 0 {
+		return mapWant{}
 	}
-	sentences := d.wordSentencesAll()
-	lines := d.modalLines()
-	starts := d.sentenceStarts(lines, sentences)
+	sentences := mm.wordSentencesAll(e)
+	lines := mm.windowLines(e)
+	starts := mm.sentenceStarts(lines, sentences)
 	primary := p.keys[0]
 	if len(p.keys) > 1 {
 		primary = p.keys[1] // a target line's first name, before the kind every target line shares
@@ -182,9 +183,8 @@ func (d Dashboard) keepWordsPlace(p wordsPlace) Dashboard {
 				continue
 			}
 			rows := sentenceRows(starts, i, len(lines))
-			d.modalScroll = min(starts[i]+min(p.within, max(rows-1, 0)), max(len(lines)-d.modalMax(), 0))
-			return d
+			return mapWant{Scroll: min(starts[i]+min(p.within, max(rows-1, 0)), max(len(lines)-e.rows(), 0)), ScrollSet: true}
 		}
 	}
-	return d
+	return mapWant{}
 }

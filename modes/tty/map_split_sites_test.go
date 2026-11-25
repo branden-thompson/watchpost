@@ -8,6 +8,7 @@ package tty
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -52,9 +53,9 @@ func TestTheFrequencyEntryClosesBeforeTheMapIsDrawn(t *testing.T) {
 	for _, typed := range []string{"14.2", ""} { // bounded by the two Enters (P10-02)
 		d := chartDash(t)
 		views := &[]mapView{}
-		d.mapPane.views = views
+		d.mapModel.mapPane.views = views
 		d = pressMap(t, d, "F")
-		entry := d.mapBodySize()
+		entry := d.mapModel.mapBodySize(d.mapEnv())
 		for _, r := range typed { // bounded by what is typed (P10-02)
 			m, _ := d.Update(mapKeyMsg(t, string(r)))
 			d = m.(Dashboard)
@@ -66,11 +67,11 @@ func TestTheFrequencyEntryClosesBeforeTheMapIsDrawn(t *testing.T) {
 			t.Fatalf("Enter on %q left window %v; want the map", typed, d.modal)
 		}
 		// THE PREMISE: the entry's body is not the map's, so a draw before the close is seen.
-		if entry == d.mapBodySize() {
+		if entry == d.mapModel.mapBodySize(d.mapEnv()) {
 			t.Fatalf("COULD NOT RUN: the entry's body %v is the map's", entry)
 		}
-		if got := drawnAfter(t, views, n); !allAt(got, d.mapBodySize()) {
-			t.Errorf("Enter on %q drew the map at %v; want every draw at the map window's %v, none at the entry's %v", typed, got, d.mapBodySize(), entry)
+		if got := drawnAfter(t, views, n); !allAt(got, d.mapModel.mapBodySize(d.mapEnv())) {
+			t.Errorf("Enter on %q drew the map at %v; want every draw at the map window's %v, none at the entry's %v", typed, got, d.mapModel.mapBodySize(d.mapEnv()), entry)
 		}
 	}
 }
@@ -82,19 +83,19 @@ func TestAFoundPlaceIsDrawnOnceTheFinderHasClosed(t *testing.T) {
 	d := chartDash(t)
 	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	views := &[]mapView{}
-	d.mapPane.views = views
-	finder := pressMap(t, d, "/").mapBodySize()
+	d.mapModel.mapPane.views = views
+	finder := mapModel.mapBodySize(envOf(pressMap(t, d, "/")))
 	n := len(*views)
 	d = typeFind(t, d, "Reykjavik")
 	if d.modal != modalMap {
 		t.Fatalf("after a place was found the window is %v; want the map", d.modal)
 	}
 	// THE PREMISE: the finder's body is not the map's, so a draw before the close is seen.
-	if finder == d.mapBodySize() {
+	if finder == d.mapModel.mapBodySize(d.mapEnv()) {
 		t.Fatalf("COULD NOT RUN: the finder's body %v is the map's", finder)
 	}
-	if got := drawnAfter(t, views, n); !allAt(got, d.mapBodySize()) {
-		t.Errorf("a found place drew the map at %v; want every draw at the map window's %v, none at the finder's %v", got, d.mapBodySize(), finder)
+	if got := drawnAfter(t, views, n); !allAt(got, d.mapModel.mapBodySize(d.mapEnv())) {
+		t.Errorf("a found place drew the map at %v; want every draw at the map window's %v, none at the finder's %v", got, d.mapModel.mapBodySize(d.mapEnv()), finder)
 	}
 }
 
@@ -151,7 +152,7 @@ func TestTheMenusScrollStopsAtTheTextsEnd(t *testing.T) {
 		t.Fatalf("COULD NOT RUN: the focus at line %d of %d, %d rows: a scroll at it is in bounds", at, len(lines), rows)
 	}
 	d.modalScroll = at
-	if got := d.followMenuFocus().modalScroll; got != len(lines)-rows {
+	if got := d.withMap(d.mapModel.followMenuFocus(d.mapEnv())).modalScroll; got != len(lines)-rows {
 		t.Errorf("the menu scrolled to %d; want %d, its text's last window (%d lines, %d rows)", got, len(lines)-rows, len(lines), rows)
 	}
 }
@@ -162,7 +163,7 @@ func TestTheMenusScrollStopsAtTheTextsEnd(t *testing.T) {
 // mode's words in the picture's place, longer than the window.
 func TestPgDnStopsAtTheWindowsLastPage(t *testing.T) {
 	d := chartDash(t)
-	d.mapDesc = mapDescInstead
+	d.mapModel.mapDesc = mapDescInstead
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 100, Height: 20})
 	d = m.(Dashboard)
 	lines, rows := len(d.modalLines()), d.modalMax()
@@ -179,20 +180,42 @@ func TestPgDnStopsAtTheWindowsLastPage(t *testing.T) {
 	}
 }
 
+// TestPgDnKeepsTheMenusFocusInView is split site S7 twice in one call: PgDn
+// with the Overlays menu open and no picture scrolls the window a page, and
+// the menu's focus, read after that page, brings its row back on screen
+// (0.18.0 D-61, D-267). The focus near the top, so the page runs past it.
+func TestPgDnKeepsTheMenusFocusInView(t *testing.T) {
+	m, _ := screenDash(t, "with", true).Update(tea.WindowSizeMsg{Width: 133, Height: 30})
+	d := m.(Dashboard)
+	m, _ = d.Update(mapKeyMsg(t, "O"))
+	d = m.(Dashboard)
+	lines, rows := d.modalLines(), d.modalMax()
+	at := slices.IndexFunc(lines, func(l string) bool { return strings.Contains(ttytest.StripANSI(l), d.opts().Glyphs().Pointer+" ") })
+	page := min(max(rows-1, 1), max(len(lines)-rows, 0))
+	// THE PREMISE: the page lands past the focus, so the focus has to pull it back.
+	if at < 0 || d.modalScroll != 0 || page <= at {
+		t.Fatalf("COULD NOT RUN: the focus at line %d, the scroll at %d, a page %d (%d lines, %d rows)", at, d.modalScroll, page, len(lines), rows)
+	}
+	m, _ = d.Update(mapKeyMsg(t, "pgdown"))
+	if got := m.(Dashboard).modalScroll; got != at {
+		t.Errorf("PgDn with the menu open scrolled to %d; want %d, the menu's focus at the window's top", got, at)
+	}
+}
+
 // TestAPlaceKeptNeverScrollsPastTheWords is split site S7's place keeping: a
 // refresh puts the sentence the reader was at back at the window's top, and
 // never scrolls past the words' last page, the lines counted as the window
 // draws them (0.19.0 D-211). The reader at the words' last sentence.
 func TestAPlaceKeptNeverScrollsPastTheWords(t *testing.T) {
 	d := chartDash(t)
-	d.mapDesc = mapDescInstead
+	d.mapModel.mapDesc = mapDescInstead
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 100, Height: 20})
 	d = m.(Dashboard)
 	d.modalScroll = len(d.modalLines()) - 1
-	d.mapPane.wordsAt, _ = d.wordsTop()
+	d.mapModel.mapPane.wordsAt, _ = d.mapModel.wordsTop(d.mapEnv())
 	// THE PREMISE: a place to keep, past the last page's top, so putting it at the window's top overshoots.
-	if len(d.mapPane.wordsAt.keys) == 0 || d.modalScroll <= len(d.modalLines())-d.modalMax() {
-		t.Fatalf("COULD NOT RUN: the place %v at row %d of %d lines, %d rows", d.mapPane.wordsAt.keys, d.modalScroll, len(d.modalLines()), d.modalMax())
+	if len(d.mapModel.mapPane.wordsAt.keys) == 0 || d.modalScroll <= len(d.modalLines())-d.modalMax() {
+		t.Fatalf("COULD NOT RUN: the place %v at row %d of %d lines, %d rows", d.mapModel.mapPane.wordsAt.keys, d.modalScroll, len(d.modalLines()), d.modalMax())
 	}
 	d = workChart(t, refreshed(t, d))
 	if end := max(len(d.modalLines())-d.modalMax(), 0); d.modalScroll > end {
@@ -209,13 +232,13 @@ func TestAWeatherTintChosenInThePropagationModeIsSavedLast(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks) // Forecast mode, temperature on, UV off
 	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
-	d.cfg.PropagationAck = propAckVersion
+	d.mapModel.ackSeen = propAckVersion
 	d.cfg.SetUI = func(p UIPrefs) error { saved = append(saved, p); return nil }
 	tint := UVLayer
 	d = menuOn(t, pressMap(t, d, "P"), tint)
 	m, cmd, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if !ok || m.mapMode() == modePropagation {
-		t.Fatalf("space on %s: handled %v, mode %v; want the weather mode", tint, ok, m.mapMode())
+	if !ok || m.mapModel.mapMode(m.mapEnv()) == modePropagation {
+		t.Fatalf("space on %s: handled %v, mode %v; want the weather mode", tint, ok, m.mapModel.mapMode(m.mapEnv()))
 	}
 	msgs := msgsOf(t, cmd)
 	// THE PREMISE: the mode's commands beside the save, so where the save stands is seen.
@@ -270,11 +293,14 @@ func TestTheModeSwitchIsSavedFirst(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks) // Forecast mode
 	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
-	d.cfg.PropagationAck = propAckVersion
+	d.mapModel.ackSeen = propAckVersion
 	d.cfg.SetUI = func(p UIPrefs) error { saved = append(saved, p); return nil }
-	_, cmd := d.switchMode()
+	mm, cmd, w := d.mapModel.switchMode(d.mapEnv())
+	_, cmd = withModel(d, mm).applyMapWant(w, cmd)
 	savedFirst(t, "R from Forecast mode", msgsOf(t, cmd), saved, RadarLayer, true)
 	saved = nil
-	_, cmd = pressMap(t, d, "P").switchMode()
+	inProp := pressMap(t, d, "P")
+	mm, cmd, w = inProp.mapModel.switchMode(inProp.mapEnv())
+	_, cmd = withModel(inProp, mm).applyMapWant(w, cmd)
 	savedFirst(t, "R from the Propagation mode", msgsOf(t, cmd), saved, RadarLayer, true)
 }

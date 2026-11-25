@@ -1,4 +1,5 @@
 == the zero Config
+ackSeen=0
 addErr=
 addLocate={gate:{seq:0 settled:false} query: ref:<nil> within:false found:false asked:false submitted:false}
 addMode=
@@ -105,6 +106,7 @@ volFlash=
 volFlashEnd=0001-01-01 00:00:00 +0000 UTC
 width=80
 == every Setting changed
+ackSeen=0
 addErr=
 addLocate={gate:{seq:0 settled:false} query: ref:<nil> within:false found:false asked:false submitted:false}
 addMode=

@@ -146,13 +146,13 @@ type scrubber struct {
 // draw is the scrubber's three rows at a width: the words over the cursor;
 // the bar between the step keys' chips, its ticks and its cursor; the words
 // under it. Too narrow for a bar of ten cells, three blank rows.
-func (d Dashboard) draw(s scrubber, width int) []string {
-	o := d.opts()
+func (mm mapModel) draw(s scrubber, width int, e mapEnv) []string {
+	o := e.Opts
 	arrow := strings.NewReplacer("shift+left", "shift+←", "shift+right", "shift+→") // the sketch's faces (D-86)
 	if o.ASCII {
 		arrow = strings.NewReplacer()
 	}
-	back, on := o.KeyCap(arrow.Replace(d.firstKey(actMapBack))), o.KeyCap(arrow.Replace(d.firstKey(actMapOn)))
+	back, on := o.KeyCap(arrow.Replace(mm.firstKey(actMapBack))), o.KeyCap(arrow.Replace(mm.firstKey(actMapOn)))
 	lead := render.Width(back) + 1
 	bar := width - lead - render.Width(on) - 1 - 2 // the two end marks
 	if bar < 10 {

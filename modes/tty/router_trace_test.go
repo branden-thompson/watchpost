@@ -236,7 +236,7 @@ func traceDash(t *testing.T, at time.Time) Dashboard {
 	h.NewMap, h.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
 	d.cfg.SetUI = func(UIPrefs) error { return nil }
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
-	h.PropagationUpdate, d.cfg.PropagationAck = s.update, propAckVersion
+	h.PropagationUpdate, d.mapModel.ackSeen = s.update, propAckVersion
 	h.SavePropagationAck = func(int) error { return nil }
 	d.ticks = heldTicks
 	return d

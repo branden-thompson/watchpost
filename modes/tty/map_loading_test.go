@@ -26,15 +26,15 @@ func unlandedDash(t *testing.T, feed func(context.Context, MapAsk) MapFeed) Dash
 
 func TestUntilTheAlertsLandTheyAreLoading(t *testing.T) {
 	d := unlandedDash(t, boxFeed(-117.6, -117.1, false))
-	said := strings.Join(d.describeLinesAll(), "\n")
+	said := strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), "\n")
 	if !strings.Contains(said, "Alerts for the map are loading.") || strings.Contains(said, "No alert") {
 		t.Errorf("before the alerts land the description says:\n%s\nwant them loading, never none (D-266)", said)
 	}
-	if got := d.mapStatusText(); got != mapAlertsLoadingText && got != mapLoadingText {
+	if got := d.mapModel.mapStatusText(d.mapEnv()); got != mapAlertsLoadingText && got != mapLoadingText {
 		t.Errorf("the status line says %q while the alerts are not in", got)
 	}
 	d = feedAndSettle(t, d)
-	said = strings.Join(d.describeLinesAll(), "\n")
+	said = strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), "\n")
 	if strings.Contains(said, "loading") || !strings.Contains(said, "Wind Warning") {
 		t.Errorf("once landed the description says:\n%s", said)
 	}
@@ -43,7 +43,7 @@ func TestUntilTheAlertsLandTheyAreLoading(t *testing.T) {
 func TestAFailedAskForTheAlertsIsSaid(t *testing.T) {
 	failed := func(context.Context, MapAsk) MapFeed { return MapFeed{AlertsFailed: true} }
 	d := feedAndSettle(t, unlandedDash(t, failed))
-	said := strings.Join(d.describeLinesAll(), "\n")
+	said := strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), "\n")
 	if !strings.Contains(said, "Alerts for the map could not be loaded.") || strings.Contains(said, "No alert") {
 		t.Errorf("a failed ask is described as:\n%s\nwant it said, never none (D-266)", said)
 	}
@@ -60,23 +60,23 @@ func TestTheAlertsAndTheLayersLandApart(t *testing.T) {
 		return f
 	}
 	d := unlandedDash(t, both)
-	m, _ := d.Update(d.mapFeedCmd(laneAlerts)())
+	m, _ := d.Update(d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv())())
 	d = m.(Dashboard)
-	if _, ok := d.mapPane.given["alert/w1"]; !ok || !d.alertsLanded() {
+	if _, ok := d.mapModel.mapPane.given["alert/w1"]; !ok || !d.mapModel.alertsLanded(d.mapEnv()) {
 		t.Fatal("the alerts' answer was not drawn on its own")
 	}
-	for _, o := range d.mapPane.feed.Overlays {
+	for _, o := range d.mapModel.mapPane.feed.Overlays {
 		if o.ID == "quake/a" {
 			t.Error("the alerts' lane carried another layer's overlay")
 		}
 	}
-	m, _ = d.Update(d.mapFeedCmd(laneLayers)())
+	m, _ = d.Update(d.mapModel.mapFeedCmd(laneLayers, d.mapEnv())())
 	d = m.(Dashboard)
-	if _, ok := d.mapPane.given["alert/w1"]; !ok {
+	if _, ok := d.mapModel.mapPane.given["alert/w1"]; !ok {
 		t.Error("the layers' answer took the alerts away")
 	}
 	ids := map[string]bool{}
-	for _, o := range d.mapPane.feed.Overlays {
+	for _, o := range d.mapModel.mapPane.feed.Overlays {
 		ids[o.ID] = true
 	}
 	if !ids["quake/a"] || !ids["alert/w1"] {

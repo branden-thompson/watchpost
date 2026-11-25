@@ -47,8 +47,8 @@ func runAll(cmd tea.Cmd) {
 func TestTheAcknowledgementShowsBeforeTheFirstFetch(t *testing.T) {
 	var saved []int
 	d := ackPress(t, ackDash(t, 0, false, &saved), "P")
-	if d.modal != modalPropAck || d.mapMode() != modePropagation {
-		t.Fatalf("P showed window %d in mode %d; want the acknowledgement over the Propagation mode", d.modal, d.mapMode())
+	if d.modal != modalPropAck || d.mapModel.mapMode(d.mapEnv()) != modePropagation {
+		t.Fatalf("P showed window %d in mode %d; want the acknowledgement over the Propagation mode", d.modal, d.mapModel.mapMode(d.mapEnv()))
 	}
 	words := strings.Join(propAckText, " ")
 	for _, want := range []string{"does not transmit", "reference", "responsible for following all applicable laws", "GIRO", "NOAA", "IP address", "Status window", "Enter or Esc"} {
@@ -79,8 +79,8 @@ func TestOnlyEnterOrEscCloseIt(t *testing.T) {
 		if len(saved) != 0 {
 			t.Errorf("the acknowledgement was recorded before it closed: %v", saved)
 		}
-		if d = ackPress(t, d, closer); d.modal != modalMap || d.mapMode() != modePropagation {
-			t.Errorf("%s gave window %d in mode %d; want the map in the Propagation mode", closer, d.modal, d.mapMode())
+		if d = ackPress(t, d, closer); d.modal != modalMap || d.mapModel.mapMode(d.mapEnv()) != modePropagation {
+			t.Errorf("%s gave window %d in mode %d; want the map in the Propagation mode", closer, d.modal, d.mapModel.mapMode(d.mapEnv()))
 		}
 	}
 }
@@ -91,11 +91,11 @@ func TestOnlyEnterOrEscCloseIt(t *testing.T) {
 func TestClosingTheAcknowledgementRecordsItSeen(t *testing.T) {
 	var saved []int
 	d := ackPress(t, ackPress(t, ackDash(t, 0, false, &saved), "P"), "esc")
-	if !slices.Equal(saved, []int{propAckVersion}) || d.cfg.PropagationAck != propAckVersion {
-		t.Fatalf("saved %v, held %d; want version %d once", saved, d.cfg.PropagationAck, propAckVersion)
+	if !slices.Equal(saved, []int{propAckVersion}) || d.mapModel.ackSeen != propAckVersion {
+		t.Fatalf("saved %v, held %d; want version %d once", saved, d.mapModel.ackSeen, propAckVersion)
 	}
-	if d = ackPress(t, ackPress(t, d, "P"), "P"); d.modal != modalMap || d.mapMode() != modePropagation {
-		t.Errorf("the Propagation mode again showed window %d in mode %d", d.modal, d.mapMode())
+	if d = ackPress(t, ackPress(t, d, "P"), "P"); d.modal != modalMap || d.mapModel.mapMode(d.mapEnv()) != modePropagation {
+		t.Errorf("the Propagation mode again showed window %d in mode %d", d.modal, d.mapModel.mapMode(d.mapEnv()))
 	}
 	if next := ackPress(t, ackDash(t, propAckVersion, false, &saved), "P"); next.modal != modalMap {
 		t.Errorf("a recorded acknowledgement showed again next session: window %d", next.modal)

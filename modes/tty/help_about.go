@@ -140,7 +140,7 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 // keyed (AX-8) and, outside --ascii, that the picture is braille and the
 // remedy for a font without it (F-191); none with the map off.
 func (d Dashboard) mapHelpNotes(o render.Opts) []string {
-	if d.mapsOff {
+	if d.mapModel.mapsOff {
 		return nil
 	}
 	notes := []string{"", " " + outlineKeyHelp()}
@@ -290,20 +290,21 @@ func helpGroups(surface Surface) []helpGroup {
 func (d Dashboard) helpKeys() term.KeyMap {
 	if d.surface == SurfaceBroadcaster {
 		out := maps.Clone(d.consoleKeyMap()) // a copy: the console's own map is never written
-		for act, bind := range d.mapKeys {   // the map window's own scope, as on Observer (D-61) ...
-			if d.mapRole().placeKeys || (act != actMapPrev && act != actMapNext) { // ... less what its role does not bind (D-195)
+		placeKeys := d.mapModel.mapRole(d.mapEnv()).placeKeys
+		for act, bind := range d.mapModel.mapKeys { // the map window's own scope, as on Observer (D-61) ...
+			if placeKeys || (act != actMapPrev && act != actMapNext) { // ... less what its role does not bind (D-195)
 				out[act] = bind
 			}
 		}
-		maps.Copy(out, d.chartKeyMap()) // the Bands chart's own scope (D-256)
+		maps.Copy(out, d.mapModel.chartKeyMap()) // the Bands chart's own scope (D-256)
 		return out
 	}
 	out := term.KeyMap{}
 	for act, bind := range d.keys {
 		out[act] = bind
 	}
-	maps.Copy(out, d.mapKeys)       // the map window's own scope, listed in its own group (D-61)
-	maps.Copy(out, d.chartKeyMap()) // and the Bands chart's, a row of that group (D-256)
+	maps.Copy(out, d.mapModel.mapKeys)       // the map window's own scope, listed in its own group (D-61)
+	maps.Copy(out, d.mapModel.chartKeyMap()) // and the Bands chart's, a row of that group (D-256)
 	bc := d.consoleKeyMap()
 	for _, act := range []term.Action{actSwapObserver, actSwapBroadcaster} {
 		if bind, ok := bc[act]; ok {

@@ -39,11 +39,11 @@ func sizedMap(t *testing.T, w, h, notes int) Dashboard {
 // can hold it (W14, C-7).
 func TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt(t *testing.T) {
 	d := sizedMap(t, 149, 38, 3)
-	if len(d.mapPane.notes) != 3 || !d.radarTimelineOn() {
+	if len(d.mapModel.mapPane.notes) != 3 || !d.mapModel.radarTimelineOn() {
 		t.Fatal("control: the notes or the radar timeline are not in, so this proves nothing")
 	}
-	if !d.mapFits() {
-		t.Fatalf("at 149x38 the map is %v, under its floor %v", d.mapBodySize(), mapMinBody)
+	if !d.mapModel.mapFits(d.mapEnv()) {
+		t.Fatalf("at 149x38 the map is %v, under its floor %v", d.mapModel.mapBodySize(d.mapEnv()), mapMinBody)
 	}
 	if d.modalMax() != 38-topInset-bottomInset-2 {
 		t.Errorf("the window is %d rows; its ceiling is the rows between the insets but its borders (32)", d.modalMax())
@@ -52,7 +52,7 @@ func TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt(t *testing.T) {
 		t.Error("the window shows the floor's notice in place of the map")
 	}
 	// The ceiling holds them: here the notes still show in full, nothing collapsed.
-	if notes := ttytest.StripANSI(strings.Join(d.noteLines(d.mapTextW()), "\n")); !strings.Contains(notes, "A note the feed carries") {
+	if notes := ttytest.StripANSI(strings.Join(d.mapModel.noteLines(d.mapModel.mapTextW(d.mapEnv()), d.mapEnv()), "\n")); !strings.Contains(notes, "A note the feed carries") {
 		t.Errorf("the notes collapsed where the window could grow to hold them:\n%s", notes)
 	}
 }
@@ -65,7 +65,7 @@ func TestTheMapKeepsItsFloorWhenTheTerminalCanHoldIt(t *testing.T) {
 func TestTheMapWindowRunsInsetToInset(t *testing.T) {
 	for _, h := range []int{38, 44, 60} {
 		d := sizedMap(t, 200, h, 3)
-		if !d.mapFits() {
+		if !d.mapModel.mapFits(d.mapEnv()) {
 			t.Fatalf("control: at 200x%d the map is under its floor", h)
 		}
 		if want := h - topInset - bottomInset - 2; d.modalMax() != want {
@@ -92,10 +92,10 @@ func TestTheMapWindowRunsInsetToInset(t *testing.T) {
 // Status window, before the map is given up.
 func TestTheNotesYieldWhereTheWindowCannot(t *testing.T) {
 	d := sizedMap(t, 149, 31, 3) // ceiling 25: 2 status, 9 timeline, 3 notes leave 11; one note line leaves 13
-	if !d.mapFits() {
-		t.Fatalf("at 149x31 the notes did not yield: the map is %v", d.mapBodySize())
+	if !d.mapModel.mapFits(d.mapEnv()) {
+		t.Fatalf("at 149x31 the notes did not yield: the map is %v", d.mapModel.mapBodySize(d.mapEnv()))
 	}
-	notes := d.noteLines(d.mapTextW())
+	notes := d.mapModel.noteLines(d.mapModel.mapTextW(d.mapEnv()), d.mapEnv())
 	joined := ttytest.StripANSI(strings.Join(notes, "\n"))
 	if !strings.Contains(joined, "Status") || strings.Contains(joined, "A note the feed carries") {
 		t.Errorf("the notes did not collapse to one line naming Status:\n%s", joined)
@@ -103,7 +103,7 @@ func TestTheNotesYieldWhereTheWindowCannot(t *testing.T) {
 	// AND THE POINTER IS TRUE: the Status window carries them, under the map's hosts.
 	d.cfg.MapSources = []MapSource{{Name: "tiles", Layers: "Basemap"}}
 	status := ttytest.StripANSI(strings.Join(d.statusBlocks(0).sources, "\n"))
-	for _, n := range d.mapPane.notes {
+	for _, n := range d.mapModel.mapPane.notes {
 		if !strings.Contains(strings.Join(strings.Fields(status), " "), strings.Join(strings.Fields(n), " ")) {
 			t.Errorf("the notes point to the Status window, which does not say %q:\n%s", n, status)
 		}
@@ -118,7 +118,7 @@ func TestTheWindowNeverPassesItsCeiling(t *testing.T) {
 	if d.modalMax() != 26-topInset-bottomInset-2 {
 		t.Errorf("the window is %d rows; it stops at the ceiling, 20", d.modalMax())
 	}
-	if d.mapFits() {
+	if d.mapModel.mapFits(d.mapEnv()) {
 		t.Fatal("control: the map fits here, so this proves nothing about the ceiling")
 	}
 }
@@ -141,13 +141,13 @@ func TestAMapNotDrawnIsReportedToTheInstrument(t *testing.T) {
 			under++
 		}
 	}
-	if d.mapFits() || under == 0 {
-		t.Errorf("the map was not drawn (fits %v) and the instrument was told %d times", d.mapFits(), under)
+	if d.mapModel.mapFits(d.mapEnv()) || under == 0 {
+		t.Errorf("the map was not drawn (fits %v) and the instrument was told %d times", d.mapModel.mapFits(d.mapEnv()), under)
 	}
 	got = nil
 	d = sizedMap(t, 149, 38, 3)
 	ownHooks(&d).Timed = func(tm Timing) { got = append(got, tm) }
-	d = d.renderMap()
+	d.mapModel = d.mapModel.renderMap(d.mapEnv())
 	for _, tm := range got {
 		if tm.Event == "below-floor" {
 			t.Error("a map that was drawn was reported below its floor")

@@ -92,7 +92,7 @@ func TestNoFrameIsWiderThanTheRegion(t *testing.T) {
 			m, _ := d.Update(SnapshotMsg{Snap: s})
 			d = m.(Dashboard)
 			views := &[]mapView{}
-			d.mapPane.views = views
+			d.mapModel.mapPane.views = views
 			d, _ = pressKey(d, "g")
 			d = driveEverywhere(d)
 			r, _ := geo.RegionOf(c.lat, c.lon)
@@ -124,7 +124,7 @@ func TestAPlaceInNoRegionIsAStatedState(t *testing.T) {
 	m, _ := d.Update(SnapshotMsg{Snap: s})
 	d = m.(Dashboard)
 	views := &[]mapView{}
-	d.mapPane.views = views
+	d.mapModel.mapPane.views = views
 	d, _ = pressKey(d, "g")
 	out := ttytest.StripANSI(d.View().Content)
 	if !strings.Contains(out, "London is outside") {

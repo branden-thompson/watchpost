@@ -22,8 +22,8 @@ import (
 // would reach every copy, the one a test compares against included; a write
 // to an unset Config field reached only the copy written (0.19.6 A-31).
 func ownHooks(d *Dashboard) *Hooks {
-	h := *d.mapHooks
-	d.mapHooks = &h
+	h := *d.mapModel.mapHooks
+	d.mapModel.mapHooks = &h
 	return &h
 }
 

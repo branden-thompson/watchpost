@@ -19,7 +19,7 @@ import (
 func TestEachLayerDrawnAddsItsSentence(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
-	words := d.describeLinesAll()
+	words := d.mapModel.describeLinesAll(d.mapEnv())
 	temp := slices.IndexFunc(words, func(l string) bool { return strings.HasPrefix(l, "Temperature at Oceanside, CA: ") })
 	alert := slices.IndexFunc(words, func(l string) bool { return strings.HasPrefix(l, "Wind Warning") })
 	if temp < 0 || alert < 0 || temp < alert {
@@ -30,12 +30,12 @@ func TestEachLayerDrawnAddsItsSentence(t *testing.T) {
 	}
 	now := words[temp]
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if next := m.describeLinesAll(); slices.Contains(next, now) {
+	if next := m.mapModel.describeLinesAll(m.mapEnv()); slices.Contains(next, now) {
 		t.Errorf("a step on, the temperature still says Now's: %q", now)
 	}
 	var asked []string
 	r := openRadarMap(t, "MRMS", &asked)
-	if got := strings.Join(r.describeLinesAll(), "\n"); !strings.Contains(got, "Radar: no echo at Oceanside, CA; the nearest heavier echo is 18 miles to the south-west.") {
+	if got := strings.Join(r.mapModel.describeLinesAll(r.mapEnv()), "\n"); !strings.Contains(got, "Radar: no echo at Oceanside, CA; the nearest heavier echo is 18 miles to the south-west.") {
 		t.Errorf("the radar's answer is not said:\n%s", got)
 	}
 	for _, c := range []struct {
@@ -48,7 +48,7 @@ func TestEachLayerDrawnAddsItsSentence(t *testing.T) {
 		{tuimaps.Answer{Form: answerArea, Relation: tuimaps.Inside}, "Oceanside, CA lies inside the wind."},
 		{tuimaps.Answer{Form: answerArea, Distance: 0.4, Unit: "miles", Compass: "east"}, "Wind: the nearest edge is under one mile to the east."},
 	} {
-		if got := r.answerSentence("Wind", "Oceanside, CA", c.a); got != c.want {
+		if got := r.mapModel.answerSentence("Wind", "Oceanside, CA", c.a); got != c.want {
 			t.Errorf("%+v says %q; want %q", c.a, got, c.want)
 		}
 	}
@@ -60,16 +60,16 @@ func TestEachLayerDrawnAddsItsSentence(t *testing.T) {
 func TestTheRadarSaysItsMotion(t *testing.T) {
 	var asked []string
 	r := openRadarMap(t, "MRMS", &asked)
-	r.mapPane.motion = []tuimaps.MotionReport{{Overlay: "radar/us-a", Moving: true, HeadingCompass: "east", SpeedKmh: 32.2, Trend: tuimaps.Closer,
+	r.mapModel.mapPane.motion = []tuimaps.MotionReport{{Overlay: "radar/us-a", Moving: true, HeadingCompass: "east", SpeedKmh: 32.2, Trend: tuimaps.Closer,
 		To: tuimaps.Sighting{Distance: 18, Unit: "miles", Compass: "south-west"}}}
-	words := r.describeLinesAll()
+	words := r.mapModel.describeLinesAll(r.mapEnv())
 	radar := slices.IndexFunc(words, func(l string) bool { return strings.HasPrefix(l, "Radar: ") })
 	want := "Heavier rain 18 miles to the south-west of Oceanside, CA moves towards the east at 20 miles an hour, coming closer."
 	if radar < 0 || radar+1 >= len(words) || words[radar+1] != want {
 		t.Errorf("the motion does not follow the radar's sentence:\n%s", strings.Join(words, "\n"))
 	}
-	r.mapPane.motion[0].Moving = false
-	if strings.Contains(strings.Join(r.describeLinesAll(), "\n"), "Heavier rain") {
+	r.mapModel.mapPane.motion[0].Moving = false
+	if strings.Contains(strings.Join(r.mapModel.describeLinesAll(r.mapEnv()), "\n"), "Heavier rain") {
 		t.Error("rain that barely moved is said to move")
 	}
 }
@@ -80,11 +80,11 @@ func TestTheRadarSaysItsMotion(t *testing.T) {
 func TestEachLayerSaysItsBestAnswer(t *testing.T) {
 	var asked []string
 	r := openRadarMap(t, "MRMS", &asked)
-	i := slices.IndexFunc(r.mapPane.report.Answers, func(a tuimaps.Answer) bool { return strings.HasPrefix(a.Overlay, RadarLayer) })
+	i := slices.IndexFunc(r.mapModel.mapPane.report.Answers, func(a tuimaps.Answer) bool { return strings.HasPrefix(a.Overlay, RadarLayer) })
 	if i < 0 {
 		t.Fatal("the fixture's radar gave no answer")
 	}
-	reading := r.mapPane.report.Answers[i]
+	reading := r.mapModel.mapPane.report.Answers[i]
 	reading.NoData, reading.Km, reading.Heavier, reading.HeavierAt = false, 40, "south-west", 18
 	noData := reading
 	noData.NoData, noData.Km, noData.Heavier = true, 2, "north"
@@ -92,8 +92,8 @@ func TestEachLayerSaysItsBestAnswer(t *testing.T) {
 	near.Km, near.HeavierAt = 10, 6
 	radarLine := func(answers ...tuimaps.Answer) string {
 		d := r
-		d.mapPane.report.Answers = answers
-		for _, l := range d.describeLinesAll() {
+		d.mapModel.mapPane.report.Answers = answers
+		for _, l := range d.mapModel.describeLinesAll(d.mapEnv()) {
 			if strings.HasPrefix(l, "Radar") {
 				return l
 			}

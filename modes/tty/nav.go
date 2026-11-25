@@ -106,11 +106,21 @@ func (d Dashboard) handleModalNav(act term.Action) Dashboard {
 	return d
 }
 
-func (d Dashboard) numPriority() int {
-	if d.snap == nil {
+func (d Dashboard) numPriority() int { return d.pick().priorityRows() }
+
+// pick is the selection's ingredients, which the map is lent as they are
+// (0.19.6 design MS-2): one owner of the selection, the Dashboard's and the
+// map's.
+func (d Dashboard) pick() mapPick {
+	return mapPick{Snap: d.snap, Recent: d.recent, Lookup: d.lookupRef, Selected: d.selected}
+}
+
+// priorityRows is the PRIORITY table's row count.
+func (p mapPick) priorityRows() int {
+	if p.Snap == nil {
 		return 0
 	}
-	return len(d.snap.Locations)
+	return len(p.Snap.Locations)
 }
 
 // It counts the same list recentLocations draws WITHOUT BUILDING IT. The three
@@ -142,29 +152,36 @@ func (d Dashboard) numRecent() int {
 // ONE OWNER for the drawn list, because the focus arithmetic spans both tables:
 // a table showing a row the navigation did not count would put the cursor off
 // the end of it.
-func (d Dashboard) recentLocations() []snapshot.Location {
+func (d Dashboard) recentLocations() []snapshot.Location { return d.pick().recentList() }
+
+// recentList is the drawn RECENT list from the selection's ingredients.
+func (p mapPick) recentList() []snapshot.Location {
 	var out []snapshot.Location
-	if d.lookupRef != nil && d.lookupIndex() < 0 {
-		r := *d.lookupRef
+	if p.Lookup != nil && p.lookupRow() < 0 {
+		r := *p.Lookup
 		out = append(out, snapshot.Location{Label: r.Label, Tag: r.Tag, Zip: r.Zip, Lat: r.Lat, Lon: r.Lon, TZ: r.TZ})
 	}
-	if d.recent != nil {
-		out = append(out, d.recent.Locations...)
+	if p.Recent != nil {
+		out = append(out, p.Recent.Locations...)
 	}
 	return out
 }
 
 // selectedLocation resolves the focus index across both tables.
-func (d Dashboard) selectedLocation() *snapshot.Location {
-	np := d.numPriority()
-	if d.selected < np {
-		return &d.snap.Locations[d.selected]
+func (d Dashboard) selectedLocation() *snapshot.Location { return d.pick().location() }
+
+// location resolves the focus index across both tables, from the
+// selection's ingredients.
+func (p mapPick) location() *snapshot.Location {
+	np := p.priorityRows()
+	if p.Selected < np {
+		return &p.Snap.Locations[p.Selected]
 	}
 	// The drawn list, which already carries the pending lookup at its top — so
 	// Details reads the same record the table is showing, rather than each
 	// building its own idea of what the focus is on.
-	rec := d.recentLocations()
-	if i := d.selected - np; i >= 0 && i < len(rec) {
+	rec := p.recentList()
+	if i := p.Selected - np; i >= 0 && i < len(rec) {
 		return &rec[i]
 	}
 	return nil
@@ -174,12 +191,15 @@ func (d Dashboard) selectedLocation() *snapshot.Location {
 // list carries it (found by identity, wherever it landed — R5-C-02: by index,
 // an empty RECENT at lookup time puts the focus past the tables); −1 while it
 // waits.
-func (d Dashboard) lookupIndex() int {
-	if d.lookupRef == nil || d.recent == nil {
+func (d Dashboard) lookupIndex() int { return d.pick().lookupRow() }
+
+// lookupRow is that row from the selection's ingredients.
+func (p mapPick) lookupRow() int {
+	if p.Lookup == nil || p.Recent == nil {
 		return -1
 	}
-	for i, l := range d.recent.Locations {
-		if sameLocation(refOf(l), *d.lookupRef) {
+	for i, l := range p.Recent.Locations {
+		if sameLocation(refOf(l), *p.Lookup) {
 			return i
 		}
 	}

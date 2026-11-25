@@ -61,7 +61,7 @@ func openTimedMap(t *testing.T, tm *timings) Dashboard {
 	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
 	// The move's settle tick, as the real 600 ms timer delivers it: the view
 	// stood still, so its alerts, radar and temperature are asked (D-66).
-	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	return settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
 }
 
@@ -99,9 +99,9 @@ func TestTheMapTimesItsAsks(t *testing.T) {
 func TestASwitchIsTimedFromItsPress(t *testing.T) {
 	tm := &timings{}
 	d := openTimedMap(t, tm)
-	d.mapPane.clock.from = time.Time{} // the opening is done with
-	d = d.timeFrom("overlay")
-	d = d.renderMap()
+	d.mapModel.mapPane.clock.from = time.Time{} // the opening is done with
+	d.mapModel = d.mapModel.timeFrom("overlay", d.mapEnv())
+	d.mapModel = d.mapModel.renderMap(d.mapEnv())
 	if got := strings.Join(tm.events("overlay"), ","); got != "complete,settled" {
 		t.Errorf("a switch drawn from what is held says %q; want complete,settled - no m5, no alerts were asked", got)
 	}
@@ -115,8 +115,8 @@ func TestTheMapClockSaysHowLateATickLanded(t *testing.T) {
 	now := time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC)
 	d.now = func() time.Time { return now }
 	at := now.Add(-40 * time.Millisecond)
-	d.mapPane.tickAt = at // the tick the map armed
-	d.applyMapTick(mapTickMsg{at: at})
+	d.mapModel.mapPane.tickAt = at // the tick the map armed
+	d.mapModel.applyMapTick(mapTickMsg{at: at}, d.mapEnv())
 	var late []time.Duration
 	for _, e := range tm.got {
 		if e.Event == "tick" {
@@ -172,7 +172,7 @@ func TestAMoveIsNotSettledBeforeItsViewIsAsked(t *testing.T) {
 	if n := countOf(tm.events("map.pan.right"), "settled"); n != 0 {
 		t.Fatalf("a pan was settled %d times before its settle tick asked for its view", n)
 	}
-	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
 	if n := countOf(tm.events("map.pan.right"), "settled"); n != 1 {
 		t.Errorf("once its view is asked and in, the pan is settled once; said %d", n)
@@ -188,10 +188,10 @@ func TestAnAskStopsListeningOnceSettled(t *testing.T) {
 	d := openTimedMap(t, tm)
 	settledAt := len(tm.got)
 	for range 3 { // three refreshes, as new snapshots bring
-		d = d.requestFeed()
+		d.mapModel = d.mapModel.requestFeed()
 		d = feedAndSettle(t, d)
 	}
-	_ = d.timed("answered:temp") // a kind not yet seen, landing after the ask settled
+	_ = d.mapModel.timed("answered:temp", d.mapEnv()) // a kind not yet seen, landing after the ask settled
 	for _, e := range tm.got[settledAt:] {
 		if e.Trigger == "map.region.1" {
 			t.Errorf("after settled, a later refresh was timed against the ask: %+v", e)
@@ -213,11 +213,12 @@ func TestAnAskStopsListeningOnceSettled(t *testing.T) {
 func TestM5IsReachedUnderAStreamOfData(t *testing.T) {
 	tm := &timings{}
 	d := openTimedMap(t, tm) // the lower 48: the view the embedded tiles draw whole
-	d = d.timeFrom("probe")
-	d, ask := d.requestFeed().askFeed()
+	d.mapModel = d.mapModel.timeFrom("probe", d.mapEnv())
+	var ask tea.Cmd
+	d.mapModel, ask = d.mapModel.requestFeed().askFeed(d.mapEnv())
 	m, _ := d.Update(SnapshotMsg{Snap: placedSnap()}) // new data while the ask runs
 	d = m.(Dashboard)
-	if !d.mapPane.lanes[laneAlerts].again {
+	if !d.mapModel.mapPane.lanes[laneAlerts].again {
 		t.Fatal("control: the new data did not mark the feed wanted again")
 	}
 	answers := feedAsks(t, ask)
@@ -247,15 +248,15 @@ func TestAWarmReopenReachesM5(t *testing.T) {
 	d := openTimedMap(t, tm)
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight}) // a pan...
 	d = m.(Dashboard)
-	d, _ = pressKey(d, "g")                                    // ...and the map closed before it settles
-	m, _ = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen}) // its tick, dropped: the map is closed
+	d, _ = pressKey(d, "g")                                             // ...and the map closed before it settles
+	m, _ = d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen}) // its tick, dropped: the map is closed
 	d = m.(Dashboard)
-	if d.mapPane.viewAsked == d.mapPane.viewGen {
+	if d.mapModel.mapPane.viewAsked == d.mapModel.mapPane.viewGen {
 		t.Fatal("control: the dropped tick left nothing unasked, so this proves nothing")
 	}
 	m, _ = d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"}) // reopened: the open asks for its view
 	d = m.(Dashboard)
-	if d.mapPane.viewAsked != d.mapPane.viewGen {
+	if d.mapModel.mapPane.viewAsked != d.mapModel.mapPane.viewGen {
 		t.Error("the reopened map asked for its view, but it is not counted still - M5 can never be said")
 	}
 }

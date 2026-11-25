@@ -24,13 +24,13 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	var asked []string // radar configured, as the app's is: the rows under the map are drawn only with its timeline
 	d := openMap(t, Config{Map: &Hooks{PropagationUpdate: s.update, MapRadar: radarFeed(t, "MRMS", &asked)}, PropagationAck: propAckVersion}, 133, 44)
 	d.now = func() time.Time { return computed.Add(12 * time.Minute) } // the ages read the same at any minute the test starts
-	if !d.radarTimelineOn() {
+	if !d.mapModel.radarTimelineOn() {
 		t.Fatal("the fixture holds no timeline rows: the rows under the map would not be drawn")
 	}
-	weather := d.mapBodySize()
+	weather := d.mapModel.mapBodySize(d.mapEnv())
 	d, cmd := keyCmd(t, d, "P")
 	d = workChart(t, runProp(t, d, cmd))
-	rows := ttytest.StripANSI(strings.Join(d.scrubRows(d.mapTextW()), "\n"))
+	rows := ttytest.StripANSI(strings.Join(d.mapModel.scrubRows(d.mapModel.mapTextW(d.mapEnv()), d.mapEnv()), "\n"))
 	for _, want := range []string{"RADIO FREQUENCY PROPAGATION", "SWPC", "PYIRI", "IGRF-14",
 		"MODE:   MUF(3000)   · COMPUTED", "(data 42 min old) · residential noise", // the fields as chips (D-165); the circuit's noise (D-187)
 		"NOW ·   foF2   6.0 MHz ·   MUF(3000)   18.0 MHz",
@@ -40,8 +40,8 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 			t.Errorf("the rows under the map do not say %q:\n%s", want, rows)
 		}
 	}
-	block := d.propBlock(d.scrubW())                    // D-163: a blank row between the mode and the place; the answer under NOW
-	label := strings.ToUpper(d.mapPane.propOrigin.name) // D-193: on Observer the map's centre, named for the view
+	block := d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()) // D-163: a blank row between the mode and the place; the answer under NOW
+	label := strings.ToUpper(d.mapModel.mapPane.propOrigin.name)             // D-193: on Observer the map's centre, named for the view
 	if !strings.HasPrefix(block[1], "MODE:") || strings.TrimSpace(block[2]) != "" || !strings.HasPrefix(block[3], label+"   NOW · ") {
 		t.Errorf("the block is not header, mode, a blank row, then the place:\n%s", strings.Join(block, "\n"))
 	}
@@ -56,8 +56,8 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 	}
 	st := d // a name that fits its column: the answers stand under NOW (D-163)
 	st.surface, st.cfg.Transmitter = SurfaceBroadcaster, &snapshot.LocationRef{Label: "KXYZ", Lat: 33.2, Lon: -117.3}
-	st = workChart(t, st.renderMap())
-	short := st.propBlock(st.scrubW())
+	st = workChart(t, withModel(st, st.mapModel.renderMap(st.mapEnv())))
+	short := st.mapModel.propBlock(st.mapModel.scrubW(st.mapEnv()), st.mapEnv())
 	at := strings.Index(short[3], "NOW")
 	if !strings.HasPrefix(short[3], "KXYZ   NOW · ") || strings.Index(short[4], "Local") != at || strings.Index(short[5], "Up to:") != at {
 		t.Errorf("under a short name the answers do not stand under NOW (%d):\n%s", at, strings.Join(short, "\n"))
@@ -68,12 +68,12 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 		t.Fatalf("%q fits the place's column, so this measures nothing", long)
 	}
 	lg.cfg.Transmitter = &snapshot.LocationRef{Label: long, Lat: 34.2, Lon: -116.9}
-	lg = workChart(t, lg.renderMap())
-	wide := lg.propBlock(lg.scrubW())
+	lg = workChart(t, withModel(lg, lg.mapModel.renderMap(lg.mapEnv())))
+	wide := lg.mapModel.propBlock(lg.mapModel.scrubW(lg.mapEnv()), lg.mapEnv())
 	if !strings.HasPrefix(wide[3], strings.ToUpper(long)+"   NOW · ") || cellIndex(wide[4], "Local") != propLongIndent || cellIndex(wide[5], "Up to:") != propLongIndent {
 		t.Errorf("under a long name the answers are not at the short indent (%d):\n%s", propLongIndent, strings.Join(wide, "\n"))
 	}
-	if lines, holds := len(d.mapBodyLines()), d.modalMax(); lines != holds {
+	if lines, holds := len(d.mapModel.mapBodyLines(d.mapEnv())), d.modalMax(); lines != holds {
 		t.Errorf("the window's body is %d lines and the window holds %d: the rows under the map and the map's size disagree", lines, holds)
 	}
 	for _, l := range strings.Split(rows, "\n") {
@@ -81,13 +81,13 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 			t.Errorf("40m (7 MHz) is above foF2 6 MHz, yet listed: %q", l)
 		}
 	}
-	words := strings.Join(d.describeLinesAll(), " ")
+	words := strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), " ")
 	for _, want := range []string{", now: MUF(3000) 18.0 megahertz, foF2 6.0 megahertz.", "Local, about 400 kilometres: ", "North America: "} { // the bands open follow the hour: this fixture reads the clock
 		if !strings.Contains(words, want) {
 			t.Errorf("without the picture the words do not say %q: %q", want, words)
 		}
 	}
-	if got := d.mapBodySize(); got.Rows > weather.Rows || got.Rows < weather.Rows-2 {
+	if got := d.mapModel.mapBodySize(d.mapEnv()); got.Rows > weather.Rows || got.Rows < weather.Rows-2 {
 		t.Errorf("the map is %v in the Propagation mode and %v in the weather mode; D-163 takes a row or two", got, weather)
 	}
 }
@@ -96,7 +96,7 @@ func TestThePropagationRowsFollowTheMock(t *testing.T) {
 // each class by its band, its lower edge in MHz under it, nothing cut.
 func TestThePropagationLegendIsBandOverMHz(t *testing.T) {
 	d, _ := drawnDash(t)
-	rows := d.scrubRows(d.mapTextW())
+	rows := d.mapModel.scrubRows(d.mapModel.mapTextW(d.mapEnv()), d.mapEnv())
 	bands, mhz := ttytest.StripANSI(rows[0]), ttytest.StripANSI(rows[1])
 	for _, want := range []string{"MUF(3000)", "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m"} {
 		if !strings.Contains(bands, want) {
@@ -112,11 +112,11 @@ func TestThePropagationLegendIsBandOverMHz(t *testing.T) {
 		t.Errorf("20m stands at %d and its 14 MHz at %d: not one over the other", i, j)
 	}
 	d = pressMap(t, d, "L")
-	if bands := ttytest.StripANSI(d.scrubRows(d.mapTextW())[0]); !strings.Contains(bands, "foF2") || strings.Contains(bands, "17m") {
+	if bands := ttytest.StripANSI(d.mapModel.scrubRows(d.mapModel.mapTextW(d.mapEnv()), d.mapEnv())[0]); !strings.Contains(bands, "foF2") || strings.Contains(bands, "17m") {
 		t.Errorf("foF2's legend %q: want its six bands, 160m to 20m", bands)
 	}
 	var classes []tuimaps.Class
-	for _, e := range d.mapPane.legend {
+	for _, e := range d.mapModel.mapPane.legend {
 		if e.Preset == "fof2" {
 			classes = e.Classes
 		}
@@ -150,8 +150,8 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 		held.now = func() time.Time { return now } // the age reads the same however long the test runs
 		d, cmd := keyCmd(t, held, "P")
 		d = runProp(t, d, cmd)
-		block := d.propBlock(d.scrubW())
-		label := strings.ToUpper(d.mapPane.propOrigin.name) // D-193
+		block := d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())
+		label := strings.ToUpper(d.mapModel.mapPane.propOrigin.name) // D-193
 		if !strings.Contains(block[3], render.Tint(label, render.Tok(render.MapPropPlace))) {
 			t.Errorf("the place is not in the bold bright tone: %q", block[3])
 		}
@@ -170,13 +170,13 @@ func TestRoundFourMarksStandOut(t *testing.T) {
 		if want := render.Tint(c.says, render.Tok(tone)); !strings.Contains(block[1], want) {
 			t.Errorf("%v: the age is not %q on its rung of the ramp: %q", c.age, c.says, block[1])
 		}
-		for _, w := range d.describeLinesAll() { // the words without the picture are plain (FR-3.5)
+		for _, w := range d.mapModel.describeLinesAll(d.mapEnv()) { // the words without the picture are plain (FR-3.5)
 			if strings.Contains(w, "\x1b[") && strings.Contains(w, "NOW") {
 				t.Errorf("the words carry styling: %q", w)
 			}
 		}
 	}
-	if b := ttytest.StripANSI(propDash(t, &seam{}, true).propagationBadge()); !strings.Contains(b, "RADIO FREQ. PROPAGATION") {
+	if b := ttytest.StripANSI(propDash(t, &seam{}, true).mapModel.propagationBadge()); !strings.Contains(b, "RADIO FREQ. PROPAGATION") {
 		t.Errorf("the badge says %q", b)
 	}
 }

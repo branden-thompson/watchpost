@@ -93,7 +93,7 @@ func windowKeysOf(m modal) (windowKeys, bool) {
 	case modalRequest:
 		return windowKeys{claim: claimAll, all: Dashboard.handleRequestKey, nav: Dashboard.handleRequestNav}, true // R4: a form, walked field by field
 	case modalMap:
-		return windowKeys{claim: claimBound, bound: func(d Dashboard) term.KeyMap { return d.mapKeys }, onKey: Dashboard.handleMapKey,
+		return windowKeys{claim: claimBound, bound: func(d Dashboard) term.KeyMap { return d.mapModel.mapKeys }, onKey: Dashboard.handleMapKey,
 			helpTitle: "MAP", helpActions: mapActions, helpRows: mapHelpRows}, true // D-61: the open map owns the keys it binds
 	}
 	return windowKeys{}, false

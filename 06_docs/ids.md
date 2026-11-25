@@ -1613,15 +1613,19 @@ each one's best mention (0.19.6 D-50).
 | D-78 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Recording propagation history (D-31, D-62) when nothing fetches in the background (D-76) and nothing in 0.19.… |
 | D-79 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d79.md` | ANYTHING THAT TALKS BACK TO THE PROGRAM MUST NOT RUN ON THE UPDATE LOOP |
 | D-79 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p4.5-build-log.md` | anything that talks back to the program must not run on the Update loop |
+| D-79 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The 2a names of the map's seam types (D-77). The design's names, Env, Want, Step, Window, Pick and Station, a… |
 | D-79 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-42: the Rail, Parks and Minor roads switches did nothing - the Detail level (the listener's: Weather… |
 | D-79 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Maidenhead grid locators (round 2, Business N5) |
 | D-80 | 0.16.0 | `0.16.0-broadcaster-ui/00-REQUIRED-READING.md:204` | Mentioned: D-51 above 150 is a right rail, a LATER release — a SEAM is owed now, not a layout the seam is car… |
+| D-80 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | The map model's receiver. Design MS-8 gives m (JN P2-10: d names four types). In the map's files m is the lib… |
 | D-80 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-43, HUM LEAD direction: alert categories in the Overlays menu, matching the [w] window ("especially … |
 | D-80 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | A screen reader on the Broadcaster speaks into the broadcast (round 2, N-1): broadcast audio plays on the def… |
 | D-81 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d81.md` | THE LANE DECIDES WHO READS, AND THE PROGRAMME IS NOT A NARRATION |
+| D-81 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How gcprobe judges B4.3. Against e57afeaf it fails 21 escape keys, 12 escape types and 133 inlining keys, in … |
 | D-81 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-44, HUM LEAD direction: "Pressing -> while looking at the easter portion of the US kicks me over to … |
 | D-81 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The acknowledgement window's details (round 2, N-7, N-14) |
 | D-82 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d82.md` | THE AIR IS PER LANE, AND THE RAIL INTERRUPTS THE PROGRAMME |
+| D-82 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | How gcprobe judges B4.3's classes 2 to 4 (D-81). With mapModel a named field, class 1 is gone: no wrapper esc… |
 | D-82 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-45, HUM LEAD direction: the cost warning's words under the map (FR-9.2) |
 | D-82 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Reading order (round 2, Docs Q4) |
 | D-83 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d83.md` | THE LIVE CARD SHOWS THE READ, AND THE WORDS WERE ALREADY THERE |
@@ -2425,6 +2429,7 @@ each one's best mention (0.19.6 D-50).
 | A-64 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to releases built for Node.js 24… |
 | A-65 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4.2 as built: the map's hooks held once (design MS-1, MS-2; A-31, A-42, D-77, D-78). (1) modes/tty/map_hooks… |
 | A-65 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The record's remediation (batch 36; BUILD red team B-F2, B-F4, B-F5, D-F1, D-F2, D-F5, D-F11, D-F12, D-F13, C… |
+| A-66 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4.3 as built: the map's model, its fields, its methods and the seam's values (design MS-1, MS-2, MS-4, MS-5,… |
 | A-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.1 (batch 37; D-205, D-206, D-213, D-214, D-216; BUILD red team L-F2, C-5, … |
 | A-67 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Propagation mode's words (batch 38; D-210, D-211; BUILD red team AX-1, AX-2, AX-4 to AX-13): (1) the cent… |
 | A-68 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's code findings (batch 39; BUILD red team C-1 to C-4, L-F3, P-1, P-5, P-6, I-2, I-3, I-4, I-6)… |
@@ -3028,11 +3033,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:156` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:156` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:160` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:160` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:156` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:160` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

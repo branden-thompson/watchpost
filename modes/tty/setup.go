@@ -169,7 +169,8 @@ func (d Dashboard) openSetupAt(at setupRowID) Dashboard {
 // openSetup toggles the Setup window with fresh state (the alert preference
 // seeded from config), alone on top.
 func (d Dashboard) openSetup() Dashboard {
-	d = d.toggle(modalSetup).refreshMapCost() // the Maps tab's warning reads the estimate
+	d = d.toggle(modalSetup)
+	d.mapModel = d.mapModel.refreshMapCost(d.mapEnv()) // the Maps tab's warning reads the estimate
 	// Seeded from config, so the window opens showing what is in force — the
 	// cast and the tone state are copied so editing them cannot reach the
 	// stored config before a save.
@@ -333,8 +334,8 @@ func (d Dashboard) setupRowText(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 	picker := setupTable()[d.setup.focus].picker
 	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
-		m, cmd := d.clearMapData()
-		return m, cmd, true
+		mm, cmd, w := d.mapModel.clearMapData()
+		return d.withMap(mm, w), cmd, true
 	}
 	if d.setup.focus == rowHistoryClear && (key.String() == "space" || key.String() == "enter") {
 		m, cmd := d.askClearHistory()
@@ -344,8 +345,8 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 	case "up", "down":
 		down := key.String() == "down"
 		if d.setup.focus == rowMapLayers { // ↑↓ walk the layers, then leave (HUM LEAD, 2026-09-30)
-			if nd, moved := d.stepLayer(down); moved {
-				return nd, nil, true
+			if w, moved := d.mapModel.stepLayer(down, d.setup.layerAt, d.mapEnv()); moved {
+				return d.withMap(d.mapModel, w), nil, true
 			}
 		}
 		if !d.rowTakesArrows() {
@@ -395,13 +396,13 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 func (d Dashboard) cycleFocused(forward bool) (Dashboard, bool) {
 	switch d.setup.focus {
 	case rowMapsOn:
-		d.mapsOff = !d.mapsOff // two states, so either arrow is "the other one"
+		d.mapModel.mapsOff = !d.mapModel.mapsOff // two states, so either arrow is "the other one"
 		return d.uiTouched(), true
 	case rowMapDesc:
-		return d.cycleMapDesc(forward), true
+		return d.withMap(d.mapModel.cycleMapDesc(forward)), true
 	}
-	if m, ok := d.mapPrefArrow(forward); ok {
-		return m, true
+	if mm, w, ok := d.mapModel.mapPrefArrow(forward, d.setup.focus, d.setup.layerAt, d.mapEnv()); ok {
+		return d.withMap(mm, w), true
 	}
 	row := setupTable()[d.setup.focus]
 	switch {
@@ -513,8 +514,8 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.
 func (d Dashboard) setupSpace() Dashboard {
-	if nd, ok := d.mapPrefArrow(true); ok {
-		return nd // the map's pickers and switches: space is their → (one owner, mapPrefArrow)
+	if mm, w, ok := d.mapModel.mapPrefArrow(true, d.setup.focus, d.setup.layerAt, d.mapEnv()); ok {
+		return d.withMap(mm, w) // the map's pickers and switches: space is their → (one owner, mapPrefArrow)
 	}
 	switch id := d.setup.focus; id {
 	case rowEventsAll:
@@ -532,10 +533,10 @@ func (d Dashboard) setupSpace() Dashboard {
 	case rowClockMil:
 		return d.setClock(render.ClockMil)
 	case rowMapsOn:
-		d.mapsOff = !d.mapsOff // live: g says so at once (W1.8)
+		d.mapModel.mapsOff = !d.mapModel.mapsOff // live: g says so at once (W1.8)
 		return d.uiTouched()
 	case rowMapDesc:
-		return d.cycleMapDesc(true)
+		return d.withMap(d.mapModel.cycleMapDesc(true))
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:
@@ -618,8 +619,8 @@ func (d Dashboard) commitToModel() Dashboard {
 		moved = moved || d.cfg.ServiceRadiusMi != v
 		d.cfg.ServiceRadiusMi = v
 	}
-	if moved && d.mapPane.m != nil && d.mapRole().zone {
-		d = d.followSelection().setZone()
+	if e := d.mapEnv(); moved && d.mapModel.mapPane.m != nil && d.mapModel.mapRole(e).zone {
+		d.mapModel = d.mapModel.followSelection(e).setZone(e)
 	}
 	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
 		d.cfg.RelayLang = d.setup.relayLang

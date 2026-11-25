@@ -99,8 +99,8 @@ func TestANonMapMessageStillReasksAStaleSnapshot(t *testing.T) {
 	if asked == 0 {
 		t.Fatal("the mode's first update was never asked")
 	}
-	d = d.togglePropCorrect()
-	d.mapPane.propSess.busy = false
+	d = d.withMap(d.mapModel.togglePropCorrect())
+	d.mapModel.mapPane.propSess.busy = false
 	m, again := d.Update(unrelatedMsg{})
 	if again == nil {
 		t.Fatal("a message the map does not answer returned no command; a stale snapshot was not asked again")

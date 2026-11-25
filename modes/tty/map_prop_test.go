@@ -52,22 +52,22 @@ func TestThePropagationModeIsAKeymapAction(t *testing.T) {
 	}{{"Radar", true, modeRadar}, {"Forecast", false, modeForecast}} {
 		var asks []MapAsk
 		d := openTempMap(t, from.radar, &asks)
-		choice := d.mapLayerChoice
-		if d = pressMap(t, d, "P"); d.mapMode() != modePropagation {
-			t.Fatalf("from %s, P gave mode %d", from.name, d.mapMode())
+		choice := d.mapModel.mapLayerChoice
+		if d = pressMap(t, d, "P"); d.mapModel.mapMode(d.mapEnv()) != modePropagation {
+			t.Fatalf("from %s, P gave mode %d", from.name, d.mapModel.mapMode(d.mapEnv()))
 		}
-		if d.mapLayerChoice != choice || d.setup.uiDirty {
+		if d.mapModel.mapLayerChoice != choice || d.setup.uiDirty {
 			t.Errorf("from %s, the Propagation mode was saved (D-154)", from.name)
 		}
-		if d = pressMap(t, d, "P"); d.mapMode() != from.want {
-			t.Errorf("P from the Propagation mode gave %d; want %s again", d.mapMode(), from.name)
+		if d = pressMap(t, d, "P"); d.mapModel.mapMode(d.mapEnv()) != from.want {
+			t.Errorf("P from the Propagation mode gave %d; want %s again", d.mapModel.mapMode(d.mapEnv()), from.name)
 		}
-		if d = pressMap(t, pressMap(t, d, "P"), "R"); d.mapMode() != modeRadar {
-			t.Errorf("from %s, R in the Propagation mode gave %d; want Radar (D-153)", from.name, d.mapMode())
+		if d = pressMap(t, pressMap(t, d, "P"), "R"); d.mapModel.mapMode(d.mapEnv()) != modeRadar {
+			t.Errorf("from %s, R in the Propagation mode gave %d; want Radar (D-153)", from.name, d.mapModel.mapMode(d.mapEnv()))
 		}
 		d = pressMap(t, pressMap(t, d, "P"), "g") // closed in the Propagation mode
-		if d = pressMap(t, d, "g"); d.mapMode() != modeRadar {
-			t.Errorf("from %s, the map reopened in mode %d; want the weather mode last used (D-154)", from.name, d.mapMode())
+		if d = pressMap(t, d, "g"); d.mapModel.mapMode(d.mapEnv()) != modeRadar {
+			t.Errorf("from %s, the map reopened in mode %d; want the weather mode last used (D-154)", from.name, d.mapModel.mapMode(d.mapEnv()))
 		}
 	}
 }
@@ -82,8 +82,8 @@ func TestTheModeIsNamedInEveryPath(t *testing.T) {
 		if !strings.Contains(screen, "PROPAGATION") {
 			t.Errorf("%s: the window does not name the Propagation mode:\n%s", mode.name, screen)
 		}
-		if mode.desc != "off" && !strings.Contains(strings.Join(d.describeLinesAll(), " "), "Propagation mode") {
-			t.Errorf("%s: the description does not say the Propagation mode: %q", mode.name, d.describeLinesAll())
+		if mode.desc != "off" && !strings.Contains(strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), " "), "Propagation mode") {
+			t.Errorf("%s: the description does not say the Propagation mode: %q", mode.name, d.mapModel.describeLinesAll(d.mapEnv()))
 		}
 	}
 }
@@ -95,32 +95,32 @@ func TestTheModeIsNamedInEveryPath(t *testing.T) {
 func TestEachModeDrawsOnlyItsLayers(t *testing.T) {
 	var asks []MapAsk
 	d := openFieldsMap(t, true, true, true, &asks)
-	if len(d.mapPane.given) == 0 || len(d.mapPane.radarGiven) == 0 || len(d.badges()) == 0 {
-		t.Fatalf("the weather mode drew %d areas, %d radar frames, %d badges; the test needs some", len(d.mapPane.given), len(d.mapPane.radarGiven), len(d.badges()))
+	if len(d.mapModel.mapPane.given) == 0 || len(d.mapModel.mapPane.radarGiven) == 0 || len(d.mapModel.badges(d.mapEnv())) == 0 {
+		t.Fatalf("the weather mode drew %d areas, %d radar frames, %d badges; the test needs some", len(d.mapModel.mapPane.given), len(d.mapModel.mapPane.radarGiven), len(d.mapModel.badges(d.mapEnv())))
 	}
 	asked := len(asks)
 	m, _ := d.Update(mapKeyMsg(t, "P"))
-	if now := m.(Dashboard); len(now.mapPane.given) != 0 {
-		t.Errorf("the Propagation mode drew %d weather areas before the feed's next answer", len(now.mapPane.given))
+	if now := m.(Dashboard); len(now.mapModel.mapPane.given) != 0 {
+		t.Errorf("the Propagation mode drew %d weather areas before the feed's next answer", len(now.mapModel.mapPane.given))
 	}
 	d = pressMap(t, d, "P")
 	for _, key := range []string{AlertLayer, RadarLayer, TemperatureLayer, WindLayer, RainLayer, FeelsLayer, WaveLayer, UVLayer, AirLayer} {
-		if d.layerOn(key) {
+		if d.mapModel.layerOn(key, d.mapEnv()) {
 			t.Errorf("%s is on in the Propagation mode", key)
 		}
 	}
-	if len(d.mapPane.given) != 0 || len(d.mapPane.radarGiven) != 0 || len(d.badges()) != 0 || len(d.tempOverlays()) != 0 {
-		t.Errorf("the Propagation mode draws %d areas, %d radar frames, %d badges, %d temperature grids", len(d.mapPane.given), len(d.mapPane.radarGiven), len(d.badges()), len(d.tempOverlays()))
+	if len(d.mapModel.mapPane.given) != 0 || len(d.mapModel.mapPane.radarGiven) != 0 || len(d.mapModel.badges(d.mapEnv())) != 0 || len(d.mapModel.tempOverlays(d.mapEnv())) != 0 {
+		t.Errorf("the Propagation mode draws %d areas, %d radar frames, %d badges, %d temperature grids", len(d.mapModel.mapPane.given), len(d.mapModel.mapPane.radarGiven), len(d.mapModel.badges(d.mapEnv())), len(d.mapModel.tempOverlays(d.mapEnv())))
 	}
 	if len(asks) != asked {
 		t.Errorf("entering the Propagation mode asked for the temperature %d times", len(asks)-asked)
 	}
-	if d = d.retime(); len(d.mapPane.given) != 0 {
-		t.Errorf("a step's re-timing in the Propagation mode drew %d weather areas again", len(d.mapPane.given))
+	if d.mapModel = d.mapModel.retime(d.mapEnv()); len(d.mapModel.mapPane.given) != 0 {
+		t.Errorf("a step's re-timing in the Propagation mode drew %d weather areas again", len(d.mapModel.mapPane.given))
 	}
 	d = pressMap(t, d, "P")
-	if len(d.mapPane.given) == 0 || len(d.mapPane.radarGiven) == 0 || len(d.badges()) == 0 {
-		t.Errorf("back in Radar mode: %d areas, %d radar frames, %d badges", len(d.mapPane.given), len(d.mapPane.radarGiven), len(d.badges()))
+	if len(d.mapModel.mapPane.given) == 0 || len(d.mapModel.mapPane.radarGiven) == 0 || len(d.mapModel.badges(d.mapEnv())) == 0 {
+		t.Errorf("back in Radar mode: %d areas, %d radar frames, %d badges", len(d.mapModel.mapPane.given), len(d.mapModel.mapPane.radarGiven), len(d.mapModel.badges(d.mapEnv())))
 	}
 }
 
@@ -129,15 +129,15 @@ func TestEachModeDrawsOnlyItsLayers(t *testing.T) {
 // every frame is inside a region again, the place's or a neighbour's.
 func TestEachModeKeepsItsOwnBound(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	region := d.mapPane.region
+	region := d.mapModel.mapPane.region
 	views := &[]mapView{}
-	d.mapPane.views = views
+	d.mapModel.mapPane.views = views
 	d = pressMap(t, d, "P")
 	for range 12 {
 		d = pressCode(d, '-', "-")
 	}
-	if _, z := d.mapPane.m.Centre(); z < worldZoom(d.mapBodySize())-1e-9 {
-		t.Fatalf("the Propagation mode zoomed out to %v, past the whole world (%v)", z, worldZoom(d.mapBodySize()))
+	if _, z := d.mapModel.mapPane.m.Centre(); z < worldZoom(d.mapModel.mapBodySize(d.mapEnv()))-1e-9 {
+		t.Fatalf("the Propagation mode zoomed out to %v, past the whole world (%v)", z, worldZoom(d.mapModel.mapBodySize(d.mapEnv())))
 	}
 	d = driveEverywhere(d)
 	wider := 0
@@ -168,21 +168,21 @@ func TestEachModeKeepsItsOwnBound(t *testing.T) {
 // any region's least zoom, to the whole world, and pans across an ocean.
 func TestThePropagationModePansAndZooms(t *testing.T) {
 	d := pressMap(t, openMap(t, Config{}, 133, 44), "P")
-	least := regionFitZoom(d.mapPane.region, d.mapBodySize())
+	least := regionFitZoom(d.mapModel.mapPane.region, d.mapModel.mapBodySize(d.mapEnv()))
 	for range 12 {
 		d = pressCode(d, '-', "-")
 	}
-	if _, z := d.mapPane.m.Centre(); z >= least || z < worldZoom(d.mapBodySize())-1e-9 {
-		t.Errorf("zoomed out to %v; want below the region's least, %v, and no further than the world's, %v", z, least, worldZoom(d.mapBodySize()))
+	if _, z := d.mapModel.mapPane.m.Centre(); z >= least || z < worldZoom(d.mapModel.mapBodySize(d.mapEnv()))-1e-9 {
+		t.Errorf("zoomed out to %v; want below the region's least, %v, and no further than the world's, %v", z, least, worldZoom(d.mapModel.mapBodySize(d.mapEnv())))
 	}
 	for range 4 {
 		d = pressCode(d, '+', "+")
 	}
-	start, _ := d.mapPane.m.Centre()
+	start, _ := d.mapModel.mapPane.m.Centre()
 	for range 30 {
 		d = pressCode(d, tea.KeyLeft, "")
 	}
-	if c, _ := d.mapPane.m.Centre(); math.Mod(start.Lon-c.Lon+360, 360) < 30 {
+	if c, _ := d.mapModel.mapPane.m.Centre(); math.Mod(start.Lon-c.Lon+360, 360) < 30 {
 		t.Errorf("30 pans west moved from %v to %v, not out over the Pacific", start.Lon, c.Lon)
 	}
 }
@@ -203,7 +203,7 @@ func londonDash(t *testing.T) Dashboard {
 func TestAPlaceOutsideEveryRegionOpensThePropagationMode(t *testing.T) {
 	d := londonDash(t)
 	views := &[]mapView{}
-	d.mapPane.views = views
+	d.mapModel.mapPane.views = views
 	d, _ = pressKey(d, "g")
 	if !strings.Contains(bodyText(d), "London is outside") || len(*views) != 0 {
 		t.Fatalf("a weather mode for London drew %d frames: %s", len(*views), bodyText(d))
@@ -231,7 +231,7 @@ func TestTheOutsideMessageNamesThePropagationKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d.mapKeys = keys
+	d.mapModel.mapKeys = keys
 	if text := bodyText(d); !strings.Contains(text, "Press ctrl+p for the Propagation mode") {
 		t.Errorf("the outside message does not follow [keys]: %s", text)
 	}
@@ -243,13 +243,13 @@ func TestTheOutsideMessageNamesThePropagationKey(t *testing.T) {
 func TestNoRegionIsNamedInThePropagationMode(t *testing.T) {
 	d := pressMap(t, openMap(t, Config{}, 133, 44), "P")
 	d = pressCode(d, '2', "2") // Alaska
-	if c, _ := d.mapPane.m.Centre(); c.Lat < 50 {
+	if c, _ := d.mapModel.mapPane.m.Centre(); c.Lat < 50 {
 		t.Errorf("2 in the Propagation mode left the view at %v, not Alaska", c)
 	}
 	for range 80 {
 		d = pressCode(d, tea.KeyUp, "")
 	}
-	if d.mapPane.edgeShown {
+	if d.mapModel.mapPane.edgeShown {
 		t.Error("the Propagation mode, bound to no region, showed a neighbour's chip")
 	}
 	if _, ok := geo.RegionNumbered(2); !ok {

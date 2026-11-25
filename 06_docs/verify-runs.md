@@ -327,3 +327,6 @@ says exactly what passed.
 | 2026-11-25T03:27:49Z | 7a4a10ed | f4d058ae249e | verify | green | 1945 |
 | 2026-11-25T05:43:10Z | d434359f | d930239fc39b | verify | green | 4904 |
 | 2026-11-25T17:23:24Z | eb2e85df | 9ecc609b5e8e | verify | green | 5163 |
+| 2026-11-25T20:33:17Z | 8bc9c575 | 7fd2e9bc2d90 | verify | FAILED (exit 2) | 1982 |
+| 2026-11-25T22:05:32Z | 8bc9c575 | ebba81a25f28 | verify | FAILED (exit 2) | 4727 |
+| 2026-11-25T23:38:48Z | 8bc9c575 | 3b18ceab83e5 | verify | green | 5086 |

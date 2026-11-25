@@ -46,11 +46,11 @@ func chartKeysFrom(overrides term.KeyMap) (term.KeyMap, error) {
 
 // chartKeyMap is the chart's bindings as the listener has them; the
 // defaults for a hand-built dashboard.
-func (d Dashboard) chartKeyMap() term.KeyMap {
-	if d.chartKeys == nil {
+func (mm mapModel) chartKeyMap() term.KeyMap {
+	if mm.chartKeys == nil {
 		return defaultChartKeyMap()
 	}
-	return d.chartKeys
+	return mm.chartKeys
 }
 
 // propChartKey is what the chart's answers are worked out from.
@@ -87,14 +87,14 @@ type propChartMsg struct{ chart propChart }
 // propChartWanted is the chart the window wants: for the snapshot shown and
 // the mode's origin (D-193), in the Propagation mode with the map shown;
 // false when there is nothing to work it out from.
-func (d Dashboard) propChartWanted() (propChartKey, bool) {
-	shown, ok := d.propShown()
-	origin := d.mapPane.propOrigin
-	if !ok || !d.mapShown() || !d.inPropagation() || !origin.ok {
+func (mm mapModel) propChartWanted(e mapEnv) (propChartKey, bool) {
+	shown, ok := mm.propShown()
+	origin := mm.mapPane.propOrigin
+	if !ok || !e.Shown || !mm.inPropagation(e) || !origin.ok {
 		return propChartKey{}, false
 	}
-	key := propChartKey{made: d.madeFromHeld(shown), hour: shown.Now.At, origin: origin.at, radiusKm: float64(d.propRadiusKm())}
-	if f := d.mapPane.propFound; f != nil && !d.propRole().target {
+	key := propChartKey{made: mm.madeFromHeld(shown), hour: shown.Now.At, origin: origin.at, radiusKm: float64(mm.propRadiusKm(e))}
+	if f := mm.mapPane.propFound; f != nil && !mm.propRole(e).target {
 		key.found = propanswers.Target{Name: f.Label, Short: "FOUND", At: ionomaps.LatLon{Lat: f.Lat, Lon: f.Lon}} // on the Observer a target row; on the Broadcaster the centre is the target (D-204)
 	}
 	return key, true
@@ -106,72 +106,72 @@ func (d Dashboard) propChartWanted() (propChartKey, bool) {
 // unless the chart's own window is open: it holds the keys, so the view cannot
 // move under it, and the settle it would wait for waits in turn for the map to
 // be in front again (applyViewSettled), so the chart would never be asked.
-func (d Dashboard) armPropChart() (Dashboard, tea.Cmd) {
-	if d.viewSettling() && d.propRole().origin == propFromCentre && d.modal != modalPropChart {
-		return d, nil
+func (mm mapModel) armPropChart(e mapEnv) (mapModel, tea.Cmd) {
+	if mm.viewSettling() && mm.propRole(e).origin == propFromCentre && e.Window != mapModalPropChart {
+		return mm, nil
 	}
-	key, ok := d.propChartWanted()
-	cmd := askAnswer(&d, key, ok, d.mapPane.propChart.key, &d.mapPane.propChartAsked, func(snap ionomaps.Snapshot, key propChartKey) tea.Msg {
+	key, ok := mm.propChartWanted(e)
+	cmd := askAnswer(&mm, key, ok, mm.mapPane.propChart.key, &mm.mapPane.propChartAsked, func(snap ionomaps.Snapshot, key propChartKey) tea.Msg {
 		return propChartMsg{chart: workPropChart(snap, key)}
 	})
-	return d, cmd
+	return mm, cmd
 }
 
 // viewSettling is whether the view or the hour is still moving: an answer
 // from or to the map's centre, and the reach, are asked once it settles, not
 // at every step (P-1, D-227).
-func (d Dashboard) viewSettling() bool { return d.mapPane.viewGen != d.mapPane.viewAsked }
+func (mm mapModel) viewSettling() bool { return mm.mapPane.viewGen != mm.mapPane.viewAsked }
 
 // applyPropAnswer keeps an answer when it is to the ask made last - an older
 // ask's is dropped - and draws it; a reach is handed to the map as well.
-func (d Dashboard) applyPropAnswer(msg tea.Msg) Dashboard {
+func (mm mapModel) applyPropAnswer(msg tea.Msg, e mapEnv) mapModel {
 	switch v := msg.(type) {
 	case propChartMsg:
-		if v.chart.key != d.mapPane.propChartAsked {
-			return d
+		if v.chart.key != mm.mapPane.propChartAsked {
+			return mm
 		}
-		d.mapPane.propChart = v.chart
-		return d.answered(v.chart.err, "the chart not worked out")
+		mm.mapPane.propChart = v.chart
+		return mm.answered(v.chart.err, "the chart not worked out", e)
 	case propReachMsg:
-		if v.reach.key != d.mapPane.propReachAsked {
-			return d
+		if v.reach.key != mm.mapPane.propReachAsked {
+			return mm
 		}
-		d.mapPane.propReach = v.reach
-		return d.setProp().answered(v.reach.err, "the reach not worked out")
+		mm.mapPane.propReach = v.reach
+		return mm.setProp(e).answered(v.reach.err, "the reach not worked out", e)
 	case propCentreMsg:
-		if v.centre.key != d.mapPane.propCentreAsked {
-			return d
+		if v.centre.key != mm.mapPane.propCentreAsked {
+			return mm
 		}
-		d.mapPane.propCentre = v.centre
-		return d.answered(v.centre.err, "the centre not answered")
+		mm.mapPane.propCentre = v.centre
+		return mm.answered(v.centre.err, "the centre not answered", e)
 	}
-	return d
+	return mm
 }
 
 // askAnswer is how each of the Propagation mode's answers - the chart, the
 // reach, the centre - is asked for: in a command, never in Update
 // (FR-1.17), when what it is worked out from has changed, and once; the
 // snapshot on screen is copied for it only then (P-5).
-func askAnswer[K comparable](d *Dashboard, wanted K, ok bool, held K, asked *K, work func(ionomaps.Snapshot, K) tea.Msg) tea.Cmd {
+func askAnswer[K comparable](mm *mapModel, wanted K, ok bool, held K, asked *K, work func(ionomaps.Snapshot, K) tea.Msg) tea.Cmd {
 	if !ok || wanted == held || wanted == *asked {
 		return nil
 	}
 	*asked = wanted
-	snap := d.propOnScreen()
+	snap := mm.propOnScreen()
 	return func() tea.Msg { return work(snap, wanted) }
 }
 
 // answered draws an answer kept, and says a refused one in diagnostics
 // (D-124), never to the listener.
-func (d Dashboard) answered(err error, what string) Dashboard {
+func (mm mapModel) answered(err error, what string, e mapEnv) mapModel {
 	if err != nil {
-		d.problem("Propagation: " + what + " - " + err.Error())
+		mm.problem("Propagation: "+what+" - "+err.Error(), e)
 	}
-	d.mapPane.gen++
-	if d.modal == modalMap {
-		return d.renderMap()
+	mm.mapPane.gen++
+	if e.Window == mapModalMap {
+		return mm.renderMap(e)
 	}
-	return d
+	return mm
 }
 
 // workPropChart works the chart out off the UI goroutine (W5.1): the answers
@@ -183,38 +183,38 @@ func workPropChart(snap ionomaps.Snapshot, key propChartKey) propChart {
 
 // propChartShown reports whether the chart answers for what the window
 // shows now.
-func (d Dashboard) propChartShown() bool {
-	key, ok := d.propChartWanted()
-	c := d.mapPane.propChart
+func (mm mapModel) propChartShown(e mapEnv) bool {
+	key, ok := mm.propChartWanted(e)
+	c := mm.mapPane.propChart
 	return ok && key == c.key && c.err == nil && len(c.targets) == len(key.targets())
 }
 
 // propChartFailed reports whether the chart wanted could not be worked out.
-func (d Dashboard) propChartFailed() bool {
-	key, ok := d.propChartWanted()
-	c := d.mapPane.propChart
+func (mm mapModel) propChartFailed(e mapEnv) bool {
+	key, ok := mm.propChartWanted(e)
+	c := mm.mapPane.propChart
 	return ok && key == c.key && c.err != nil
 }
 
 // propNotAvailable is what is said for an answer that could not be worked
 // out (AX-9): not "being worked out" for ever, and the key that asks again
 // (D-124: never an error without a way to resolve it).
-func (d Dashboard) propNotAvailable() string {
-	return "not available; " + d.firstKey(actMapRefresh) + " tries again"
+func (mm mapModel) propNotAvailable() string {
+	return "not available; " + mm.firstKey(actMapRefresh) + " tries again"
 }
 
 // propBestLine is the block's line for the continents (D-176): each one's
 // highest open band, and the key that opens the chart.
-func (d Dashboard) propBestLine() string {
-	if !d.propChartShown() {
+func (mm mapModel) propBestLine(e mapEnv) string {
+	if !mm.propChartShown(e) {
 		return ""
 	}
 	parts := make([]string, len(propanswers.Continents))
 	for i, t := range propanswers.Continents {
-		parts[i] = t.Short + " " + propanswers.HighestOpen(d.mapPane.propChart.targets[i].Bands)
+		parts[i] = t.Short + " " + propanswers.HighestOpen(mm.mapPane.propChart.targets[i].Bands)
 	}
 	line := "Up to: " + strings.Join(parts, " · ")
-	if keys := d.mapKeys[actMapChart].Keys; len(keys) > 0 {
+	if keys := mm.mapKeys[actMapChart].Keys; len(keys) > 0 {
 		line += "   " + keys[0] + " chart"
 	}
 	return line
@@ -242,8 +242,8 @@ const (
 var propASCIIMarks = map[rune]string{propOpenGlyph: "O", propDisturbedGlyph: "D", propAbsorbedGlyph: "A", propWeakGlyph: "W", propClosedGlyph: "-", propNowGlyph: "v"}
 
 // mark is a chart glyph as the window draws it: under --ascii, its letter.
-func (d Dashboard) mark(g rune) string {
-	if d.cfg.ASCII {
+func (mm mapModel) mark(g rune, e mapEnv) string {
+	if e.Opts.ASCII {
 		return propASCIIMarks[g]
 	}
 	return string(g)
@@ -251,12 +251,12 @@ func (d Dashboard) mark(g rune) string {
 
 // propChartRows are the chart's rows: the near-vertical area, then each
 // continent.
-func (d Dashboard) propChartRows() (names []string, rows []ionomaps.Answer) {
-	names = []string{fmt.Sprintf("Local, ~%d km", int(d.mapPane.propChart.key.radiusKm))}
-	rows = []ionomaps.Answer{d.mapPane.propChart.local}
-	for i, t := range d.mapPane.propChart.key.targets() {
-		if i < len(d.mapPane.propChart.targets) {
-			names, rows = append(names, t.Name), append(rows, d.mapPane.propChart.targets[i])
+func (mm mapModel) propChartRows() (names []string, rows []ionomaps.Answer) {
+	names = []string{fmt.Sprintf("Local, ~%d km", int(mm.mapPane.propChart.key.radiusKm))}
+	rows = []ionomaps.Answer{mm.mapPane.propChart.local}
+	for i, t := range mm.mapPane.propChart.key.targets() {
+		if i < len(mm.mapPane.propChart.targets) {
+			names, rows = append(names, t.Name), append(rows, mm.mapPane.propChart.targets[i])
 		}
 	}
 	return names, rows
@@ -265,23 +265,23 @@ func (d Dashboard) propChartRows() (names []string, rows []ionomaps.Answer) {
 // propChartLines are the chart window's lines (D-176): the origin and the
 // hour; each row's bands now and its limit; the selected row's typical day,
 // band by hour, and whether now differs from it (D-135).
-func (d Dashboard) propChartLines(o render.Opts) []string {
-	if d.propChartFailed() {
-		return insetModalLines([]string{"The chart is " + d.propNotAvailable() + "."}, debugProseWidth(o, propChartWidth))
+func (mm mapModel) propChartLines(o render.Opts, e mapEnv) []string {
+	if mm.propChartFailed(e) {
+		return insetModalLines([]string{"The chart is " + mm.propNotAvailable() + "."}, debugProseWidth(o, propChartWidth))
 	}
-	if !d.propChartShown() {
+	if !mm.propChartShown(e) {
 		return insetModalLines([]string{"The chart is being worked out."}, debugProseWidth(o, propChartWidth))
 	}
-	c := d.mapPane.propChart
+	c := mm.mapPane.propChart
 	name := "the selected place"
-	if o := d.mapPane.propOrigin; o.ok {
+	if o := mm.mapPane.propOrigin; o.ok {
 		name = strings.ToUpper(o.name)
 	}
 	out := []string{"From " + name + " · " + c.key.hour.UTC().Format("15:04 UTC") + " · 100 W, 0 dBi, +13 dB · " + strings.ToLower(propNoiseLabel(c.key.made.opts.Noise)) + " noise", ""}
-	if s := d.mapPane.propSnap; s != nil && propOffsetNote(s.Offset) != "" {
+	if s := mm.mapPane.propSnap; s != nil && propOffsetNote(s.Offset) != "" {
 		out[1] = propOffsetNote(s.Offset) // FR-5.4: the chart's status label, under its header
 	}
-	if s := d.mapPane.propSnap; s != nil {
+	if s := mm.mapPane.propSnap; s != nil {
 		if l := propScalesLine(s.Scales); l != "" {
 			out = append(out[:1], l, out[1]) // FR-1.18: under the header, before the offset's row
 		}
@@ -291,24 +291,24 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 		head += fmt.Sprintf("%3s", strings.TrimSuffix(b.name, "m")) // each band's number over its glyph
 	}
 	out = append(out, head)
-	names, rows := d.propChartRows()
-	row := min(d.mapPane.propChartRow, len(names)-1)
+	names, rows := mm.propChartRows()
+	row := min(mm.mapPane.propChartRow, len(names)-1)
 	for i, a := range rows {
 		pointer := "  "
 		if i == row {
 			pointer = o.Glyphs().Pointer + " "
 		}
-		line := pointer + propShade(a.Nearest, o.ASCII) + " " + render.PadTo(names[i], propNameW) + d.propBandCells(a.Bands)
+		line := pointer + propShade(a.Nearest, o.ASCII) + " " + render.PadTo(names[i], propNameW) + mm.propBandCells(a.Bands, e)
 		if w := propanswers.RowWords(a.Bands); w != "" {
 			line += " " + w
 		}
 		out = append(out, line)
 	}
-	out = append(out, d.mark(propOpenGlyph)+" open   "+d.mark(propDisturbedGlyph)+" disturbed (D-RAP)   "+d.mark(propAbsorbedGlyph)+" absorbed   "+d.mark(propWeakGlyph)+" weak",
-		d.mark(propClosedGlyph)+" above the upper limit   blank: no data   figures in MHz",
+	out = append(out, mm.mark(propOpenGlyph, e)+" open   "+mm.mark(propDisturbedGlyph, e)+" disturbed (D-RAP)   "+mm.mark(propAbsorbedGlyph, e)+" absorbed   "+mm.mark(propWeakGlyph, e)+" weak",
+		mm.mark(propClosedGlyph, e)+" above the upper limit   blank: no data   figures in MHz",
 		propShadeLegend(o.ASCII), // D-198
 		propAgreementLine)        // D-330
-	if f := d.propFreqLine(); f != "" {
+	if f := mm.propFreqLine(e); f != "" {
 		out = append(out, f) // D-178: what is held
 	}
 	out = append(out, "")
@@ -316,22 +316,22 @@ func (d Dashboard) propChartLines(o render.Opts) []string {
 	if propanswers.Differs(rows[row].Bands, c.key.hour) {
 		out[len(out)-1] += " · now differs from a typical day"
 	}
-	out = append(out, d.propDayHead(c.key.hour))
-	out = append(out, d.propDayRows(rows[row].Bands)...)
-	if d.cfg.ASCII {
+	out = append(out, mm.propDayHead(c.key.hour, e))
+	out = append(out, mm.propDayRows(rows[row].Bands, e)...)
+	if e.Opts.ASCII {
 		for i := range out {
 			out[i] = strings.ReplaceAll(out[i], " · ", " "+o.Glyphs().Dot+" ") // the separators too (AX-4)
 		}
 	}
-	return append(out, "", d.propChartControls(o))
+	return append(out, "", mm.propChartControls(o))
 }
 
 // propChartControls is the chart window's controls line (AX-6), as every
 // window has: the arrows choose the row whose typical day is drawn, PgUp and
 // PgDn scroll, Esc or the chart's key closes it.
-func (d Dashboard) propChartControls(o render.Opts) string {
+func (mm mapModel) propChartControls(o render.Opts) string {
 	closeKeys := "esc"
-	if k := d.firstKey(actMapChart); k != "" {
+	if k := mm.firstKey(actMapChart); k != "" {
 		closeKeys = k + "/esc"
 	}
 	return "  " + o.Controls("   ", render.Ctl("↑↓", "Row"), render.Ctl("pgup/pgdn", "Scroll"), render.Ctl(closeKeys, "Close"))
@@ -385,7 +385,7 @@ const propNameW = 16
 // propBandCells are a row's bands now, a glyph each under its band's
 // number, three cells a band: each band found by the band it names, never
 // by its place in the answer, a band the answer lacks left blank.
-func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
+func (mm mapModel) propBandCells(bands []ionomaps.BandStatus, e mapEnv) string {
 	var b strings.Builder
 	for _, hb := range hfBands {
 		s, found := ionomaps.BandStatus{}, false
@@ -399,14 +399,14 @@ func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
 			b.WriteString("   ")
 			continue
 		}
-		g := d.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData)
+		g := mm.propGlyph(s.Status == ionomaps.Open, s.Status == ionomaps.StatusNoData, e)
 		switch s.Status {
 		case ionomaps.Disturbed:
-			g = render.Tint(d.mark(propDisturbedGlyph), render.Tok(render.NameAdvisory))
+			g = render.Tint(mm.mark(propDisturbedGlyph, e), render.Tok(render.NameAdvisory))
 		case ionomaps.Absorbed:
-			g = render.Tint(d.mark(propAbsorbedGlyph), render.Tok(render.KeyChipMuted))
+			g = render.Tint(mm.mark(propAbsorbedGlyph, e), render.Tok(render.KeyChipMuted))
 		case ionomaps.Weak:
-			g = render.Tint(d.mark(propWeakGlyph), render.Tok(render.KeyChipMuted))
+			g = render.Tint(mm.mark(propWeakGlyph, e), render.Tok(render.KeyChipMuted))
 		}
 		b.WriteString(" " + g + " ")
 	}
@@ -415,25 +415,25 @@ func (d Dashboard) propBandCells(bands []ionomaps.BandStatus) string {
 
 // propGlyph is a band's mark: open in the providers' working tone, above the
 // upper limit muted, no data blank.
-func (d Dashboard) propGlyph(open, noData bool) string {
+func (mm mapModel) propGlyph(open, noData bool, e mapEnv) string {
 	switch {
 	case noData:
 		return " "
 	case open:
-		return render.Tint(d.mark(propOpenGlyph), render.Tok(render.ProviderOK))
+		return render.Tint(mm.mark(propOpenGlyph, e), render.Tok(render.ProviderOK))
 	}
-	return render.Tint(d.mark(propClosedGlyph), render.Tok(render.KeyChipMuted))
+	return render.Tint(mm.mark(propClosedGlyph, e), render.Tok(render.KeyChipMuted))
 }
 
 // propDayHead marks the typical day's hours every three, and the hour shown.
-func (d Dashboard) propDayHead(hour time.Time) string {
+func (mm mapModel) propDayHead(hour time.Time, e mapEnv) string {
 	var b strings.Builder
 	b.WriteString(render.PadTo("", 6))
 	now := hour.UTC().Hour()
 	for h := range 24 {
 		switch {
 		case h == now:
-			b.WriteString(d.mark(propNowGlyph) + " ")
+			b.WriteString(mm.mark(propNowGlyph, e) + " ")
 		case h%3 == 0:
 			b.WriteString(render.PadTo(fmt.Sprintf("%02d", h), 2))
 		default:
@@ -445,14 +445,14 @@ func (d Dashboard) propDayHead(hour time.Time) string {
 
 // propDayRows are a target's typical day, a band a row, an hour a column:
 // open where the band is typically open that hour (D-135).
-func (d Dashboard) propDayRows(bands []ionomaps.BandStatus) []string {
+func (mm mapModel) propDayRows(bands []ionomaps.BandStatus, e mapEnv) []string {
 	out := make([]string, 0, len(bands))
 	for _, s := range bands {
 		var b strings.Builder
 		b.WriteString(render.PadTo(s.Band.String(), 6))
-		day := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour)
+		day := mm.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour)
 		for h := range 24 {
-			b.WriteString(d.propGlyph(propanswers.OpenAt(s.OpenHours, day.Add(time.Duration(h)*time.Hour)), false))
+			b.WriteString(mm.propGlyph(propanswers.OpenAt(s.OpenHours, day.Add(time.Duration(h)*time.Hour)), false, e))
 			if h < 23 {
 				b.WriteString(" ")
 			}
@@ -463,17 +463,17 @@ func (d Dashboard) propDayRows(bands []ionomaps.BandStatus) []string {
 }
 
 // openPropChart is B: the chart over the map, in the Propagation mode alone.
-func (d Dashboard) openPropChart() Dashboard {
-	if !d.inPropagation() {
-		return d
+func (mm mapModel) openPropChart(e mapEnv) mapWant {
+	if !mm.inPropagation(e) {
+		return mapWant{}
 	}
-	return d.open(modalPropChart)
+	return mapWant{Open: mapModalPropChart}
 }
 
 // inPropagation reports whether the map is in the Propagation mode, every
 // mode named (W2.0).
-func (d Dashboard) inPropagation() bool {
-	switch d.mapMode() {
+func (mm mapModel) inPropagation(e mapEnv) bool {
+	switch mm.mapMode(e) {
 	case modePropagation:
 		return true
 	case modeRadar, modeForecast:
@@ -481,28 +481,28 @@ func (d Dashboard) inPropagation() bool {
 	return false
 }
 
-// handlePropChartKey is the chart window's keyboard: Esc or the chart's key
+// onPropChartKey is the chart window's keyboard: Esc or the chart's key
 // closes it, back to the map; its own previous and next target keys - the
 // arrows by default (D-256) - move the target its day is drawn for; the page
 // keys scroll; every other key does nothing.
-func (d Dashboard) handlePropChartKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
+func (mm mapModel) onPropChartKey(key tea.KeyPressMsg) (mapModel, tea.Cmd, mapWant) {
 	k := key.String()
-	if act, ok := d.mapKeys.Lookup(k); k == "esc" || (ok && act == actMapChart) {
-		return d.close(), nil
+	if act, ok := mm.mapKeys.Lookup(k); k == "esc" || (ok && act == actMapChart) {
+		return mm, nil, mapWant{Close: true}
 	}
-	if act, ok := d.chartKeyMap().Lookup(k); ok && act == actChartPrev {
-		d.mapPane.propChartRow = max(d.mapPane.propChartRow-1, 0)
-		return d, nil
+	if act, ok := mm.chartKeyMap().Lookup(k); ok && act == actChartPrev {
+		mm.mapPane.propChartRow = max(mm.mapPane.propChartRow-1, 0)
+		return mm, nil, mapWant{}
 	}
-	if act, ok := d.chartKeyMap().Lookup(k); ok && act == actChartNext {
-		d.mapPane.propChartRow = min(d.mapPane.propChartRow+1, len(d.mapPane.propChart.key.targets()))
-		return d, nil
+	if act, ok := mm.chartKeyMap().Lookup(k); ok && act == actChartNext {
+		mm.mapPane.propChartRow = min(mm.mapPane.propChartRow+1, len(mm.mapPane.propChart.key.targets()))
+		return mm, nil, mapWant{}
 	}
 	switch k {
 	case "pgup":
-		return d.handleModalNav("nav-up"), nil
+		return mm, nil, mapWant{ModalNav: "nav-up"}
 	case "pgdown":
-		return d.handleModalNav("nav-down"), nil
+		return mm, nil, mapWant{ModalNav: "nav-down"}
 	}
-	return d, nil
+	return mm, nil, mapWant{}
 }

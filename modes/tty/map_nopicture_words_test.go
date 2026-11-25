@@ -17,7 +17,7 @@ import (
 func TestWithoutThePictureTheStatusAndTimelineAreText(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	d.mapDesc = mapDescInstead
+	d.mapModel.mapDesc = mapDescInstead
 	text := bodyText(d)
 	for _, want := range []string{"RADAR", "FRAME 12 / 12", "STOPPED"} {
 		if !strings.Contains(text, want) {
@@ -41,7 +41,7 @@ func TestWithoutThePictureTheStatusAndTimelineAreText(t *testing.T) {
 func TestWithoutThePictureTheEdgeIsSaid(t *testing.T) {
 	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
 	d = untilChip(t, pressCode(d, '1', "1"), tea.KeyRight)
-	d.mapDesc = mapDescInstead
+	d.mapModel.mapDesc = mapDescInstead
 	if got := bodyText(d); !strings.Contains(got, "At the east edge: press again to cross to US Caribbean.") {
 		t.Errorf("without the picture the edge is not said:\n%s", got)
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 )
 
@@ -15,7 +16,7 @@ import (
 // keep its upper limit and add the LUF.
 func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	c := &d.mapPane.propChart
+	c := &d.mapModel.mapPane.propChart
 	// The row is written whole: the fixture's snapshot is for the wall clock's
 	// hour, whose absorption can close another band at another LUF.
 	bands := append([]ionomaps.BandStatus(nil), c.local.Bands...)
@@ -28,7 +29,7 @@ func TestAClosedBandIsDrawnByItsKind(t *testing.T) {
 	bands[0] = ionomaps.BandStatus{Band: bands[0].Band, Status: ionomaps.Absorbed, Limit: ionomaps.LimitAbsorption, LimitMHz: 4.2}
 	bands[1] = ionomaps.BandStatus{Band: bands[1].Band, Status: ionomaps.Weak, Limit: ionomaps.LimitCircuit, LimitMHz: 4.2}
 	c.local.Bands = bands
-	text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 	var local string
 	for _, l := range strings.Split(text, "\n") {
 		if strings.Contains(l, "Local, ~") && local == "" {
@@ -62,19 +63,20 @@ func TestTheNoiseSettingIsTheUpdates(t *testing.T) {
 	if len(s.noises) != 1 || s.noises[0] != ionomaps.NoiseResidential {
 		t.Fatalf("the first update was asked with %v; Residential by default", s.noises)
 	}
-	if propNoiseLabel(d.mapPropNoise) != "Residential" {
-		t.Errorf("the Setting starts at %q", propNoiseLabel(d.mapPropNoise))
+	if propNoiseLabel(d.mapModel.mapPropNoise) != "Residential" {
+		t.Errorf("the Setting starts at %q", propNoiseLabel(d.mapModel.mapPropNoise))
 	}
 	var seen []string
 	for range propNoiseChoices {
-		d = d.cyclePropNoise(true)
-		seen = append(seen, propNoiseLabel(d.mapPropNoise))
+		d = d.withMap(d.mapModel.cyclePropNoise(true))
+		seen = append(seen, propNoiseLabel(d.mapModel.mapPropNoise))
 	}
 	if strings.Join(seen, ",") != "City,Rural,Quiet rural,Residential" {
 		t.Errorf("the picker steps %v", seen)
 	}
-	d = d.cyclePropNoise(true) // City
-	d, again := d.armPropOptions()
+	d = d.withMap(d.mapModel.cyclePropNoise(true)) // City
+	var again tea.Cmd
+	d.mapModel, again = d.mapModel.armPropOptions(d.mapEnv())
 	if again == nil {
 		t.Fatal("the Setting changed and the snapshot, made for Residential, was not asked again")
 	}
@@ -83,8 +85,8 @@ func TestTheNoiseSettingIsTheUpdates(t *testing.T) {
 	}
 	city := stationsSnap(0, ionomaps.Fresh)
 	city.Noise = ionomaps.NoiseCity
-	d.mapPane.propSnap = &city
-	if _, again := d.armPropOptions(); again != nil {
+	d.mapModel.mapPane.propSnap = &city
+	if _, again := d.mapModel.armPropOptions(d.mapEnv()); again != nil {
 		t.Error("a snapshot made for the Setting's noise was asked again")
 	}
 	if propNoiseKey(ionomaps.NoiseCity) != "city" || propNoiseByKey("quiet-rural") != ionomaps.NoiseQuietRural || propNoiseByKey("nonsense") != ionomaps.NoiseResidential || propNoiseKey(ionomaps.NoiseResidential) != "" {
@@ -97,19 +99,19 @@ func TestTheNoiseSettingIsTheUpdates(t *testing.T) {
 // noise and asks again.
 func TestTheChartIsAskedAnewForANewNoise(t *testing.T) {
 	d := chartDash(t)
-	key, ok := d.propChartWanted()
+	key, ok := d.mapModel.propChartWanted(d.mapEnv())
 	if !ok {
 		t.Fatal("no chart wanted")
 	}
-	snap := *d.mapPane.propSnap
+	snap := *d.mapModel.mapPane.propSnap
 	snap.Noise = ionomaps.NoiseQuietRural
-	d.mapPane.propSnap = &snap
-	again, _ := d.propChartWanted()
+	d.mapModel.mapPane.propSnap = &snap
+	again, _ := d.mapModel.propChartWanted(d.mapEnv())
 	if again == key || again.made.opts.Noise != ionomaps.NoiseQuietRural {
 		t.Errorf("the chart's key %+v did not change with the noise", again)
 	}
 	d.surface = SurfaceBroadcaster // the centre is answered as a target on the Broadcaster (D-193)
-	if c, _ := d.propCentreWanted(); c.made.opts.Noise != ionomaps.NoiseQuietRural {
+	if c, _ := d.mapModel.propCentreWanted(d.mapEnv()); c.made.opts.Noise != ionomaps.NoiseQuietRural {
 		t.Errorf("the centre's key carries noise %v", c.made.opts.Noise)
 	}
 }

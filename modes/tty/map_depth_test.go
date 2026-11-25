@@ -20,22 +20,24 @@ func TestTheColourDepthIsASetting(t *testing.T) {
 	t.Setenv("COLORTERM", "")
 	t.Setenv("TERM", "xterm-256color")
 	d := openMap(t, Config{}, 133, 44)
-	frame := func(d Dashboard) string { return strings.Join(d.renderMap().mapPane.lines, "\n") }
-	truecolor, palette := "38;2;", "38;5;"
-	if mapDepthLabel(d.mapDepth) != "Automatic" || strings.Contains(frame(d), truecolor) || !strings.Contains(frame(d), palette) {
-		t.Fatalf("by default the Setting is %q and the map not the terminal's 256 colours", mapDepthLabel(d.mapDepth))
+	frame := func(d Dashboard) string {
+		return strings.Join(withModel(d, d.mapModel.renderMap(d.mapEnv())).mapModel.mapPane.lines, "\n")
 	}
-	d = d.cycleMapDepth(true)
-	if mapDepthLabel(d.mapDepth) != "Truecolor" || !strings.Contains(frame(d), truecolor) {
-		t.Errorf("Truecolor chosen (%q), the map is not drawn truecolor", mapDepthLabel(d.mapDepth))
+	truecolor, palette := "38;2;", "38;5;"
+	if mapDepthLabel(d.mapModel.mapDepth) != "Automatic" || strings.Contains(frame(d), truecolor) || !strings.Contains(frame(d), palette) {
+		t.Fatalf("by default the Setting is %q and the map not the terminal's 256 colours", mapDepthLabel(d.mapModel.mapDepth))
+	}
+	d = d.withMap(d.mapModel.cycleMapDepth(true))
+	if mapDepthLabel(d.mapModel.mapDepth) != "Truecolor" || !strings.Contains(frame(d), truecolor) {
+		t.Errorf("Truecolor chosen (%q), the map is not drawn truecolor", mapDepthLabel(d.mapModel.mapDepth))
 	}
 	for range len(mapDepthChoices) - 1 {
-		d = d.cycleMapDepth(true)
+		d = d.withMap(d.mapModel.cycleMapDepth(true))
 	}
-	if mapDepthLabel(d.mapDepth) != "Automatic" || strings.Contains(frame(d), truecolor) {
-		t.Errorf("Automatic chosen again (%q), the map keeps truecolor", mapDepthLabel(d.mapDepth))
+	if mapDepthLabel(d.mapModel.mapDepth) != "Automatic" || strings.Contains(frame(d), truecolor) {
+		t.Errorf("Automatic chosen again (%q), the map keeps truecolor", mapDepthLabel(d.mapModel.mapDepth))
 	}
-	d.mapDepth, d.cfg.NoColor = depthTruecolor, true
+	d.mapModel.mapDepth, d.cfg.NoColor = depthTruecolor, true
 	t.Setenv("NO_COLOR", "1")
 	if f := frame(d); strings.Contains(f, truecolor) || strings.Contains(f, palette) {
 		t.Error("with NO_COLOR set the map draws colour")
@@ -61,21 +63,23 @@ func TestTheMonochromeThemeDrawsTheMapWithoutColour(t *testing.T) {
 	was := render.ThemeName()
 	t.Cleanup(func() { render.SetTheme(was) })
 	d := openMap(t, Config{}, 133, 44)
-	frame := func(d Dashboard) string { return strings.Join(d.renderMap().mapPane.lines, "\n") }
+	frame := func(d Dashboard) string {
+		return strings.Join(withModel(d, d.mapModel.renderMap(d.mapEnv())).mapModel.mapPane.lines, "\n")
+	}
 	truecolor, palette := "38;2;", "38;5;"
 	if !render.SetTheme(render.MonochromeThemeName) {
 		t.Fatal("no Monochrome theme")
 	}
-	if f := frame(d); d.mapDepthHint() != tuimaps.NoColour || strings.Contains(f, truecolor) || strings.Contains(f, palette) {
-		t.Errorf("under Monochrome, Automatic hints %v and the map draws colour", d.mapDepthHint())
+	if f := frame(d); d.mapModel.mapDepthHint(d.mapEnv()) != tuimaps.NoColour || strings.Contains(f, truecolor) || strings.Contains(f, palette) {
+		t.Errorf("under Monochrome, Automatic hints %v and the map draws colour", d.mapModel.mapDepthHint(d.mapEnv()))
 	}
-	d.mapDepth = depthTruecolor
+	d.mapModel.mapDepth = depthTruecolor
 	if !strings.Contains(frame(d), truecolor) {
 		t.Error("under Monochrome, Truecolor chosen, the map is not drawn truecolor")
 	}
-	d.mapDepth = depthAuto
+	d.mapModel.mapDepth = depthAuto
 	render.SetTheme(render.DefaultThemeName)
-	if f := frame(d); d.mapDepthHint() != tuimaps.TerminalDepth || !strings.Contains(f, palette) {
-		t.Errorf("under the default theme, Automatic hints %v and not the terminal's colours", d.mapDepthHint())
+	if f := frame(d); d.mapModel.mapDepthHint(d.mapEnv()) != tuimaps.TerminalDepth || !strings.Contains(f, palette) {
+		t.Errorf("under the default theme, Automatic hints %v and not the terminal's colours", d.mapModel.mapDepthHint(d.mapEnv()))
 	}
 }

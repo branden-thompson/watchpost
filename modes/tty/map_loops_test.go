@@ -23,7 +23,7 @@ func pendingMap(t *testing.T) Dashboard {
 	for range 4 {
 		m, _ := d.Update(mapKeyMsg(t, "+"))
 		d = m.(Dashboard)
-		if d.mapWorkCmd() != nil {
+		if d.mapModel.mapWorkCmd(d.mapEnv()) != nil {
 			return d
 		}
 	}
@@ -38,10 +38,10 @@ func pendingMap(t *testing.T) Dashboard {
 func TestTheWorkLoopsInFlightAreBounded(t *testing.T) {
 	d := pendingMap(t)
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	var cmds []tea.Cmd
 	for range 3 * mapWorkLoops { // a held key's presses, each asking for Work before any has run
-		if cmd := d.mapWorkCmd(); cmd != nil {
+		if cmd := d.mapModel.mapWorkCmd(d.mapEnv()); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	}
@@ -52,7 +52,7 @@ func TestTheWorkLoopsInFlightAreBounded(t *testing.T) {
 		wg.Add(1)
 		go func() { defer wg.Done(); <-gate; msgs[i] = cmd() }()
 	}
-	d.mapPane.workers.loops.Add(int32(mapWorkLoops)) // as many loops as the bound already in Work
+	d.mapModel.mapPane.workers.loops.Add(int32(mapWorkLoops)) // as many loops as the bound already in Work
 	close(gate)
 	wg.Wait()
 	works := 0
@@ -64,15 +64,15 @@ func TestTheWorkLoopsInFlightAreBounded(t *testing.T) {
 	if works != 0 {
 		t.Errorf("%d loops ran Work past the bound of %d", works, mapWorkLoops)
 	}
-	if d.mapWorkCmd() != nil {
+	if d.mapModel.mapWorkCmd(d.mapEnv()) != nil {
 		t.Error("a Work command was made with the bound's loops running")
 	}
 	for _, msg := range msgs {
-		if _, again := d.applyMapWorked(msg.(mapWorkedMsg)); again != nil {
+		if _, again := d.mapModel.applyMapWorked(msg.(mapWorkedMsg), d.mapEnv()); again != nil {
 			t.Error("a loop not started asked for Work again")
 		}
 	}
-	d.mapPane.workers.loops.Add(-int32(mapWorkLoops)) // the running loops end, and the work is still theirs
+	d.mapModel.mapPane.workers.loops.Add(-int32(mapWorkLoops)) // the running loops end, and the work is still theirs
 	d = settleMap(t, d)
 	if works := strings.Count(strings.Join(*calls, " "), "Work"); works == 0 {
 		t.Error("the work waiting was never done")
@@ -87,7 +87,7 @@ func TestAPanicInALibraryCallMarksTheMapFailed(t *testing.T) {
 	d := mapDash(t, Config{Map: &Hooks{MapProblem: func(p string) { said = append(said, p) }}})
 	d, _ = pressKey(d, "g")
 	d = settleMap(t, d)
-	d.mapPane.call("Render", func() { panic("a defect in the library") })
+	d.mapModel.mapPane.call("Render", func() { panic("a defect in the library") })
 	m, _ := d.Update(mapTickMsg{})
 	d = m.(Dashboard)
 	assertMapFailed(t, d, said, "Render", "a defect in the library")
@@ -112,7 +112,7 @@ func TestAPanicInAMapCommandMarksTheMapFailed(t *testing.T) {
 		d := mapDash(t, Config{Map: &Hooks{MapProblem: func(p string) { said = append(said, p) }}})
 		d, _ = pressKey(d, "g")
 		d = settleMap(t, d)
-		msg := runCmdElsewhere(d.mapPane.workers.cmd(context.Background(), nil, body(d.mapPane)))
+		msg := runCmdElsewhere(d.mapModel.mapPane.workers.cmd(context.Background(), nil, body(d.mapModel.mapPane)))
 		if msg == nil {
 			t.Fatalf("%s: the command that panicked sent nothing, so no Update would see it", name)
 		}
@@ -125,10 +125,10 @@ func TestAPanicInAMapCommandMarksTheMapFailed(t *testing.T) {
 // and the diagnostics hold the panic.
 func assertMapFailed(t *testing.T, d Dashboard, said []string, where, words string) {
 	t.Helper()
-	if d.mapPane.m != nil || d.mapPane.failed != mapFailedText {
-		t.Errorf("%s: after a panic the map is %v, failed %q; want it let go and failed", where, d.mapPane.m, d.mapPane.failed)
+	if d.mapModel.mapPane.m != nil || d.mapModel.mapPane.failed != mapFailedText {
+		t.Errorf("%s: after a panic the map is %v, failed %q; want it let go and failed", where, d.mapModel.mapPane.m, d.mapModel.mapPane.failed)
 	}
-	if body := strings.Join(d.mapBodyLines(), "\n"); !strings.Contains(body, mapFailedText) {
+	if body := strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n"); !strings.Contains(body, mapFailedText) {
 		t.Errorf("%s: the window does not say the map failed:\n%s", where, body)
 	}
 	if all := strings.Join(said, "\n"); !strings.Contains(all, where) || !strings.Contains(all, words) {

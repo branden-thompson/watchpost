@@ -30,8 +30,8 @@ func TestTheQuakesAreASetting(t *testing.T) {
 	for _, want := range []string{"2.5_day", "1.0_week", "1.0_day", "2.5_week"} {
 		m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 		d = m
-		if d.mapQuakeFeed != want || d.mapAsk().QuakeFeed != want {
-			t.Errorf("→ gave %q (asked %q); want %q", d.mapQuakeFeed, d.mapAsk().QuakeFeed, want)
+		if d.mapModel.mapQuakeFeed != want || d.mapModel.mapAsk(d.mapEnv()).QuakeFeed != want {
+			t.Errorf("→ gave %q (asked %q); want %q", d.mapModel.mapQuakeFeed, d.mapModel.mapAsk(d.mapEnv()).QuakeFeed, want)
 		}
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -41,11 +41,11 @@ func TestTheQuakesAreASetting(t *testing.T) {
 	if got.MapQuakeFeed != "2.5_day" {
 		t.Errorf("esc wrote %q, want 2.5_day", got.MapQuakeFeed)
 	}
-	if mapDash(t, Config{MapQuakeFeed: "1.0_day"}).mapQuakeFeed != "1.0_day" || mapDash(t, Config{}).mapQuakeFeed != "2.5_week" || mapDash(t, Config{MapQuakeFeed: "all_month"}).mapQuakeFeed != "2.5_week" {
+	if mapDash(t, Config{MapQuakeFeed: "1.0_day"}).mapModel.mapQuakeFeed != "1.0_day" || mapDash(t, Config{}).mapModel.mapQuakeFeed != "2.5_week" || mapDash(t, Config{MapQuakeFeed: "all_month"}).mapModel.mapQuakeFeed != "2.5_week" {
 		t.Error("the file's word does not open as chosen, or a word not offered is not the default")
 	}
 	d.clockFmt = render.ClockByKey("24h")
-	if d.mapAsk().Clock != render.ClockByKey("24h") {
+	if d.mapModel.mapAsk(d.mapEnv()).Clock != render.ClockByKey("24h") {
 		t.Error("the ask does not carry the listener's clock")
 	}
 }
@@ -64,8 +64,8 @@ func TestRefusalsGoToTheDiagnostics(t *testing.T) {
 		bad = append(bad, tuimaps.Overlay{ID: "quake/" + id, Valid: time.Now(), Keeps: 8 * 24 * time.Hour,
 			Features: []tuimaps.Feature{{Kind: tuimaps.Circle, Centre: tuimaps.LonLat{Lon: -117.3, Lat: 33.3}, RadiusDots: 4, Role: tuimaps.QuakeDay}}})
 	}
-	d = d.setFeed(MapFeed{Overlays: bad})
-	for _, n := range d.mapPane.notes {
+	d.mapModel = d.mapModel.setFeed(MapFeed{Overlays: bad}, d.mapEnv())
+	for _, n := range d.mapModel.mapPane.notes {
 		if strings.Contains(n, "could not") || strings.Contains(n, "tuimaps") {
 			t.Errorf("a refusal was said under the map: %q", n)
 		}
@@ -83,14 +83,16 @@ func TestTheAppsProblemsReachTheDiagnostics(t *testing.T) {
 	var problems []string
 	d := openTempMap(t, true, &asks)
 	ownHooks(&d).MapProblem = func(p string) { problems = append(problems, p) }
-	m, _ := d.applyMapTemp(mapTempMsg{temp: MapTemperature{Problems: []string{"Temperature: Open-Meteo did not answer"}}, anchor: d.tempAnchor()})
+	m := d
+	m.mapModel, _ = d.mapModel.applyMapTemp(mapTempMsg{temp: MapTemperature{Problems: []string{"Temperature: Open-Meteo did not answer"}}, anchor: d.mapModel.tempAnchor(d.mapEnv())}, d.mapEnv())
 	d = m
-	m, _ = d.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}, region: d.mapPane.region.Name})
+	m = d
+	m.mapModel, _ = d.mapModel.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = m
 	if strings.Join(problems, "|") != "Temperature: Open-Meteo did not answer|Radar ahead: HRRR did not answer" {
 		t.Errorf("the diagnostics were told %q", problems)
 	}
-	for _, n := range d.tempNotes() {
+	for _, n := range d.mapModel.tempNotes(d.mapEnv()) {
 		if strings.Contains(n, "did not answer") {
 			t.Errorf("a problem was said under the map: %q", n)
 		}
@@ -110,18 +112,18 @@ func TestAnUndrawnAreaIsTheDiagnosticsAlone(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	gale := "Gale Warning: Clarence Strait could not be drawn (0 of 1 zones shown). Guajome Park, CA does not lie in it."
 	feed := MapFeed{Undrawn: []string{gale, gale, gale, gale, gale}}
-	d = d.setFeed(feed)
-	for _, n := range d.mapNotesNow() {
+	d.mapModel = d.mapModel.setFeed(feed, d.mapEnv())
+	for _, n := range d.mapModel.mapNotesNow(d.mapEnv()) {
 		if strings.Contains(n, "could not be drawn") {
 			t.Errorf("an undrawn area was said to the listener: %q", n)
 		}
 	}
-	d = d.setFeed(feed)
+	d.mapModel = d.mapModel.setFeed(feed, d.mapEnv())
 	if len(problems) != 1 || problems[0] != gale {
 		t.Errorf("the diagnostics were told %q; want the words once", problems)
 	}
-	d = d.setFeed(MapFeed{})
-	d.setFeed(feed)
+	d.mapModel = d.mapModel.setFeed(MapFeed{}, d.mapEnv())
+	d.mapModel.setFeed(feed, d.mapEnv())
 	if len(problems) != 2 {
 		t.Errorf("words that went and came back were told %d times in all; want twice", len(problems))
 	}
@@ -134,12 +136,12 @@ func TestTheUndrawnWordsFollowTheAlertLayer(t *testing.T) {
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}}})
 	feed := MapFeed{Undrawn: []string{"Gale Warning: Clarence Strait could not be drawn"}}
-	if got := d.feedForLayers(feed).Undrawn; len(got) != 1 {
+	if got := d.mapModel.feedForLayers(feed, d.mapEnv()).Undrawn; len(got) != 1 {
 		t.Errorf("with the alert areas on, the undrawn words are %q", got)
 	}
 	off := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: false}}})
-	if got := off.feedForLayers(feed).Undrawn; len(got) != 0 {
+	if got := off.mapModel.feedForLayers(feed, off.mapEnv()).Undrawn; len(got) != 0 {
 		t.Errorf("with the alert areas off, the undrawn words are %q", got)
 	}
 }
@@ -169,7 +171,7 @@ func TestAFramesWarningsReachTheDiagnostics(t *testing.T) {
 		return tuimaps.Overlay{ID: id, Valid: time.Now(), Keeps: time.Hour,
 			Features: []tuimaps.Feature{{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: -117.3, Lat: 33.3}}}, Role: tuimaps.QuakeDay}}}
 	}
-	d.setFeed(MapFeed{Overlays: []tuimaps.Overlay{point("quake/near"), point("quake/Near")}})
+	d.mapModel.setFeed(MapFeed{Overlays: []tuimaps.Overlay{point("quake/near"), point("quake/Near")}}, d.mapEnv())
 	for _, p := range problems {
 		if strings.HasPrefix(p, "Map warning: near-duplicate-id") {
 			return
@@ -187,12 +189,12 @@ func TestARefusedAlertUpdateKeepsTheAreaDrawn(t *testing.T) {
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }},
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}}})
 	d, _ = pressKey(d, "g")
-	d = d.setFeed(boxFeed(-117.6, -117.1, false)(context.Background(), MapAsk{}))
-	if _, ok := d.mapPane.given["alert/w1"]; !ok || len(d.mapPane.m.Overlays()) == 0 {
+	d.mapModel = d.mapModel.setFeed(boxFeed(-117.6, -117.1, false)(context.Background(), MapAsk{}), d.mapEnv())
+	if _, ok := d.mapModel.mapPane.given["alert/w1"]; !ok || len(d.mapModel.mapPane.m.Overlays()) == 0 {
 		t.Fatal("the alert was not drawn: this measures nothing")
 	}
-	d = d.setFeed(MapFeed{Overlays: []tuimaps.Overlay{{ID: "alert/w1"}}}) // no valid time, no feature: refused
-	if _, ok := d.mapPane.given["alert/w1"]; !ok || len(d.mapPane.m.Overlays()) == 0 {
+	d.mapModel = d.mapModel.setFeed(MapFeed{Overlays: []tuimaps.Overlay{{ID: "alert/w1"}}}, d.mapEnv()) // no valid time, no feature: refused
+	if _, ok := d.mapModel.mapPane.given["alert/w1"]; !ok || len(d.mapModel.mapPane.m.Overlays()) == 0 {
 		t.Error("a refused update took the drawn alert off the map")
 	}
 	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Alert areas: 1 not drawn") {
@@ -207,9 +209,9 @@ func TestABoundTheLibraryRefusesGoesToTheDiagnostics(t *testing.T) {
 	var problems []string
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) }}})
 	d, _ = pressKey(d, "g")
-	d.mapPane.region.S, d.mapPane.region.N = d.mapPane.region.N, d.mapPane.region.S // south above north: no box
+	d.mapModel.mapPane.region.S, d.mapModel.mapPane.region.N = d.mapModel.mapPane.region.N, d.mapModel.mapPane.region.S // south above north: no box
 	problems = nil
-	d.boundMap()
+	d.mapModel.boundMap(d.mapEnv())
 	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Map bound:") {
 		t.Errorf("the diagnostics were told %q; want the refused bound once", problems)
 	}

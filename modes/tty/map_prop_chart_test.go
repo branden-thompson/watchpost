@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
 	"github.com/branden-thompson/watchpost/modes/tty/internal/frame"
@@ -29,10 +30,10 @@ func chartDash(t *testing.T) Dashboard {
 // for it).
 func settled(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
-	if d.mapPane.viewGen == d.mapPane.viewAsked || d.modal != modalMap {
+	if d.mapModel.mapPane.viewGen == d.mapModel.mapPane.viewAsked || d.modal != modalMap {
 		return d
 	}
-	m, _ := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, _ := d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	return m.(Dashboard)
 }
 
@@ -41,8 +42,9 @@ func settled(t *testing.T, d Dashboard) Dashboard {
 func workChart(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
 	d = settled(t, d)
-	d.mapPane.propChartAsked = propChartKey{}
-	d, cmd := d.armPropChart()
+	d.mapModel.mapPane.propChartAsked = propChartKey{}
+	var cmd tea.Cmd
+	d.mapModel, cmd = d.mapModel.armPropChart(d.mapEnv())
 	if cmd == nil {
 		return d
 	}
@@ -56,7 +58,7 @@ func workChart(t *testing.T, d Dashboard) Dashboard {
 // names each continent's highest open band, and the key to the chart.
 func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 	d := chartDash(t)
-	c := d.mapPane.propChart
+	c := d.mapModel.mapPane.propChart
 	if c.err != nil || len(c.targets) != len(propanswers.Continents) {
 		t.Fatalf("the chart holds %d targets (%v); want the %d continents", len(c.targets), c.err, len(propanswers.Continents))
 	}
@@ -69,7 +71,7 @@ func TestTheContinentsAreTheDefaultTargets(t *testing.T) {
 			t.Errorf("%s's 160m names limit %v; a path's is its MUF, or the lower limit's (D-70)", propanswers.Continents[i].Name, l)
 		}
 	}
-	block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n"))
+	block := ttytest.StripANSI(strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n"))
 	for _, want := range []string{"Up to:", "NA ", "SA ", "EU ", "AF ", "AS ", "OC ", "B chart"} {
 		if !strings.Contains(block, want) {
 			t.Errorf("the block under the map does not say %q:\n%s", want, block)
@@ -85,7 +87,7 @@ func TestBestBandsNameTheirLimit(t *testing.T) {
 	if d.modal != modalPropChart {
 		t.Fatalf("B opened window %v; want the chart (D-176)", d.modal)
 	}
-	text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 	for _, want := range []string{"100 W, 0 dBi, +13 dB · residential noise", "Local, ~400 km", "foF2 6.0", "North America", "Oceania", "MUF ", "figures in MHz"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the chart does not say %q:\n%s", want, text)
@@ -102,22 +104,22 @@ func TestBestBandsNameTheirLimit(t *testing.T) {
 // open; the arrows move the target the day is drawn for.
 func TestTheDaysOpenHoursAreShown(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	day := d.propDayRows(d.mapPane.propChart.local.Bands)
+	day := d.mapModel.propDayRows(d.mapModel.mapPane.propChart.local.Bands, d.mapEnv())
 	if len(day) != len(hfBands) {
 		t.Fatalf("the typical day has %d rows; want one a band", len(day))
 	}
-	for i, b := range d.mapPane.propChart.local.Bands {
+	for i, b := range d.mapModel.mapPane.propChart.local.Bands {
 		cells := []rune(ttytest.StripANSI(day[i]))
 		cells = cells[len(cells)-47:] // 24 hours, a space between each
 		for h := range 24 {
-			at := d.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour).Add(time.Duration(h) * time.Hour)
+			at := d.mapModel.mapPane.propChart.key.hour.UTC().Truncate(24 * time.Hour).Add(time.Duration(h) * time.Hour)
 			if want := propanswers.OpenAt(b.OpenHours, at); (cells[2*h] == propOpenGlyph) != want {
 				t.Errorf("%s at %02d UTC is drawn %q; typically open: %v", hfBands[i].name, h, cells[2*h], want)
 			}
 		}
 	}
 	m, _ := d.Update(mapKeyMsg(t, "down"))
-	if got := m.(Dashboard).mapPane.propChartRow; got != 1 {
+	if got := m.(Dashboard).mapModel.mapPane.propChartRow; got != 1 {
 		t.Errorf("down moved the chart's target to %d; want 1, the first continent", got)
 	}
 }
@@ -129,7 +131,7 @@ func TestTheChartSaysItsMeasuredAgreement(t *testing.T) {
 	for _, ascii := range []bool{false, true} {
 		d := pressMap(t, chartDash(t), "B")
 		d.cfg.ASCII = ascii
-		text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+		text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 		for _, want := range []string{"agrees with WSPR:", "Local 54%", "continents 68%", "typical alone 52%, 64%"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("ascii %v: the chart does not say %q:\n%s", ascii, want, text)
@@ -151,15 +153,15 @@ func TestAChartOpenedAsTheViewMovesIsWorkedOut(t *testing.T) {
 	d, _ := drawnDash(t)
 	d = settled(t, d)
 	d, _ = keyCmd(t, d, "left") // the view moves; its settle tick not yet landed
-	if !d.viewSettling() {
+	if !d.mapModel.viewSettling() {
 		t.Fatal("control: a pan leaves the view settling")
 	}
 	d, _ = keyCmd(t, d, "B")
 	if d.modal != modalPropChart {
 		t.Fatalf("B opened window %v; want the chart", d.modal)
 	}
-	d.mapPane.propChartAsked = propChartKey{}
-	if _, cmd := d.armPropChart(); cmd == nil {
+	d.mapModel.mapPane.propChartAsked = propChartKey{}
+	if _, cmd := d.mapModel.armPropChart(d.mapEnv()); cmd == nil {
 		t.Fatal("the chart's own window open over a settling view: the chart is never asked")
 	}
 }
@@ -168,7 +170,7 @@ func TestAChartOpenedAsTheViewMovesIsWorkedOut(t *testing.T) {
 // and the chart says so.
 func TestTheTypicalDayIsLabelled(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	if text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "TYPICAL DAY") {
+	if text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n")); !strings.Contains(text, "TYPICAL DAY") {
 		t.Errorf("the chart's hours are not labelled a typical day:\n%s", text)
 	}
 }
@@ -178,20 +180,20 @@ func TestTheTypicalDayIsLabelled(t *testing.T) {
 // from a typical day" for that target; where they agree it does not.
 func TestADisagreementWithTheTypicalDayIsSaid(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	c := &d.mapPane.propChart
+	c := &d.mapModel.mapPane.propChart
 	hour := c.key.hour.UTC().Truncate(time.Hour)
 	agree := make([]ionomaps.BandStatus, len(hfBands))
 	for i := range agree {
 		agree[i] = ionomaps.BandStatus{Band: ionomaps.AllBands()[i], Status: ionomaps.AboveUpper, Limit: ionomaps.LimitFoF2}
 	}
 	c.local = ionomaps.Answer{Bands: agree}
-	if text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); strings.Contains(text, "now differs") {
+	if text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n")); strings.Contains(text, "now differs") {
 		t.Errorf("every band closed now and in its typical day, yet a difference is said:\n%s", text)
 	}
 	differ := append([]ionomaps.BandStatus(nil), agree...)
 	differ[0].OpenHours = []ionomaps.Span{{From: hour, To: hour.Add(time.Hour)}} // typically open this hour, closed now
 	c.local = ionomaps.Answer{Bands: differ}
-	if text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(text, "now differs from a typical day") {
+	if text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n")); !strings.Contains(text, "now differs from a typical day") {
 		t.Errorf("160m is typically open this hour and closed now, yet no difference is said:\n%s", text)
 	}
 }
@@ -203,26 +205,26 @@ func TestADisagreementWithTheTypicalDayIsSaid(t *testing.T) {
 // its own (TestEveryUIModeHasAPropagationRole).
 func TestTheOriginFollowsTheUIMode(t *testing.T) {
 	d := chartDash(t)
-	centre, _ := d.propCentreAt()
-	if o := d.mapPane.propChart.key.origin; o != centre || d.mapPane.propOrigin.name != d.viewName() {
-		t.Fatalf("Observer's chart rows from %v (%q); the centre is %v (%q)", o, d.mapPane.propOrigin.name, centre, d.viewName())
+	centre, _ := d.mapModel.propCentreAt()
+	if o := d.mapModel.mapPane.propChart.key.origin; o != centre || d.mapModel.mapPane.propOrigin.name != d.mapModel.viewName(d.mapEnv()) {
+		t.Fatalf("Observer's chart rows from %v (%q); the centre is %v (%q)", o, d.mapModel.mapPane.propOrigin.name, centre, d.mapModel.viewName(d.mapEnv()))
 	}
 	moved := pressMap(t, d, "right")
-	moved = settled(t, moved.renderMap()) // asked once the view stands still (P-1)
-	if _, cmd := moved.armPropChart(); cmd == nil && moved.mapPane.propChartAsked == d.mapPane.propChart.key {
+	moved = settled(t, withModel(moved, moved.mapModel.renderMap(moved.mapEnv()))) // asked once the view stands still (P-1)
+	if _, cmd := moved.mapModel.armPropChart(moved.mapEnv()); cmd == nil && moved.mapModel.mapPane.propChartAsked == d.mapModel.mapPane.propChart.key {
 		t.Error("the map panned and Observer's chart was not asked again")
 	}
-	if _, asked := workCentre(t, d).propCentreWanted(); asked || strings.Contains(ttytest.StripANSI(strings.Join(workCentre(t, d).mapBodyLines(), "\n")), "┌─ Centre") {
+	if _, asked := mapModel.propCentreWanted(envOf(workCentre(t, d))); asked || strings.Contains(ttytest.StripANSI(strings.Join(mapModel.mapBodyLines(envOf(workCentre(t, d))), "\n")), "┌─ Centre") {
 		t.Error("Observer's centre is its origin, yet it is asked and drawn as a target")
 	}
 	st := stationDash(t)
 	loc := st.selectedLocation()
-	if o := st.mapPane.propOrigin; o.at.Lat != loc.Lat || o.at.Lon != loc.Lon || !strings.HasSuffix(o.name, frame.NoTransmitter) {
+	if o := st.mapModel.mapPane.propOrigin; o.at.Lat != loc.Lat || o.at.Lon != loc.Lon || !strings.HasSuffix(o.name, frame.NoTransmitter) {
 		t.Errorf("with no transmitter the station's origin is %+v; the selected place, said", o)
 	}
 	st.cfg.Transmitter = &snapshot.LocationRef{Label: "KXYZ tower", Lat: 40.1, Lon: -105.2}
-	st = st.renderMap()
-	if o := st.mapPane.propOrigin; o.at != (ionomaps.LatLon{Lat: 40.1, Lon: -105.2}) || o.name != "KXYZ tower" {
+	st.mapModel = st.mapModel.renderMap(st.mapEnv())
+	if o := st.mapModel.mapPane.propOrigin; o.at != (ionomaps.LatLon{Lat: 40.1, Lon: -105.2}) || o.name != "KXYZ tower" {
 		t.Errorf("with a transmitter the station's origin is %+v; the transmitter", o)
 	}
 }
@@ -237,10 +239,10 @@ func TestEveryUIModeHasAMapRole(t *testing.T) {
 			t.Errorf("UI mode %d has no map role: rule its place and Propagation origin in mapRoles (D-193, D-195)", s)
 		}
 	}
-	if (Dashboard{surface: numSurfaces}).mapRole() != mapRoles[SurfaceObserver] {
+	if mapModel.mapRole(envOf(Dashboard{surface: numSurfaces})) != mapRoles[SurfaceObserver] {
 		t.Error("an unruled UI mode does not fall back to Observer's role")
 	}
-	if (Dashboard{surface: numSurfaces}).propRole().origin != propFromCentre {
+	if mapModel.propRole(envOf(Dashboard{surface: numSurfaces})).origin != propFromCentre {
 		t.Error("an unruled UI mode does not explore from the centre")
 	}
 }
@@ -250,22 +252,23 @@ func TestEveryUIModeHasAMapRole(t *testing.T) {
 // as it was until the command's result arrives.
 func TestAnswersNeverBlockTheUI(t *testing.T) {
 	d, _ := drawnDash(t)
-	if len(d.mapPane.propChart.targets) != 0 {
+	if len(d.mapModel.mapPane.propChart.targets) != 0 {
 		t.Fatal("the chart was worked out inside Update")
 	}
-	if _, ok := d.propChartWanted(); !ok || d.mapPane.propChartAsked == (propChartKey{}) {
+	if _, ok := d.mapModel.propChartWanted(d.mapEnv()); !ok || d.mapModel.mapPane.propChartAsked == (propChartKey{}) {
 		t.Fatal("the Update that kept the snapshot did not ask for the chart")
 	}
-	d.mapPane.propChartAsked = propChartKey{} // the harness dropped that command: ask again
-	d, cmd := d.armPropChart()
+	d.mapModel.mapPane.propChartAsked = propChartKey{} // the harness dropped that command: ask again
+	var cmd tea.Cmd
+	d.mapModel, cmd = d.mapModel.armPropChart(d.mapEnv())
 	if cmd == nil {
 		t.Fatal("no command works the chart out")
 	}
-	if _, again := d.armPropChart(); again != nil {
+	if _, again := d.mapModel.armPropChart(d.mapEnv()); again != nil {
 		t.Error("the chart was asked twice for the same snapshot and place")
 	}
 	older := propChartMsg{chart: propChart{key: propChartKey{radiusKm: 1}, targets: make([]ionomaps.Answer, len(propanswers.Continents))}}
-	if m, _ := d.Update(older); len(m.(Dashboard).mapPane.propChart.targets) != 0 {
+	if m, _ := d.Update(older); len(m.(Dashboard).mapModel.mapPane.propChart.targets) != 0 {
 		t.Error("an answer to an older ask was kept over the one asked for")
 	}
 }
@@ -276,11 +279,11 @@ func TestAnswersNeverBlockTheUI(t *testing.T) {
 // (D-199).
 func TestTheNightIsDrawnOnThePropagationMap(t *testing.T) {
 	d, _ := drawnDash(t)
-	if d.detailOn(nightDetailKey) {
+	if d.mapModel.detailOn(nightDetailKey) {
 		t.Fatal("control: Day / night is on, so this proves nothing about the mode drawing it always")
 	}
 	var line, night bool
-	for _, o := range d.mapPane.nightGiven {
+	for _, o := range d.mapModel.mapPane.nightGiven {
 		for _, f := range o.Features {
 			line = line || f.Role == terminatorRole
 			night = night || f.Role == nightRole
@@ -304,20 +307,20 @@ func TestTheNearVerticalRadiusIsASetting(t *testing.T) {
 	d := chartDash(t)
 	seen := map[int]bool{}
 	for range propRadiusChoices {
-		d = d.cyclePropRadius(true)
-		seen[d.mapPropRadiusKm] = true
+		d = d.withMap(d.mapModel.cyclePropRadius(true))
+		seen[d.mapModel.mapPropRadiusKm] = true
 	}
 	if len(seen) != 3 || !seen[200] || !seen[400] || !seen[600] {
 		t.Errorf("the picker goes round %v; want 200, 400 and 600 km", seen)
 	}
-	for d.mapPropRadiusKm != 600 {
-		d = d.cyclePropRadius(true)
+	for d.mapModel.mapPropRadiusKm != 600 {
+		d = d.withMap(d.mapModel.cyclePropRadius(true))
 	}
 	d = workChart(t, d)
-	if got := d.mapPane.propChart.key.radiusKm; got != 600 {
+	if got := d.mapModel.mapPane.propChart.key.radiusKm; got != 600 {
 		t.Errorf("the chart rows for %v km; the Setting says 600", got)
 	}
-	block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n"))
+	block := ttytest.StripANSI(strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n"))
 	if !strings.Contains(block, "Local, to ~600 km (NVIS)") {
 		t.Errorf("the block does not say the Setting's radius:\n%s", block)
 	}
@@ -334,7 +337,7 @@ func TestTheChartIsReadableInASCII(t *testing.T) {
 	d := chartDash(t)
 	d.cfg.ASCII = true
 	o := d.opts()
-	chart := ttytest.StripANSI(strings.Join(d.propChartLines(o), "\n"))
+	chart := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(o, d.mapEnv()), "\n"))
 	for _, g := range []string{"●", "◐", "○", "◌", "·", "▸", "▼"} {
 		if strings.Contains(chart, g) {
 			t.Errorf("under --ascii the chart draws %q:\n%s", g, chart)
@@ -364,23 +367,23 @@ func TestTheChartIsReadableInASCII(t *testing.T) {
 // again for it - never shown from the snapshot they were worked out for.
 func TestARebuiltSnapshotIsAnsweredAgain(t *testing.T) {
 	d := chartDash(t)
-	d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 7.2, "7.2 MHz"
-	before := d.mapPane.propChart.key
-	rebuilt := propSnapAt(d.mapPane.propSnap.Computed, 25) // the same moment, other values
-	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: rebuilt}, correct: !d.mapPane.propSnapCorrect})
+	d.mapModel.mapPane.propFreqMHz, d.mapModel.mapPane.propFreqLabel = 7.2, "7.2 MHz"
+	before := d.mapModel.mapPane.propChart.key
+	rebuilt := propSnapAt(d.mapModel.mapPane.propSnap.Computed, 25) // the same moment, other values
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: rebuilt}, correct: !d.mapModel.mapPane.propSnapCorrect})
 	d = m.(Dashboard)
-	if !d.mapPane.propSnap.Computed.Equal(before.made.computed) {
+	if !d.mapModel.mapPane.propSnap.Computed.Equal(before.made.computed) {
 		t.Fatal("control: the rebuilt snapshot is not of the same moment")
 	}
-	if d.propChartShown() {
+	if d.mapModel.propChartShown(d.mapEnv()) {
 		t.Error("the chart worked out for the snapshot before is shown for the rebuilt one")
 	}
-	if key, ok := d.propReachWanted(); ok && key == d.mapPane.propReach.key && d.mapPane.propReach.key != (propReachKey{}) {
+	if key, ok := d.mapModel.propReachWanted(d.mapEnv()); ok && key == d.mapModel.mapPane.propReach.key && d.mapModel.mapPane.propReach.key != (propReachKey{}) {
 		t.Error("the reach worked out for the snapshot before is the one wanted for the rebuilt one")
 	}
 	d = workChart(t, d)
-	if !d.propChartShown() || d.mapPane.propChart.key == before {
-		t.Errorf("the rebuilt snapshot's chart is not worked out: %+v", d.mapPane.propChart.key)
+	if !d.mapModel.propChartShown(d.mapEnv()) || d.mapModel.mapPane.propChart.key == before {
+		t.Errorf("the rebuilt snapshot's chart is not worked out: %+v", d.mapModel.mapPane.propChart.key)
 	}
 }
 
@@ -393,14 +396,14 @@ func TestAPanAsksOnceItSettles(t *testing.T) {
 		m, _ := d.Update(mapKeyMsg(t, "right"))
 		d = m.(Dashboard)
 	}
-	d.mapPane.propChartAsked = propChartKey{} // what the harness's dropped commands had asked
-	if _, cmd := d.armPropChart(); cmd != nil {
+	d.mapModel.mapPane.propChartAsked = propChartKey{} // what the harness's dropped commands had asked
+	if _, cmd := d.mapModel.armPropChart(d.mapEnv()); cmd != nil {
 		t.Error("the chart was asked while the view was still moving")
 	}
-	m, _ := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, _ := d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	d = m.(Dashboard)
-	d.mapPane.propChartAsked = propChartKey{}
-	if _, cmd := d.armPropChart(); cmd == nil {
+	d.mapModel.mapPane.propChartAsked = propChartKey{}
+	if _, cmd := d.mapModel.armPropChart(d.mapEnv()); cmd == nil {
 		t.Error("the chart was not asked once the view stood still")
 	}
 }
@@ -411,19 +414,19 @@ func TestAPanAsksOnceItSettles(t *testing.T) {
 // snapshot rebuilt with other options is another.
 func TestARefreshAnsweredTooSoonKeepsItsAnswers(t *testing.T) {
 	d := stepAhead(t, chartDash(t), "shift+right")
-	if len(d.mapPane.propAheadSnaps) == 0 {
+	if len(d.mapModel.mapPane.propAheadSnaps) == 0 {
 		t.Fatal("control: no hour ahead is worked out")
 	}
-	built := d.mapPane.propBuilt
-	again := *d.mapPane.propSnap
+	built := d.mapModel.mapPane.propBuilt
+	again := *d.mapModel.mapPane.propSnap
 	again.Reason = ionomaps.TooSoon
-	m, _ := d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: again}, correct: d.mapPane.propSnapCorrect})
+	m, _ := d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: again}, correct: d.mapModel.mapPane.propSnapCorrect})
 	d = m.(Dashboard)
-	if d.mapPane.propBuilt != built || len(d.mapPane.propAheadSnaps) == 0 {
-		t.Errorf("a refresh answered too soon counted as another snapshot (built %d, was %d) or dropped the hours ahead (%d)", d.mapPane.propBuilt, built, len(d.mapPane.propAheadSnaps))
+	if d.mapModel.mapPane.propBuilt != built || len(d.mapModel.mapPane.propAheadSnaps) == 0 {
+		t.Errorf("a refresh answered too soon counted as another snapshot (built %d, was %d) or dropped the hours ahead (%d)", d.mapModel.mapPane.propBuilt, built, len(d.mapModel.mapPane.propAheadSnaps))
 	}
-	m, _ = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: again}, correct: !d.mapPane.propSnapCorrect})
-	if d = m.(Dashboard); d.mapPane.propBuilt == built || len(d.mapPane.propAheadSnaps) != 0 {
+	m, _ = d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: again}, correct: !d.mapModel.mapPane.propSnapCorrect})
+	if d = m.(Dashboard); d.mapModel.mapPane.propBuilt == built || len(d.mapModel.mapPane.propAheadSnaps) != 0 {
 		t.Error("a snapshot rebuilt with the correction switched is kept as the one held")
 	}
 }
@@ -435,14 +438,14 @@ func TestARefreshAnsweredTooSoonKeepsItsAnswers(t *testing.T) {
 // pan.
 func TestAPanSettledUnderAWindowIsAnsweredOnReturn(t *testing.T) {
 	d := pressMap(t, chartDash(t), "right")
-	gen := d.mapPane.viewGen
+	gen := d.mapModel.mapPane.viewGen
 	d = pressMap(t, d, "F")
 	if d.modal != modalPropFreq {
 		t.Fatalf("control: F opened window %v", d.modal)
 	}
 	m, cmd := d.Update(mapViewSettledMsg{gen: gen})
 	d = m.(Dashboard)
-	if cmd == nil || d.mapPane.viewAsked == gen {
+	if cmd == nil || d.mapModel.mapPane.viewAsked == gen {
 		t.Fatal("a settle tick under the window was dropped, or asked for a view the map does not show")
 	}
 	m, _ = d.Update(mapKeyMsg(t, "esc"))
@@ -452,9 +455,9 @@ func TestAPanSettledUnderAWindowIsAnsweredOnReturn(t *testing.T) {
 	}
 	m, _ = d.Update(mapViewSettledMsg{gen: gen}) // the tick it waited with
 	d = m.(Dashboard)
-	d.mapPane.propChartAsked = propChartKey{}
-	if _, ask := d.armPropChart(); d.mapPane.viewAsked != gen || ask == nil {
-		t.Errorf("back at the map the view is not answered: asked %d of %d, chart asked %v", d.mapPane.viewAsked, gen, ask != nil)
+	d.mapModel.mapPane.propChartAsked = propChartKey{}
+	if _, ask := d.mapModel.armPropChart(d.mapEnv()); d.mapModel.mapPane.viewAsked != gen || ask == nil {
+		t.Errorf("back at the map the view is not answered: asked %d of %d, chart asked %v", d.mapModel.mapPane.viewAsked, gen, ask != nil)
 	}
 }
 
@@ -464,7 +467,7 @@ func TestAPanSettledUnderAWindowIsAnsweredOnReturn(t *testing.T) {
 // their bands; the bands and their edges are go-ionomaps' own.
 func TestEachBandIsFoundByItsName(t *testing.T) {
 	var d Dashboard
-	cells := ttytest.StripANSI(d.propBandCells([]ionomaps.BandStatus{{Band: ionomaps.Band20m, Status: ionomaps.Open}}))
+	cells := ttytest.StripANSI(d.mapModel.propBandCells([]ionomaps.BandStatus{{Band: ionomaps.Band20m, Status: ionomaps.Open}}, d.mapEnv()))
 	if len([]rune(cells)) != 3*len(hfBands) {
 		t.Fatalf("the row is %d cells for %d bands: %q", len([]rune(cells)), len(hfBands), cells)
 	}
@@ -477,7 +480,7 @@ func TestEachBandIsFoundByItsName(t *testing.T) {
 	if len(hfBands) != len(ionomaps.AllBands()) || hfBands[6].mhz != "18.07" || hfBands[0].name != ionomaps.Band160m.String() {
 		t.Errorf("the bands are not go-ionomaps' own: %+v", hfBands)
 	}
-	rows := d.propDayRows([]ionomaps.BandStatus{{Band: ionomaps.Band40m}, {Band: ionomaps.Band10m}})
+	rows := d.mapModel.propDayRows([]ionomaps.BandStatus{{Band: ionomaps.Band40m}, {Band: ionomaps.Band10m}}, d.mapEnv())
 	if !strings.HasPrefix(rows[0], "40m") || !strings.HasPrefix(rows[1], "10m") {
 		t.Errorf("the typical day's rows are not named by their bands: %q", rows)
 	}
@@ -496,11 +499,11 @@ func TestTheChartsTargetKeysAreRebindable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d.chartKeys = keys
+	d.mapModel.chartKeys = keys
 	press := func(key string) int {
 		m, _ := d.Update(mapKeyMsg(t, key))
 		d = m.(Dashboard)
-		return d.mapPane.propChartRow
+		return d.mapModel.mapPane.propChartRow
 	}
 	if row := press("j"); row != 1 {
 		t.Errorf("j, rebound to the next target, left row %d; want 1", row)

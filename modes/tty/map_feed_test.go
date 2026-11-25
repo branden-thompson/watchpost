@@ -38,7 +38,7 @@ func squareFeed(asked *int, label string) func(context.Context, MapAsk) MapFeed 
 func feedAndSettle(t testing.TB, d Dashboard) Dashboard {
 	t.Helper()
 	for lane := range feedLanes { // both lanes' answers, the alerts' first (D-268)
-		if cmd := d.mapFeedCmd(lane); cmd != nil {
+		if cmd := d.mapModel.mapFeedCmd(lane, d.mapEnv()); cmd != nil {
 			m, _ := d.Update(cmd())
 			d = m.(Dashboard)
 		}
@@ -99,11 +99,11 @@ func TestAStaleFeedIsDropped(t *testing.T) {
 		return squareFeed(&asked, label)(ctx, ask)
 	}
 	d, _ = pressKey(d, "g")
-	old := d.mapFeedCmd(laneAlerts)
+	old := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv())
 	label = "New Warning"
 	m, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 	d = m.(Dashboard)
-	fresh := d.mapFeedCmd(laneAlerts)
+	fresh := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv())
 	freshMsg := fresh()
 	label = "Old Warning"
 	oldMsg := old()
@@ -132,7 +132,7 @@ func TestARecentPlacesAlertsReachTheMap(t *testing.T) {
 		t.Fatalf("the selection is %v, not the recent place", loc)
 	}
 	d, _ = pressKey(d, "g")
-	if cmd := d.mapFeedCmd(laneAlerts); cmd != nil {
+	if cmd := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv()); cmd != nil {
 		cmd()
 	}
 	found := false

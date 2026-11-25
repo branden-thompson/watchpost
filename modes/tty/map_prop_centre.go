@@ -39,13 +39,13 @@ type propCentreMsg struct{ centre propCentre }
 
 // propCentreAt is the map's centre, to the step, its longitude wrapped;
 // false with no map.
-func (d Dashboard) propCentreAt() (ionomaps.LatLon, bool) {
-	m := d.mapPane.m
+func (mm mapModel) propCentreAt() (ionomaps.LatLon, bool) {
+	m := mm.mapPane.m
 	if m == nil {
 		return ionomaps.LatLon{}, false
 	}
 	var c tuimaps.LonLat
-	d.mapPane.call("Centre", func() { c, _ = m.Centre() })
+	mm.mapPane.call("Centre", func() { c, _ = m.Centre() })
 	return propStepped(c.Lat, c.Lon), true
 }
 
@@ -59,12 +59,12 @@ func propStepped(lat, lon float64) ionomaps.LatLon {
 // propCentreWanted is the centre's answer the window wants: for the hour
 // shown, the selected place and the centre; false with nothing to work it
 // out from, or the map not the window shown.
-func (d Dashboard) propCentreWanted() (propCentreKey, bool) {
-	key, ok := d.propChartWanted()
-	if !ok || d.modal != modalMap || !d.propRole().target {
+func (mm mapModel) propCentreWanted(e mapEnv) (propCentreKey, bool) {
+	key, ok := mm.propChartWanted(e)
+	if !ok || e.Window != mapModalMap || !mm.propRole(e).target {
 		return propCentreKey{}, false // the library is asked for its centre only in this mode (D-41); on Observer the block is the centre's (D-193)
 	}
-	centre, at := d.propCentreAt()
+	centre, at := mm.propCentreAt()
 	if !at {
 		return propCentreKey{}, false
 	}
@@ -73,15 +73,15 @@ func (d Dashboard) propCentreWanted() (propCentreKey, bool) {
 
 // armPropCentre asks for the centre's answer when the map has moved, or
 // what it is worked out from has changed.
-func (d Dashboard) armPropCentre() (Dashboard, tea.Cmd) {
-	if d.viewSettling() {
-		return d, nil
+func (mm mapModel) armPropCentre(e mapEnv) (mapModel, tea.Cmd) {
+	if mm.viewSettling() {
+		return mm, nil
 	}
-	key, ok := d.propCentreWanted()
-	cmd := askAnswer(&d, key, ok, d.mapPane.propCentre.key, &d.mapPane.propCentreAsked, func(snap ionomaps.Snapshot, key propCentreKey) tea.Msg {
+	key, ok := mm.propCentreWanted(e)
+	cmd := askAnswer(&mm, key, ok, mm.mapPane.propCentre.key, &mm.mapPane.propCentreAsked, func(snap ionomaps.Snapshot, key propCentreKey) tea.Msg {
 		return propCentreMsg{centre: workPropCentre(snap, key)}
 	})
-	return d, cmd
+	return mm, cmd
 }
 
 // workPropCentre is the centre's answer off the UI goroutine: the answers
@@ -96,13 +96,13 @@ func workPropCentre(snap ionomaps.Snapshot, key propCentreKey) propCentre {
 // the name given, the box's in capitals, the words' as it is (AX-8) - the
 // distance, the bands usable and the limits, and the frequency held; nil on
 // Observer, or while there is none for the snapshot shown.
-func (d Dashboard) propCentreLines(from string) []string {
-	c, origin := d.mapPane.propCentre, d.mapPane.propOrigin
-	shown := d.propOnScreen()
-	if key, ok := d.propCentreWanted(); !ok || key != c.key { // the answer for what is shown now: the hour, the noise, the station (P-6)
+func (mm mapModel) propCentreLines(from string, e mapEnv) []string {
+	c, origin := mm.mapPane.propCentre, mm.mapPane.propOrigin
+	shown := mm.propOnScreen()
+	if key, ok := mm.propCentreWanted(e); !ok || key != c.key { // the answer for what is shown now: the hour, the noise, the station (P-6)
 		return nil
 	}
-	if !d.propRole().target || !origin.ok || !propHasField(shown) || c.err != nil || len(c.bands) == 0 {
+	if !mm.propRole(e).target || !origin.ok || !propHasField(shown) || c.err != nil || len(c.bands) == 0 {
 		return nil
 	}
 	out := []string{latLonText(c.key.centre)}
@@ -114,22 +114,22 @@ func (d Dashboard) propCentreLines(from string) []string {
 	if c.km <= c.key.radiusKm {
 		out = append(out, "Near-vertical from "+from) // within the radius: the area's answer
 	} else {
-		out = append(out, "From "+from+": "+d.roundDistance(c.km))
+		out = append(out, "From "+from+": "+mm.roundDistance(c.km, e))
 	}
 	if c.bands[0].Status == ionomaps.StatusNoData {
 		return append(out, "no data on the path")
 	}
-	out = append(out, d.propTarget(c.bands)...)
-	return append(out, d.propNearestWords(c.nearest))
+	out = append(out, mm.propTarget(c.bands)...)
+	return append(out, mm.propNearestWords(c.nearest, e))
 }
 
 // propNearestWords say how far the answer's nearest station is, and when
 // its readings are unscored, to verify on air (D-181); or that none fed it.
-func (d Dashboard) propNearestWords(n ionomaps.Nearest) string {
+func (mm mapModel) propNearestWords(n ionomaps.Nearest, e mapEnv) string {
 	if !n.Known {
 		return "No station fed this answer"
 	}
-	w := "Nearest station " + d.roundDistance(float64(n.Km))
+	w := "Nearest station " + mm.roundDistance(float64(n.Km), e)
 	if n.Unscored {
 		w += ", unscored: verify on air"
 	}
@@ -138,8 +138,8 @@ func (d Dashboard) propNearestWords(n ionomaps.Nearest) string {
 
 // propCentreBox is the centre's answer boxed for the map's upper left
 // (D-180); nil while there is none.
-func (d Dashboard) propCentreBox() []string {
-	lines := d.propCentreLines(strings.ToUpper(d.mapPane.propOrigin.name))
+func (mm mapModel) propCentreBox(e mapEnv) []string {
+	lines := mm.propCentreLines(strings.ToUpper(mm.mapPane.propOrigin.name), e)
 	if lines == nil {
 		return nil
 	}
@@ -154,12 +154,12 @@ func (d Dashboard) propCentreBox() []string {
 // withPropCentre lays the centre's box over the map's upper left and marks
 // the centre, in the Propagation mode, while the menu leaves the corner
 // free.
-func (d Dashboard) withPropCentre(lines []string, size tuimaps.Size) []string {
-	if !d.inPropagation() || d.mapPane.menuOn || len(lines) == 0 {
+func (mm mapModel) withPropCentre(lines []string, size tuimaps.Size, e mapEnv) []string {
+	if !mm.inPropagation(e) || mm.mapPane.menuOn || len(lines) == 0 {
 		return lines
 	}
 	lines = spliceBox(lines, []string{"+"}, size.Rows/2, insetCols+size.Cols/2) // the centre: the origin on Observer, the target on the Broadcaster (D-193)
-	if box := d.propCentreBox(); box != nil {
+	if box := mm.propCentreBox(e); box != nil {
 		lines = spliceBox(lines, box, 0, insetCols)
 	}
 	return lines
@@ -168,12 +168,12 @@ func (d Dashboard) withPropCentre(lines []string, size tuimaps.Size) []string {
 // propCentreWords are the centre's answer said (FR-3.1): the last of the
 // mode's words, the station named as it is, and each clause begun in the
 // sentence's lower case.
-func (d Dashboard) propCentreWords() string {
-	o := d.mapPane.propOrigin
-	lines := d.propCentreLines(geo.SpokenPlace(o.name, o.country)) // the station abroad by its country (D-231)
-	if c := d.mapPane.propCentre; lines == nil && c.err != nil {
-		if key, ok := d.propCentreWanted(); ok && key == c.key {
-			return "The map's centre is " + d.propNotAvailable() + "." // AX-9
+func (mm mapModel) propCentreWords(e mapEnv) string {
+	o := mm.mapPane.propOrigin
+	lines := mm.propCentreLines(geo.SpokenPlace(o.name, o.country), e) // the station abroad by its country (D-231)
+	if c := mm.mapPane.propCentre; lines == nil && c.err != nil {
+		if key, ok := mm.propCentreWanted(e); ok && key == c.key {
+			return "The map's centre is " + mm.propNotAvailable() + "." // AX-9
 		}
 	}
 	if lines == nil {

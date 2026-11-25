@@ -1,3 +1,4 @@
 # 0.19.6 B4's re-recorded and added goldens under the two trees' testdata (A-33): each file B4 adds or re-records
 # B4.2, D-77: the model's fields built from the Config gain mapHooks, the map's hooks (TestEveryConfigFieldReachesTheModel)
+# B4.3, D-76: and ackSeen, the acknowledgement's wording seen, which Config.PropagationAck now gives the map model (design MS-1)
 modes/tty/testdata/model-from-config.golden

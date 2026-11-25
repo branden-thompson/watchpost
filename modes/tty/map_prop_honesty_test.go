@@ -44,7 +44,8 @@ func TestTheBestFrequencyIsNamed(t *testing.T) {
 			t.Errorf("%+v: the box says %q; want %q", c.l, got, c.long)
 		}
 	}
-	text := ttytest.StripANSI(strings.Join(pressMap(t, chartDash(t), "B").propChartLines(Dashboard{}.opts()), "\n"))
+	chart := pressMap(t, chartDash(t), "B")
+	text := ttytest.StripANSI(strings.Join(chart.mapModel.propChartLines(Dashboard{}.opts(), chart.mapEnv()), "\n"))
 	if !strings.Contains(text, "· best ~") && !strings.Contains(text, "· none serves") {
 		t.Errorf("no chart row names a best frequency:\n%s", text)
 	}
@@ -71,14 +72,14 @@ func TestEachRowShowsItsNearestStation(t *testing.T) {
 		}
 	}
 	d := pressMap(t, chartDash(t), "B")
-	c := &d.mapPane.propChart
+	c := &d.mapModel.mapPane.propChart
 	c.targets[0].Nearest = ionomaps.Nearest{Known: true, Km: 350}
 	c.targets[1].Nearest = ionomaps.Nearest{Known: true, Km: 2900}
-	text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 	if !strings.Contains(text, "▓ "+propanswers.Continents[0].Name) || !strings.Contains(text, "░ "+propanswers.Continents[1].Name) || !strings.Contains(text, "nearest station: ▓ <500 km") {
 		t.Errorf("the rows' shades or their key are not drawn:\n%s", text)
 	}
-	words := d.close().describeLinesAll()
+	words := mapModel.describeLinesAll(envOf(d.close()))
 	near, far := words[lineWith(words, propanswers.Continents[0].Name+": ")], words[lineWith(words, propanswers.Continents[1].Name+": ")]
 	if !strings.Contains(near, "nearest station ") || strings.Contains(near, "about as good as typical") || !strings.HasSuffix(far, "away, about as good as typical here, or worse.") {
 		t.Errorf("the words do not say each row's nearest station:\n%s\n%s", near, far)
@@ -122,27 +123,27 @@ func TestStatusShowsTheLiveAndTypicalOffset(t *testing.T) {
 func TestAnUnusualOffsetIsSaid(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
 	with := func(o ionomaps.Offset) { // the snapshot shown, its offset this one
-		s := *d.mapPane.propSnap
+		s := *d.mapModel.mapPane.propSnap
 		s.Offset = o
-		d.mapPane.propSnap = &s
+		d.mapModel.mapPane.propSnap = &s
 	}
 	with(ionomaps.Offset{LiveMHz: -1.4, TypicalMHz: -0.51, SpreadMHz: 0.23, Measured: true})
 	const unusual = "GloTEC unusually far from the stations now"
-	if chart := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, unusual) {
+	if chart := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n")); !strings.Contains(chart, unusual) {
 		t.Errorf("the chart's status label does not say it:\n%s", chart)
 	}
-	if block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, unusual) {
+	if block := ttytest.StripANSI(strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n")); !strings.Contains(block, unusual) {
 		t.Errorf("the rows under the map do not say it:\n%s", block)
 	}
-	if !strings.Contains(d.propStatusWords(), unusual) {
-		t.Errorf("the words do not say it: %q", d.propStatusWords())
+	if !strings.Contains(d.mapModel.propStatusWords(d.mapEnv()), unusual) {
+		t.Errorf("the words do not say it: %q", d.mapModel.propStatusWords(d.mapEnv()))
 	}
 	with(ionomaps.Offset{LiveMHz: -0.6, TypicalMHz: -0.51, SpreadMHz: 0.23, Measured: true})
-	if strings.Contains(d.propStatusWords(), unusual) {
+	if strings.Contains(d.mapModel.propStatusWords(d.mapEnv()), unusual) {
 		t.Error("an offset within two spreads is said unusual")
 	}
 	with(ionomaps.Offset{TypicalMHz: -0.51, SpreadMHz: 0.23, Corrected: true})
-	if block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "corrected by the typical offset") {
+	if block := ttytest.StripANSI(strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n")); !strings.Contains(block, "corrected by the typical offset") {
 		t.Errorf("the correction in use is not named:\n%s", block)
 	}
 }
@@ -155,20 +156,21 @@ func TestTheNoReadingsCorrectionIsASetting(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	if s.opts[0].CorrectNoReadings || noReadingsLabel(d.mapPropCorrect) != "GloTEC as is" {
+	if s.opts[0].CorrectNoReadings || noReadingsLabel(d.mapModel.mapPropCorrect) != "GloTEC as is" {
 		t.Fatalf("the first update was asked with %+v; GloTEC as is by default", s.opts[0])
 	}
-	d = d.togglePropCorrect()
-	d, again := d.armPropOptions()
+	d = d.withMap(d.mapModel.togglePropCorrect())
+	var again tea.Cmd
+	d.mapModel, again = d.mapModel.armPropOptions(d.mapEnv())
 	if again == nil {
 		t.Fatal("the Setting changed and the snapshot, asked without the correction, was not asked again")
 	}
 	if d = runProp(t, d, again); !s.opts[len(s.opts)-1].CorrectNoReadings {
 		t.Errorf("the update after choosing the correction was asked with %+v", s.opts[len(s.opts)-1])
 	}
-	d.mapPane.propSess.busy = false // the ask the Update loop set off has landed: only the kept correction decides
-	if _, more := d.armPropOptions(); more != nil || !d.mapPane.propSnapCorrect {
-		t.Errorf("a snapshot asked with the Setting's correction was asked again, or its correction not kept (%v)", d.mapPane.propSnapCorrect)
+	d.mapModel.mapPane.propSess.busy = false // the ask the Update loop set off has landed: only the kept correction decides
+	if _, more := d.mapModel.armPropOptions(d.mapEnv()); more != nil || !d.mapModel.mapPane.propSnapCorrect {
+		t.Errorf("a snapshot asked with the Setting's correction was asked again, or its correction not kept (%v)", d.mapModel.mapPane.propSnapCorrect)
 	}
 	if noReadingsKey(true) != "corrected" || noReadingsKey(false) != "" || noReadingsLabel(true) != "Typical offset" {
 		t.Error("the file's words or the row's do not round-trip")
@@ -183,11 +185,12 @@ func TestNoStationsIsASetting(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	if s.opts[0].NoStations || stationsLabel(d.mapPropNoGIRO) != "GIRO" || !strings.Contains(stationsNote(false), "non-commercial") {
+	if s.opts[0].NoStations || stationsLabel(d.mapModel.mapPropNoGIRO) != "GIRO" || !strings.Contains(stationsNote(false), "non-commercial") {
 		t.Fatalf("the first update was asked with %+v; GIRO asked by default, its terms beside the row", s.opts[0])
 	}
-	d = d.togglePropStations()
-	d, again := d.armPropOptions()
+	d = d.withMap(d.mapModel.togglePropStations())
+	var again tea.Cmd
+	d.mapModel, again = d.mapModel.armPropOptions(d.mapEnv())
 	if again == nil {
 		t.Fatal("the Setting changed and the snapshot, asked with GIRO, was not asked again")
 	}
@@ -207,8 +210,8 @@ func TestTheRefreshSettingStatesItsCost(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	if d.propRefreshLabel() != "Hourly" || d.mapPane.propSess.tickEvery != time.Hour {
-		t.Fatalf("the Setting starts at %q, its tick %v", d.propRefreshLabel(), d.mapPane.propSess.tickEvery)
+	if d.mapModel.propRefreshLabel() != "Hourly" || d.mapModel.mapPane.propSess.tickEvery != time.Hour {
+		t.Fatalf("the Setting starts at %q, its tick %v", d.mapModel.propRefreshLabel(), d.mapModel.mapPane.propSess.tickEvery)
 	}
 	for _, want := range []struct {
 		label, note string
@@ -218,13 +221,13 @@ func TestTheRefreshSettingStatesItsCost(t *testing.T) {
 		{"On demand (U)", "about 2.6 MB each time", 0},
 		{"Hourly", "up to 3.3 MB an hour", time.Hour},
 	} {
-		d = d.cyclePropRefresh(true)
+		d = d.withMap(d.mapModel.cyclePropRefresh(true))
 		var tick bool
-		if d, cmd = d.armPropRefresh(); cmd != nil {
+		if d.mapModel, cmd = d.mapModel.armPropRefresh(d.mapEnv()); cmd != nil {
 			tick = true
 		}
-		if d.propRefreshLabel() != want.label || !strings.Contains(propRefreshNote(d.mapPropRefresh), want.note) || d.mapPane.propSess.tickEvery != want.every || tick != (want.every > 0) {
-			t.Errorf("%s: the row says %q, costs %q, ticks every %v (a tick set: %v)", want.label, d.propRefreshLabel(), propRefreshNote(d.mapPropRefresh), d.mapPane.propSess.tickEvery, tick)
+		if d.mapModel.propRefreshLabel() != want.label || !strings.Contains(propRefreshNote(d.mapModel.mapPropRefresh), want.note) || d.mapModel.mapPane.propSess.tickEvery != want.every || tick != (want.every > 0) {
+			t.Errorf("%s: the row says %q, costs %q, ticks every %v (a tick set: %v)", want.label, d.mapModel.propRefreshLabel(), propRefreshNote(d.mapModel.mapPropRefresh), d.mapModel.mapPane.propSess.tickEvery, tick)
 		}
 	}
 	if propRefreshByKey("every-10-min") != refreshEvery10 || propRefreshByKey("hourly") != refreshHourly || propRefreshByKey("nonsense") != refreshHourly || propRefreshKey(refreshOnDemand) != "on-demand" || propRefreshKey(refreshHourly) != "" {
@@ -280,11 +283,11 @@ func TestTheConsolePropagationModeHonoursTheSharedSettings(t *testing.T) {
 	}
 	s := &seam{answer: PropagationResult{Snapshot: stationsSnap(0, ionomaps.Fresh)}}
 	d := propDash(t, s, true)
-	d.surface, d.mapPropCorrect, d.mapPropRefresh = SurfaceBroadcaster, true, refreshHourly
+	d.surface, d.mapModel.mapPropCorrect, d.mapModel.mapPropRefresh = SurfaceBroadcaster, true, refreshHourly
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
-	if !s.opts[0].CorrectNoReadings || d.mapPane.propSess.tickEvery != time.Hour {
-		t.Errorf("on the console the update was asked with %+v and ticks every %v", s.opts[0], d.mapPane.propSess.tickEvery)
+	if !s.opts[0].CorrectNoReadings || d.mapModel.mapPane.propSess.tickEvery != time.Hour {
+		t.Errorf("on the console the update was asked with %+v and ticks every %v", s.opts[0], d.mapModel.mapPane.propSess.tickEvery)
 	}
 }
 
@@ -293,10 +296,10 @@ func TestTheConsolePropagationModeHonoursTheSharedSettings(t *testing.T) {
 // chosen there gives the console's map the words in its place.
 func TestInsteadOfTheMapIsShared(t *testing.T) {
 	d := stationMap(t, Config{MapDescription: "instead"})
-	if d.mapDesc != mapDescInstead {
-		t.Fatalf("the console's map does not hold the shared Setting: %v", d.mapDesc)
+	if d.mapModel.mapDesc != mapDescInstead {
+		t.Fatalf("the console's map does not hold the shared Setting: %v", d.mapModel.mapDesc)
 	}
-	if d.mapPicture() {
+	if d.mapModel.mapPicture(d.mapEnv()) {
 		t.Error("with \"Instead of the map\" chosen the console's map still draws its picture")
 	}
 	if !d.shownOnSurface(rowMapDesc) {
@@ -331,13 +334,13 @@ func TestTheAgeIsTheOldestInputs(t *testing.T) {
 		{ageSnap(now, 40*time.Minute, 10*time.Minute), "data 40 min old"},
 		{ageSnap(now, 20*time.Second, 0), "data just in"},
 	} {
-		if got, _, _ := d.propAge(c.snap); got != c.says {
+		if got, _, _ := d.mapModel.propAge(c.snap, d.mapEnv()); got != c.says {
 			t.Errorf("%v grid, %v reading: %q; want %q", now.Sub(c.snap.Inputs.GloTECValid), now.Sub(c.snap.Inputs.OldestReading), got, c.says)
 		}
 	}
 	clim := ageSnap(now, 25*time.Minute, 0)
 	clim.Background.FoF2 = ionomaps.Climatology
-	if got, _, _ := d.propAge(clim); got != "climatology" {
+	if got, _, _ := d.mapModel.propAge(clim, d.mapEnv()); got != "climatology" {
 		t.Errorf("the climatology alone is said %q", got)
 	}
 }
@@ -346,12 +349,12 @@ func TestTheAgeIsTheOldestInputs(t *testing.T) {
 // freshness tone, and in the words.
 func TestTheFieldsAgeIsAlwaysSaid(t *testing.T) {
 	d, _ := drawnDash(t)
-	words, age, _ := d.propAge(*d.mapPane.propSnap)
-	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.FreshnessTone(age)))) {
+	words, age, _ := d.mapModel.propAge(*d.mapModel.mapPane.propSnap, d.mapEnv())
+	if block := strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.FreshnessTone(age)))) {
 		t.Errorf("the mode line does not say %q on its tone:\n%s", words, ttytest.StripANSI(block))
 	}
-	if !strings.Contains(d.propStatusWords(), words) {
-		t.Errorf("the words do not say %q: %q", words, d.propStatusWords())
+	if !strings.Contains(d.mapModel.propStatusWords(d.mapEnv()), words) {
+		t.Errorf("the words do not say %q: %q", words, d.mapModel.propStatusWords(d.mapEnv()))
 	}
 }
 
@@ -364,16 +367,16 @@ func TestAStaleFieldIsSaidStale(t *testing.T) {
 	defer rendering.SetColorEnabledForTest(false)
 	d, _ := drawnDash(t)
 	old := ageSnap(d.now(), 2*time.Hour+5*time.Minute, 0)
-	d.mapPane.propSnap = &old
-	words, _, stale := d.propAge(old)
+	d.mapModel.mapPane.propSnap = &old
+	words, _, stale := d.mapModel.propAge(old, d.mapEnv())
 	if !stale || words != "STALE: data 2 h 5 min old" {
 		t.Fatalf("a field two hours old is said %q (stale %v)", words, stale)
 	}
-	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.AlertLabel))) {
+	if block := strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n"); !strings.Contains(block, render.Tint("("+words+")", render.Tok(render.AlertLabel))) {
 		t.Errorf("the mode line does not say it stale in the alert's tone:\n%s", ttytest.StripANSI(block))
 	}
-	if !strings.Contains(d.propStatusWords(), "STALE") {
-		t.Errorf("the words do not say it stale: %q", d.propStatusWords())
+	if !strings.Contains(d.mapModel.propStatusWords(d.mapEnv()), "STALE") {
+		t.Errorf("the words do not say it stale: %q", d.mapModel.propStatusWords(d.mapEnv()))
 	}
 }
 
@@ -395,10 +398,10 @@ func TestStaleFollowsTheRefresh(t *testing.T) {
 		{refreshOnDemand, 55 * time.Minute, false},
 		{refreshOnDemand, time.Hour + 5*time.Minute, true},
 	} {
-		d.mapPropRefresh = c.refresh
+		d.mapModel.mapPropRefresh = c.refresh
 		snap := ageSnap(d.now(), c.age, 0)
-		if words, _, stale := d.propAge(snap); stale != c.stale {
-			t.Errorf("%s, data %v old: said %q (stale %v); want stale %v", d.propRefreshLabel(), c.age, words, stale, c.stale)
+		if words, _, stale := d.mapModel.propAge(snap, d.mapEnv()); stale != c.stale {
+			t.Errorf("%s, data %v old: said %q (stale %v); want stale %v", d.mapModel.propRefreshLabel(), c.age, words, stale, c.stale)
 		}
 	}
 }
@@ -407,8 +410,8 @@ func TestStaleFollowsTheRefresh(t *testing.T) {
 // update that failed is said with the key that asks again.
 func TestAFailedFetchIsSaidWithItsPath(t *testing.T) {
 	d := propDash(t, &seam{}, true)
-	d.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
-	if w := d.propStatusWords(); !strings.Contains(w, "NOAA not reached") || !strings.Contains(w, "U refreshes now") {
+	d.mapModel.mapPane.propErr = errors.New("ionomaps: NOAA not reached")
+	if w := d.mapModel.propStatusWords(d.mapEnv()); !strings.Contains(w, "NOAA not reached") || !strings.Contains(w, "U refreshes now") {
 		t.Errorf("a failed update is said %q; with the key that asks again", w)
 	}
 }
@@ -421,15 +424,15 @@ func TestTheFallbackIsNamed(t *testing.T) {
 	d, _ := drawnDash(t)
 	s := ageSnap(d.now(), 0, 10*time.Minute)
 	s.Background.FoF2, s.Inputs.GloTECValid = ionomaps.Climatology, time.Time{}
-	d.mapPane.propSnap = &s
-	if w := d.propStatusWords(); !strings.Contains(w, "foF2 from the climatology: no GloTEC grid") {
+	d.mapModel.mapPane.propSnap = &s
+	if w := d.mapModel.propStatusWords(d.mapEnv()); !strings.Contains(w, "foF2 from the climatology: no GloTEC grid") {
 		t.Errorf("the climatology's foF2, with stations, is said %q", w)
 	}
-	if got := strings.Join(d.propBadges(false), " "); strings.Contains(got, "SWPC") {
+	if got := strings.Join(d.mapModel.propBadges(false), " "); strings.Contains(got, "SWPC") {
 		t.Errorf("no GloTEC grid fed the field and the badges are %q", got)
 	}
 	s.Inputs.Stations, s.Inputs.OldestReading = 0, time.Time{}
-	if block := ttytest.StripANSI(strings.Join(d.propBlock(d.scrubW()), "\n")); !strings.Contains(block, "(climatology)") {
+	if block := ttytest.StripANSI(strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n")); !strings.Contains(block, "(climatology)") {
 		t.Errorf("the climatology alone is not said on the mode line:\n%s", block)
 	}
 }

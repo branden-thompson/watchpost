@@ -50,27 +50,27 @@ type propSession struct {
 // another window, as the bands chart opened over it (D-339) - and its
 // acknowledgement closed (FR-4.2, D-81), and one at a time. The seam is
 // called in the command, never on the UI goroutine (FR-4.8).
-func (d Dashboard) askPropagation() (Dashboard, tea.Cmd) {
-	seam := d.mapHooks.PropagationUpdate
-	ready := seam != nil && !d.mapPane.propSess.busy && d.mapShown() && d.modal != modalPropAck && d.mapMode() == modePropagation
+func (mm mapModel) askPropagation(e mapEnv) (mapModel, tea.Cmd) {
+	seam := mm.mapHooks.PropagationUpdate
+	ready := seam != nil && !mm.mapPane.propSess.busy && e.Shown && e.Window != mapModalPropAck && mm.mapMode(e) == modePropagation
 	if !ready {
-		return d, nil
+		return mm, nil
 	}
-	if d.mapPane.propSess.ctx == nil {
-		d.mapPane.propSess.ctx, d.mapPane.propSess.cancel = context.WithCancel(context.Background())
+	if mm.mapPane.propSess.ctx == nil {
+		mm.mapPane.propSess.ctx, mm.mapPane.propSess.cancel = context.WithCancel(context.Background())
 	}
-	d.mapPane.propSess.busy = true
-	d.mapPane.gen++
-	ctx, gen, opts := d.mapPane.propSess.ctx, d.mapPane.propGen, d.propOptions()
-	return d, func() tea.Msg {
+	mm.mapPane.propSess.busy = true
+	mm.mapPane.gen++
+	ctx, gen, opts := mm.mapPane.propSess.ctx, mm.mapPane.propGen, mm.propOptions()
+	return mm, func() tea.Msg {
 		return propUpdatedMsg{gen: gen, res: <-seam(ctx, opts), correct: opts.CorrectNoReadings}
 	}
 }
 
 // propOptions are the update's options as the Settings stand: the reference
 // circuit's noise (D-187) and the no-readings correction (D-105).
-func (d Dashboard) propOptions() ionomaps.UpdateOptions {
-	return ionomaps.UpdateOptions{Noise: d.mapPropNoise, CorrectNoReadings: d.mapPropCorrect, NoStations: d.mapPropNoGIRO}
+func (mm mapModel) propOptions() ionomaps.UpdateOptions {
+	return ionomaps.UpdateOptions{Noise: mm.mapPropNoise, CorrectNoReadings: mm.mapPropCorrect, NoStations: mm.mapPropNoGIRO}
 }
 
 // propMade is the snapshot an answer is worked out from, as it was kept: its
@@ -95,8 +95,8 @@ func madeWith(s ionomaps.Snapshot, correct bool) ionomaps.UpdateOptions {
 // madeFromHeld is the key of answers worked out from s - the snapshot held,
 // or an hour ahead made from it: s's moment and noise, with the held
 // snapshot's build and its no-readings correction, which s does not carry.
-func (d Dashboard) madeFromHeld(s ionomaps.Snapshot) propMade {
-	return propMade{computed: s.Computed, built: d.mapPane.propBuilt, opts: madeWith(s, d.mapPane.propSnapCorrect)}
+func (mm mapModel) madeFromHeld(s ionomaps.Snapshot) propMade {
+	return propMade{computed: s.Computed, built: mm.mapPane.propBuilt, opts: madeWith(s, mm.mapPane.propSnapCorrect)}
 }
 
 // armPropOptions asks for the mode's update when the snapshot shown was made
@@ -104,87 +104,87 @@ func (d Dashboard) madeFromHeld(s ionomaps.Snapshot) propMade {
 // no-readings correction (D-105) or the stations (D-214) asked otherwise: go-ionomaps answers it
 // from what it holds, asking nothing. A changed Setting is so shown as soon
 // as the map is.
-func (d Dashboard) armPropOptions() (Dashboard, tea.Cmd) {
-	snap := d.mapPane.propSnap
-	if snap == nil || madeWith(*snap, d.mapPane.propSnapCorrect) == d.propOptions() {
-		return d, nil
+func (mm mapModel) armPropOptions(e mapEnv) (mapModel, tea.Cmd) {
+	snap := mm.mapPane.propSnap
+	if snap == nil || madeWith(*snap, mm.mapPane.propSnapCorrect) == mm.propOptions() {
+		return mm, nil
 	}
-	return d.askPropagation()
+	return mm.askPropagation(e)
 }
 
 // armPropRefresh sets the session's next tick by the refresh Setting when it
 // changed while the mode is open (D-120): hourly from every 10 minutes, or
 // none on demand; a chain set before it asks nothing.
-func (d Dashboard) armPropRefresh() (Dashboard, tea.Cmd) {
-	open := d.mapPane.propSess.ctx != nil && !d.mapPane.propSess.busy && d.mapPane.propSnap != nil
-	if !open || d.mapPane.propSess.tickEvery == d.mapPropRefresh.every() {
-		return d, nil
+func (mm mapModel) armPropRefresh(e mapEnv) (mapModel, tea.Cmd) {
+	open := mm.mapPane.propSess.ctx != nil && !mm.mapPane.propSess.busy && mm.mapPane.propSnap != nil
+	if !open || mm.mapPane.propSess.tickEvery == mm.mapPropRefresh.every() {
+		return mm, nil
 	}
-	return d.nextPropTick()
+	return mm.nextPropTick(e)
 }
 
 // stopPropagation ends the mode's session: its update and any find in
 // flight cancelled, a late result, answer or tick dropped. The last snapshot
 // is kept to show at once when the mode opens again.
-func (d Dashboard) stopPropagation() Dashboard {
-	if d.mapPane.propSess.cancel != nil {
-		d.mapPane.propSess.cancel()
+func (mm mapModel) stopPropagation(e mapEnv) mapModel {
+	if mm.mapPane.propSess.cancel != nil {
+		mm.mapPane.propSess.cancel()
 	}
-	d = d.dropFind() // a found place is not kept past the mode, nor one found after it (D-27)
-	d.mapPane.propSess = propSession{}
-	d.mapPane.propGen++
-	return d.markFound(nil) // a found place is not kept past the mode (D-27)
+	mm = mm.dropFind() // a found place is not kept past the mode, nor one found after it (D-27)
+	mm.mapPane.propSess = propSession{}
+	mm.mapPane.propGen++
+	return mm.markFound(nil, e) // a found place is not kept past the mode (D-27)
 }
 
 // applyPropUpdated keeps an update's result and sets the next refresh tick.
-func (d Dashboard) applyPropUpdated(v propUpdatedMsg) (Dashboard, tea.Cmd) {
-	if v.gen != d.mapPane.propGen {
-		return d, nil // a left session's
+func (mm mapModel) applyPropUpdated(v propUpdatedMsg, e mapEnv) (mapModel, tea.Cmd) {
+	if v.gen != mm.mapPane.propGen {
+		return mm, nil // a left session's
 	}
-	d.mapPane.propSess.busy = false
-	d.mapPane.gen++
+	mm.mapPane.propSess.busy = false
+	mm.mapPane.gen++
 	if propHasField(v.res.Snapshot) {
 		snap := v.res.Snapshot
-		same := d.mapPane.propSnap != nil && sameSnapshot(*d.mapPane.propSnap, d.mapPane.propSnapCorrect, snap, v.correct)
-		newlyDenied := snap.Inputs.GIRO == ionomaps.GIRODenied && (d.mapPane.propSnap == nil || d.mapPane.propSnap.Inputs.GIRO != ionomaps.GIRODenied)
+		same := mm.mapPane.propSnap != nil && sameSnapshot(*mm.mapPane.propSnap, mm.mapPane.propSnapCorrect, snap, v.correct)
+		newlyDenied := snap.Inputs.GIRO == ionomaps.GIRODenied && (mm.mapPane.propSnap == nil || mm.mapPane.propSnap.Inputs.GIRO != ionomaps.GIRODenied)
 		var was ionomaps.Inputs // the snapshot held's: a count is noted when it changes, never again for each snapshot of the hour (R3L-7)
-		if d.mapPane.propSnap != nil {
-			was = d.mapPane.propSnap.Inputs
+		if mm.mapPane.propSnap != nil {
+			was = mm.mapPane.propSnap.Inputs
 		}
-		d.mapPane.propSnap, d.mapPane.propSnapCorrect = &snap, v.correct
+		mm.mapPane.propSnap, mm.mapPane.propSnapCorrect = &snap, v.correct
 		if newlyDenied {
-			d.problem("Propagation: GIRO refused this host (a 401 or 403): it is not asked again for a day") // D-247, D-272: named once, as it begins
+			mm.problem("Propagation: GIRO refused this host (a 401 or 403): it is not asked again for a day", e) // D-247, D-272: named once, as it begins
 		}
 		if snap.Offset.Measured {
-			d.problem(propOffsetWords(snap.Offset)) // the diagnostics' record of each live offset (FR-5.4)
+			mm.problem(propOffsetWords(snap.Offset), e) // the diagnostics' record of each live offset (FR-5.4)
 		}
 		if snap.Inputs.Rejected > 0 && snap.Inputs.Rejected != was.Rejected {
-			d.problem(fmt.Sprintf("Propagation: GIRO's last burst sent %d rows or replies that were refused: past the range checks, unreadable, or from a station placed far from where it is", snap.Inputs.Rejected)) // counted, never on the field (FR-5.2)
+			mm.problem(fmt.Sprintf("Propagation: GIRO's last burst sent %d rows or replies that were refused: past the range checks, unreadable, or from a station placed far from where it is", snap.Inputs.Rejected), e) // counted, never on the field (FR-5.2)
 		}
 		if snap.Inputs.Implausible > 0 && snap.Inputs.Implausible != was.Implausible {
-			d.problem(fmt.Sprintf("Propagation: %d station readings were refused as implausible, their foF2 too far from the background to be believed (D-248, D-279)", snap.Inputs.Implausible))
+			mm.problem(fmt.Sprintf("Propagation: %d station readings were refused as implausible, their foF2 too far from the background to be believed (D-248, D-279)", snap.Inputs.Implausible), e)
 		}
 		if snap.Inputs.ImplausibleM > 0 && snap.Inputs.ImplausibleM != was.ImplausibleM {
-			d.problem(fmt.Sprintf("Propagation: %d station readings' M(3000)F2 was refused as implausible; their foF2 was used (D-248)", snap.Inputs.ImplausibleM))
+			mm.problem(fmt.Sprintf("Propagation: %d station readings' M(3000)F2 was refused as implausible; their foF2 was used (D-248)", snap.Inputs.ImplausibleM), e)
 		}
 		if !same { // a refresh answered too soon is the snapshot held: its answers and hours ahead stand (P-4)
-			d.mapPane.propBuilt++                                       // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)
-			d.mapPane.propAheadSnaps, d.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
+			mm.mapPane.propBuilt++                                        // a snapshot rebuilt at the same moment - the correction, the stations - is another (L-F3)
+			mm.mapPane.propAheadSnaps, mm.mapPane.propAheadAsked = nil, 0 // the hours ahead are the old snapshot's
 		}
 		if snap.Reason != ionomaps.StationsNext {
-			d.mapPane.propSess.applied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
+			mm.mapPane.propSess.applied++ // GIRO's stations, asked at once, complete the first answer (FR-3.6)
 		}
-		d.mapPane.propUpdatedAt = d.now()
+		mm.mapPane.propUpdatedAt = e.Now()
 	}
-	d.mapPane.propErr = v.res.Err
+	mm.mapPane.propErr = v.res.Err
 	if v.res.Err == nil && v.res.Snapshot.Reason == ionomaps.StationsNext {
-		nd, cmd := d.setProp().renderMap().askPropagation() // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
+		nd, cmd := mm.setProp(e).renderMap(e).askPropagation(e) // NOAA's field is shown; GIRO's stations at once (go-ionomaps D-63)
 		if cmd != nil {
 			return nd, cmd
 		}
-		return nd.nextPropTick()
+		return nd.nextPropTick(e)
 	}
-	return d.setProp().renderMap().nextPropTick()
+	return mm.setProp(e).renderMap(e).nextPropTick(e)
 }
 
 // sameSnapshot reports whether a snapshot is the one held: of the same moment
@@ -197,51 +197,51 @@ func sameSnapshot(held ionomaps.Snapshot, heldCorrect bool, got ionomaps.Snapsho
 // D-120), the one tick that asks: any set before it asks nothing, so one
 // chain of ticks runs however many updates were asked. On demand it sets
 // none: only the refresh-now key asks.
-func (d Dashboard) nextPropTick() (Dashboard, tea.Cmd) {
-	d.mapPane.propTickSeq++
-	every := d.mapPropRefresh.every()
-	d.mapPane.propSess.tickEvery = every
+func (mm mapModel) nextPropTick(e mapEnv) (mapModel, tea.Cmd) {
+	mm.mapPane.propTickSeq++
+	every := mm.mapPropRefresh.every()
+	mm.mapPane.propSess.tickEvery = every
 	if every == 0 {
-		return d, nil
+		return mm, nil
 	}
-	tick := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
-	return d, d.after(every, tick)
+	tick := propTickMsg{gen: mm.mapPane.propGen, seq: mm.mapPane.propTickSeq}
+	return mm, tickAfter(e.Ticks, every, tick)
 }
 
 // applyPropTick asks again on the refresh tick, a window over the map or not
 // (D-339): a chart left open refreshes with the map under it.
-func (d Dashboard) applyPropTick(v propTickMsg) (Dashboard, tea.Cmd) {
-	if v.gen != d.mapPane.propGen {
-		return d, nil
+func (mm mapModel) applyPropTick(v propTickMsg, e mapEnv) (mapModel, tea.Cmd) {
+	if v.gen != mm.mapPane.propGen {
+		return mm, nil
 	}
-	if v.seq != d.mapPane.propTickSeq {
-		return d, nil // a later tick is set
+	if v.seq != mm.mapPane.propTickSeq {
+		return mm, nil // a later tick is set
 	}
-	nd, cmd := d.askPropagation()
+	nd, cmd := mm.askPropagation(e)
 	if cmd != nil {
 		return nd, cmd
 	}
-	return d.nextPropTick()
+	return mm.nextPropTick(e)
 }
 
 // propStatusWords are the Propagation mode's status: asking, what the last
 // snapshot was made from and when, or why there is none - the library's
 // words, which say when it asks again (D-124).
-func (d Dashboard) propStatusWords() string {
-	snap, err := d.mapPane.propSnap, d.mapPane.propErr
+func (mm mapModel) propStatusWords(e mapEnv) string {
+	snap, err := mm.mapPane.propSnap, mm.mapPane.propErr
 	switch {
 	case snap != nil:
-		age, _, _ := d.propAge(*snap)
-		words := snapshotWords(*snap, d.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
-		if f := d.propFailedWords(); f != "" {
+		age, _, _ := mm.propAge(*snap, e)
+		words := snapshotWords(*snap, mm.mapPane.propLayer) + " · " + age // FR-5.1, FR-5.2
+		if f := mm.propFailedWords(); f != "" {
 			words = "Propagation · " + f + " · " + strings.TrimPrefix(words, "Propagation · ") // FR-5.2: a failed update first, over the field kept
 		}
 		return words
 	case errors.Is(err, context.DeadlineExceeded):
-		return "Propagation · NOAA did not answer in time · " + d.firstKey(actMapRefresh) + " refreshes now" // the words, never the context's error text
+		return "Propagation · NOAA did not answer in time · " + mm.firstKey(actMapRefresh) + " refreshes now" // the words, never the context's error text
 	case err != nil && !errors.Is(err, context.Canceled):
-		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ") + " · " + d.firstKey(actMapRefresh) + " refreshes now" // D-120: the key that asks again
-	case d.mapPane.propSess.busy:
+		return "Propagation · " + strings.TrimPrefix(err.Error(), "ionomaps: ") + " · " + mm.firstKey(actMapRefresh) + " refreshes now" // D-120: the key that asks again
+	case mm.mapPane.propSess.busy:
 		return "Propagation · asking NOAA for the newest grid"
 	}
 	return propagationStatus
@@ -266,17 +266,17 @@ func propOldestInput(s ionomaps.Snapshot) (time.Time, bool) {
 // "STALE: data 2 h 5 min old";
 // "climatology" with no measured input. The age is for the freshness tone,
 // zero for the climatology.
-func (d Dashboard) propAge(s ionomaps.Snapshot) (words string, age time.Duration, stale bool) {
+func (mm mapModel) propAge(s ionomaps.Snapshot, e mapEnv) (words string, age time.Duration, stale bool) {
 	oldest, ok := propOldestInput(s)
 	if !ok {
 		return "climatology", 0, false
 	}
-	age = max(d.now().Sub(oldest), 0)
+	age = max(e.Now().Sub(oldest), 0)
 	words = "data just in"
 	if age >= time.Minute {
 		words = "data " + spanWords(age) + " old"
 	}
-	if age > d.mapPropRefresh.staleAfter() {
+	if age > mm.mapPropRefresh.staleAfter() {
 		return "STALE: " + words, age, true
 	}
 	return words, age, false

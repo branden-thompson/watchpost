@@ -73,10 +73,10 @@ func AlertCategoryKey(c category.Category) (string, bool) {
 
 // alertCategoriesOff are the alert categories unchecked in the Overlays
 // menu, as the feed's ask says them (D-160).
-func (d Dashboard) alertCategoriesOff() []string {
+func (mm mapModel) alertCategoriesOff(e mapEnv) []string {
 	var off []string
 	for _, c := range AlertCategories() {
-		if !d.layerOn(AlertCategorySwitch(c.Key)) {
+		if !mm.layerOn(AlertCategorySwitch(c.Key), e) {
 			off = append(off, c.Key)
 		}
 	}
@@ -152,13 +152,25 @@ func mapCostLine(c MapCost, width int) []string {
 // refreshMapCost asks the app's estimate again, with the layers as chosen:
 // on opening the map or Settings, on the map's new data, and on a layer's
 // switch. The frame reads the answer; it never asks.
-func (d Dashboard) refreshMapCost() Dashboard {
-	if d.mapHooks.MapCost == nil {
-		return d
+func (mm mapModel) refreshMapCost(e mapEnv) mapModel {
+	if mm.mapHooks.MapCost == nil {
+		return mm
 	}
-	d.mapCost = d.mapHooks.MapCost(d.mapAsk(), d.layerOn)
-	return d
+	s := layerSwitches{mm: mm, e: e}
+	mm.mapCost = mm.mapHooks.MapCost(mm.mapAsk(e), s.on)
+	return mm
 }
+
+// layerSwitches is the layers' switches as the estimate reads them, the map
+// and what it is lent held together, so the hook is handed one method value
+// as before (0.19.6 design MS-10: no new escape).
+type layerSwitches struct {
+	mm mapModel
+	e  mapEnv
+}
+
+// on is whether layer key is drawn.
+func (s layerSwitches) on(key string) bool { return s.mm.layerOn(key, s.e) }
 
 // mapScaleMode is the scale the map opens at (FR-2.3). The region's bound is
 // not a Setting: every scale is held inside it (D-28).
@@ -217,9 +229,9 @@ func mapScaleByKey(key string) mapScaleMode {
 
 // cycleMapScale moves the scale's picker: region, state, county, in order of
 // closeness, and round again.
-func (d Dashboard) cycleMapScale(forward bool) Dashboard {
-	d.mapScale = cycleIn([]mapScaleMode{mapScaleRegion, mapScaleState, mapScaleCounty}, itself, d.mapScale, forward)
-	return d.uiTouched()
+func (mm mapModel) cycleMapScale(forward bool) (mapModel, mapWant) {
+	mm.mapScale = cycleIn([]mapScaleMode{mapScaleRegion, mapScaleState, mapScaleCounty}, itself, mm.mapScale, forward)
+	return mm.wantTouched()
 }
 
 // mapNearbyChoices are the nearby distances offered, in kilometres.
@@ -238,9 +250,9 @@ func mapNearbyByKm(km int) int {
 }
 
 // cycleNearby moves the nearby picker through the choices, and round again.
-func (d Dashboard) cycleNearby(forward bool) Dashboard {
-	d.mapNearbyKm = cycleIn(mapNearbyChoices, itself, d.mapNearbyKm, forward)
-	return d.uiTouched()
+func (mm mapModel) cycleNearby(forward bool) (mapModel, mapWant) {
+	mm.mapNearbyKm = cycleIn(mapNearbyChoices, itself, mm.mapNearbyKm, forward)
+	return mm.wantTouched()
 }
 
 // propRadiusChoices are the Propagation mode's near-vertical radii, km
@@ -260,9 +272,9 @@ func propRadiusByKm(km int) int {
 }
 
 // cyclePropRadius moves the near-vertical radius picker, and round again.
-func (d Dashboard) cyclePropRadius(forward bool) Dashboard {
-	d.mapPropRadiusKm = cycleIn(propRadiusChoices, itself, d.mapPropRadiusKm, forward)
-	return d.uiTouched()
+func (mm mapModel) cyclePropRadius(forward bool) (mapModel, mapWant) {
+	mm.mapPropRadiusKm = cycleIn(propRadiusChoices, itself, mm.mapPropRadiusKm, forward)
+	return mm.wantTouched()
 }
 
 // propNoiseChoices are the reference circuit's noise environments, quietest
@@ -307,18 +319,18 @@ func propNoiseLabel(n ionomaps.Noise) string {
 // cyclePropNoise moves the noise picker, and round again; the mode, if
 // open, asks for its snapshot with the new noise, which go-ionomaps answers
 // without a request (D-187).
-func (d Dashboard) cyclePropNoise(forward bool) Dashboard {
-	d.mapPropNoise = cycleIn(propNoiseChoices, itself, d.mapPropNoise, forward)
-	return d.uiTouched()
+func (mm mapModel) cyclePropNoise(forward bool) (mapModel, mapWant) {
+	mm.mapPropNoise = cycleIn(propNoiseChoices, itself, mm.mapPropNoise, forward)
+	return mm.wantTouched()
 }
 
 // propRadiusLabel is the radius in the units the description speaks.
-func (d Dashboard) propRadiusLabel() string { return d.distanceLabel(d.mapPropRadiusKm) }
+func (mm mapModel) propRadiusLabel(e mapEnv) string { return mm.distanceLabel(mm.mapPropRadiusKm, e) }
 
 // toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
-func (d Dashboard) toggleRadarSource() Dashboard {
-	d.mapRadarIEM = !d.mapRadarIEM
-	return d.uiTouched() // the next open asks for the source chosen
+func (mm mapModel) toggleRadarSource() (mapModel, mapWant) {
+	mm.mapRadarIEM = !mm.mapRadarIEM
+	return mm.wantTouched() // the next open asks for the source chosen
 }
 
 // radarAheadChoices are the radar loop's hours ahead offered (D-114).
@@ -362,9 +374,9 @@ func quakeFeedLabel(k string) string {
 }
 
 // cycleQuakeFeed moves the quakes picker, and round again.
-func (d Dashboard) cycleQuakeFeed(forward bool) Dashboard {
-	d.mapQuakeFeed = cycleIn(quakeFeeds, itself, d.mapQuakeFeed, forward)
-	return d.uiTouched()
+func (mm mapModel) cycleQuakeFeed(forward bool) (mapModel, mapWant) {
+	mm.mapQuakeFeed = cycleIn(quakeFeeds, itself, mm.mapQuakeFeed, forward)
+	return mm.wantTouched()
 }
 
 // uvCityChoices are the counts of cities UV asks EPA for (D-202).
@@ -388,15 +400,15 @@ func uvCitiesNote(n int) string {
 }
 
 // cycleUVCities moves the UV cities picker, and round again (D-202).
-func (d Dashboard) cycleUVCities(forward bool) Dashboard {
-	d.mapUVCities = cycleIn(uvCityChoices, itself, d.mapUVCities, forward)
-	return d.uiTouched()
+func (mm mapModel) cycleUVCities(forward bool) (mapModel, mapWant) {
+	mm.mapUVCities = cycleIn(uvCityChoices, itself, mm.mapUVCities, forward)
+	return mm.wantTouched()
 }
 
 // cycleRadarAhead moves the hours-ahead picker, and round again.
-func (d Dashboard) cycleRadarAhead(forward bool) Dashboard {
-	d.mapRadarAhead = cycleIn(radarAheadChoices, itself, d.mapRadarAhead, forward)
-	return d.uiTouched()
+func (mm mapModel) cycleRadarAhead(forward bool) (mapModel, mapWant) {
+	mm.mapRadarAhead = cycleIn(radarAheadChoices, itself, mm.mapRadarAhead, forward)
+	return mm.wantTouched()
 }
 
 // radarSourceKey is the file's word: "iem", or empty for MRMS, the default.
@@ -409,21 +421,21 @@ func radarSourceKey(iem bool) string {
 
 // radarSourceLabel is the row's words: MRMS by default, or IEM, which covers
 // the lower 48 alone.
-func (d Dashboard) radarSourceLabel() string {
-	if d.mapRadarIEM {
+func (mm mapModel) radarSourceLabel() string {
+	if mm.mapRadarIEM {
 		return "IEM (lower 48)"
 	}
 	return "MRMS"
 }
 
 // nearbyLabel is the distance in the units the description speaks.
-func (d Dashboard) nearbyLabel() string { return d.distanceLabel(d.mapNearbyKm) }
+func (mm mapModel) nearbyLabel(e mapEnv) string { return mm.distanceLabel(mm.mapNearbyKm, e) }
 
 // distanceLabel is a distance in kilometres as the description speaks it:
 // kilometres, or miles with the kilometres beside them.
-func (d Dashboard) distanceLabel(km int) string {
+func (mm mapModel) distanceLabel(km int, e mapEnv) string {
 	metric := strconv.Itoa(km) + " km"
-	if d.units != render.UnitF {
+	if e.Opts.Units != render.UnitF {
 		return metric
 	}
 	return strconv.Itoa(int(math.Round(units.MilesOf(float64(km))))) + " miles (" + metric + ")"
@@ -433,25 +445,25 @@ func (d Dashboard) distanceLabel(km int) string {
 // builders' default. A key the registry does not name is drawn. In the
 // Propagation mode no weather layer is (D-21, FR-1.4); the choices are kept
 // for the weather modes.
-func (d Dashboard) layerOn(key string) bool {
-	if d.mapMode() == modePropagation {
+func (mm mapModel) layerOn(key string, e mapEnv) bool {
+	if mm.mapMode(e) == modePropagation {
 		return false
 	}
-	if key == TemperatureLayer && d.mapPane.tempAuto && d.mapMode() == modeForecast {
+	if key == TemperatureLayer && mm.mapPane.tempAuto && mm.mapMode(e) == modeForecast {
 		return true // Forecast mode turned it on (D-103), its alone (D-104)
 	}
-	return d.chosen(key)
+	return mm.chosen(key, e)
 }
 
 // chosen is a layer as the listener chose it: its tick, inside its group.
 // mapMode reads the radar through it rather than through layerOn, which
 // would ask mapMode again - a cycle P10 forbids (W14, S-3); the radar is
 // never Forecast mode's own, so the answer is the same.
-func (d Dashboard) chosen(key string) bool {
-	if g, ok := layerGroup[key]; ok && !d.groupOn(g) {
+func (mm mapModel) chosen(key string, e mapEnv) bool {
+	if g, ok := layerGroup[key]; ok && !mm.groupOn(g) {
 		return false // its group disabled: drawn nowhere, its tick kept (D-143)
 	}
-	return d.ticked(key)
+	return mm.ticked(key, e)
 }
 
 // The menu's checkbox groups (D-141, D-143): each a switch of its own, which
@@ -470,8 +482,8 @@ var layerGroup = map[string]string{WindLayer: groupPoints, WaveLayer: groupPoint
 	RainLayer: groupPoints, FireLayer: groupHazards, QuakeLayer: groupHazards}
 
 // groupOn reports whether a group is enabled: on until switched off.
-func (d Dashboard) groupOn(group string) bool {
-	on, ok := choiceOf(d.mapLayerChoice, group)
+func (mm mapModel) groupOn(group string) bool {
+	on, ok := choiceOf(mm.mapLayerChoice, group)
 	return on || !ok
 }
 
@@ -487,9 +499,9 @@ const (
 var fireModes = []string{FireAll, FireNamed, FireHotspots}
 
 // fireMode is the Fire row's choice, All until another is chosen.
-func (d Dashboard) fireMode() string {
+func (mm mapModel) fireMode() string {
 	for _, m := range fireModes[1:] {
-		if chosenOn(d.mapLayerChoice, "fire:"+m) {
+		if chosenOn(mm.mapLayerChoice, "fire:"+m) {
 			return m
 		}
 	}
@@ -498,11 +510,11 @@ func (d Dashboard) fireMode() string {
 
 // ticked is a layer's own switch, its group aside: the listener's choice, or
 // the layer's default.
-func (d Dashboard) ticked(key string) bool {
-	if on, ok := choiceOf(d.mapLayerChoice, key); ok {
+func (mm mapModel) ticked(key string, e mapEnv) bool {
+	if on, ok := choiceOf(mm.mapLayerChoice, key); ok {
 		return on
 	}
-	for _, l := range d.cfg.MapLayers {
+	for _, l := range e.Layers {
 		if l.Key == key {
 			return l.On
 		}
@@ -526,21 +538,21 @@ func layerChoiceKey(choice map[string]bool) string {
 }
 
 // layerChoices are the choices as the file keeps them.
-func (d Dashboard) layerChoices() map[string]bool { return choicesOf(d.mapLayerChoice) }
+func (mm mapModel) layerChoices() map[string]bool { return choicesOf(mm.mapLayerChoice) }
 
 // toggleLayer switches the layer under the row's cursor, and asks the
 // estimate again.
-func (d Dashboard) toggleLayer() Dashboard {
-	layers := d.cfg.MapLayers
+func (mm mapModel) toggleLayer(layerAt int, e mapEnv) (mapModel, mapWant) {
+	layers := e.Layers
 	if len(layers) == 0 {
-		return d
+		return mm, mapWant{}
 	}
-	key := layers[min(d.setup.layerAt, len(layers)-1)].Key
-	choice := d.layerChoices()
+	key := layers[min(layerAt, len(layers)-1)].Key
+	choice := mm.layerChoices()
 	if choice == nil {
 		choice = map[string]bool{}
 	}
-	on := !d.ticked(key) // its own switch, whatever its group's (D-143)
+	on := !mm.ticked(key, e) // its own switch, whatever its group's (D-143)
 	choice[key] = on
 	if on && slices.Contains(oneTint, key) {
 		for _, other := range oneTint {
@@ -549,86 +561,91 @@ func (d Dashboard) toggleLayer() Dashboard {
 			}
 		}
 	}
-	d.mapLayerChoice = layerChoiceKey(choice)
-	return d.refreshMapCost().uiTouched()
+	mm.mapLayerChoice = layerChoiceKey(choice)
+	return mm.refreshMapCost(e).wantTouched()
 }
 
 // stepLayer moves the layers row's cursor a layer up or down: false at
 // either end, where ↑↓ leave the group.
-func (d Dashboard) stepLayer(down bool) (Dashboard, bool) {
-	n := len(d.cfg.MapLayers)
-	at := min(d.setup.layerAt, max(n-1, 0))
+func (mm mapModel) stepLayer(down bool, layerAt int, e mapEnv) (mapWant, bool) {
+	n := len(e.Layers)
+	at := min(layerAt, max(n-1, 0))
+	var w mapWant
 	switch {
 	case down && at < n-1:
-		d.setup.layerAt = at + 1
+		w.Settings.LayerAt = at + 1
 	case !down && at > 0:
-		d.setup.layerAt = at - 1
+		w.Settings.LayerAt = at - 1
 	default:
-		return d, false
+		return w, false
 	}
-	return d.settled(), true
+	w.Settings.LayerAtSet, w.Settings.Settled = true, true
+	return w, true
 }
 
 // feedForLayers is the feed with the layers switched off taken out: their
 // overlays, an alert category's when it is off, and - with the alert areas
 // off - the notes and the missing zones that speak for them.
-func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
+func (mm mapModel) feedForLayers(f MapFeed, e mapEnv) MapFeed {
 	var out MapFeed
 	for _, o := range f.Overlays {
 		key, rest, _ := strings.Cut(o.ID, "/")
-		if !d.layerOn(key) {
+		if !mm.layerOn(key, e) {
 			continue
 		}
-		if cat, _, ok := strings.Cut(rest, "/"); ok && key == AlertLayer && !d.layerOn(AlertCategorySwitch(cat)) {
+		if cat, _, ok := strings.Cut(rest, "/"); ok && key == AlertLayer && !mm.layerOn(AlertCategorySwitch(cat), e) {
 			continue // its category is switched off (D-80)
 		}
 		out.Overlays = append(out.Overlays, o)
 	}
-	if d.layerOn(AlertLayer) {
+	if mm.layerOn(AlertLayer, e) {
 		out.Notes, out.Undrawn, out.InMissing, out.InView, out.AlertsFailed = f.Notes, f.Undrawn, f.InMissing, f.InView, f.AlertsFailed
 	}
 	return out // the feed's times are not passed on: its overlays are drawn on every frame of both modes (D-275)
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
-func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
-	switch d.setup.focus {
+func (mm mapModel) mapPrefArrow(forward bool, focus setupRowID, layerAt int, e mapEnv) (mapModel, mapWant, bool) {
+	var w mapWant
+	switch focus {
 	case rowMapScale:
-		return d.cycleMapScale(forward), true
+		mm, w = mm.cycleMapScale(forward)
 	case rowMapColours:
-		return d.cycleMapDepth(forward), true
+		mm, w = mm.cycleMapDepth(forward)
 	case rowMapPlayback:
-		return d.cycleMapPlayback(forward), true
+		mm, w = mm.cycleMapPlayback(forward)
 	case rowMapNearby:
-		return d.cycleNearby(forward), true
+		mm, w = mm.cycleNearby(forward)
 	case rowMapRadarSource:
-		return d.toggleRadarSource(), true
+		mm, w = mm.toggleRadarSource()
 	case rowMapTempSource:
-		return d.toggleTempSource(), true
+		mm, w = mm.toggleTempSource()
 	case rowMapRainDetail:
-		return d.toggleRainDetail(), true
+		mm, w = mm.toggleRainDetail()
 	case rowMapUVCities:
-		return d.cycleUVCities(forward), true
+		mm, w = mm.cycleUVCities(forward)
 	case rowMapPropRadius:
-		return d.cyclePropRadius(forward), true
+		mm, w = mm.cyclePropRadius(forward)
 	case rowMapPropNoise:
-		return d.cyclePropNoise(forward), true
+		mm, w = mm.cyclePropNoise(forward)
 	case rowMapPropRefresh:
-		return d.cyclePropRefresh(forward), true
+		mm, w = mm.cyclePropRefresh(forward)
 	case rowMapPropReadings:
-		return d.togglePropCorrect(), true
+		mm, w = mm.togglePropCorrect()
 	case rowMapPropStations:
-		return d.togglePropStations(), true
+		mm, w = mm.togglePropStations()
 	case rowMapRadarAhead:
-		return d.cycleRadarAhead(forward), true
+		mm, w = mm.cycleRadarAhead(forward)
 	case rowMapQuakes:
-		return d.cycleQuakeFeed(forward), true
+		mm, w = mm.cycleQuakeFeed(forward)
 	case rowMapDetailLevel:
-		return d.cycleDetailLevel(forward).uiTouched(), true
+		mm, w = mm.cycleDetailLevel(forward, e).wantTouched()
 	case rowMapLayers:
-		return d.toggleLayer(), true // ←→ switch it, as every Enabled / Disabled picker does
+		mm, w = mm.toggleLayer(layerAt, e) // ←→ switch it, as every Enabled / Disabled picker does
+	default:
+		return mm.toggleDetailRow(focus, e)
 	}
-	return d.toggleDetailRow(d.setup.focus)
+	return mm, w, true
 }
 
 // MapAsk is what the map's feed and its estimate are asked with (0.18.0): the
@@ -699,10 +716,10 @@ const (
 // holds its alerts in the recent snapshot, and without it they are not
 // drawn (UAT-1 U1-14). The watchlist's snapshot is shared, so the selected
 // place joins a copy.
-func (d Dashboard) mapAsk() MapAsk {
-	place := d.mapPlace()
-	snap := d.snap
-	if place != nil && d.selected >= d.numPriority() {
+func (mm mapModel) mapAsk(e mapEnv) MapAsk {
+	place := mm.mapPlace(e)
+	snap := e.Pick.Snap
+	if place != nil && e.Pick.Selected >= e.Pick.priorityRows() {
 		joined := snapshot.Snapshot{}
 		if snap != nil {
 			joined = *snap
@@ -710,8 +727,8 @@ func (d Dashboard) mapAsk() MapAsk {
 		joined.Locations = append(append([]snapshot.Location(nil), joined.Locations...), *place)
 		snap = &joined
 	}
-	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: d.mapMode() == modeForecast, TempNDFD: d.mapTempNDFD, RainFull: d.mapRainFull, UVCities: d.mapUVCities, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+	return MapAsk{Snap: snap, Place: place, View: mm.viewBox(mm.mapBodySize(e)), Region: mm.mapPane.region.Name, RadarIEM: mm.mapRadarIEM,
+		Forecast: mm.mapMode(e) == modeForecast, TempNDFD: mm.mapTempNDFD, RainFull: mm.mapRainFull, UVCities: mm.mapUVCities, RadarAhead: mm.mapRadarAhead, QuakeFeed: mm.mapQuakeFeed, Clock: e.Opts.Clock, Buoys: mm.layerOn(BuoyLayer, e), Tides: mm.layerOn(TideLayer, e), Fire: mm.layerOn(FireLayer, e), Quakes: mm.layerOn(QuakeLayer, e), AlertsOff: !mm.layerOn(AlertLayer, e), AlertCategoriesOff: mm.alertCategoriesOff(e), UV: mm.layerOn(UVLayer, e), Air: mm.layerOn(AirLayer, e), FireMode: mm.fireMode(), Fahrenheit: e.Opts.Units == render.UnitF, Anchor: mm.tempAnchor(e)}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the
@@ -725,10 +742,11 @@ func detailRowLayer(id setupRowID) (mapDetailLayer, bool) {
 
 // toggleDetailRow switches the focused detail row's layer: two states, so
 // space and either arrow are "the other one", as every on/off row is.
-func (d Dashboard) toggleDetailRow(id setupRowID) (Dashboard, bool) {
+func (mm mapModel) toggleDetailRow(id setupRowID, e mapEnv) (mapModel, mapWant, bool) {
 	l, ok := detailRowLayer(id)
 	if !ok {
-		return d, false
+		return mm, mapWant{}, false
 	}
-	return d.setDetail(l.key, !d.detailOn(l.key)).uiTouched(), true
+	mm, w := mm.setDetail(l.key, !mm.detailOn(l.key), e).wantTouched()
+	return mm, w, true
 }

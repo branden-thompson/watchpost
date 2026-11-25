@@ -12,9 +12,9 @@ func TestALayersNotesShowWhileItIsOn(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: []MapLayer{
 		{Key: AirLayer, Label: "Air quality", On: true}, {Key: UVLayer, Label: "UV", On: false},
 		{Key: TemperatureLayer, Label: "Temperature", On: false}, {Key: FeelsLayer, Label: "Feels like", On: false}, {Key: RadarLayer, Label: "Radar", On: true}}}) // Radar mode: temperature is the listener's alone (D-103)
-	d.mapPane.temp.Notes = []string{"temperature's note"}
-	d.mapPane.temp.LayerNotes = map[string][]string{AirLayer: {"air's note"}, UVLayer: {"uv's note"}}
-	got := d.mapNotesNow()
+	d.mapModel.mapPane.temp.Notes = []string{"temperature's note"}
+	d.mapModel.mapPane.temp.LayerNotes = map[string][]string{AirLayer: {"air's note"}, UVLayer: {"uv's note"}}
+	got := d.mapModel.mapNotesNow(d.mapEnv())
 	if !slices.Contains(got, "air's note") {
 		t.Errorf("Air quality is on and its note is not shown: %v", got)
 	}

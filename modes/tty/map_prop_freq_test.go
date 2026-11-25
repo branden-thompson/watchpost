@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
 	"github.com/branden-thompson/watchpost/modes/tty/internal/ttytest"
@@ -24,8 +25,9 @@ func enterFreq(t *testing.T, d Dashboard, text string) Dashboard {
 	}
 	m, _ := d.Update(mapKeyMsg(t, "enter"))
 	d = m.(Dashboard)
-	d.mapPane.propReachAsked = propReachKey{} // the harness dropped the command the Update armed: ask again
-	d, cmd := d.armPropReach()
+	d.mapModel.mapPane.propReachAsked = propReachKey{} // the harness dropped the command the Update armed: ask again
+	var cmd tea.Cmd
+	d.mapModel, cmd = d.mapModel.armPropReach(d.mapEnv())
 	if cmd != nil {
 		m, _ = d.Update(cmd())
 		d = m.(Dashboard)
@@ -39,10 +41,10 @@ func enterFreq(t *testing.T, d Dashboard, text string) Dashboard {
 // MHz skips the place's own area and reaches 3,000 km away.
 func TestYourFrequencyDrawsItsReach(t *testing.T) {
 	d := enterFreq(t, chartDash(t), "14.2")
-	if d.modal != modalMap || d.mapPane.propFreqMHz != 14.2 {
-		t.Fatalf("after Enter: window %v, %v MHz held; want the map, 14.2", d.modal, d.mapPane.propFreqMHz)
+	if d.modal != modalMap || d.mapModel.mapPane.propFreqMHz != 14.2 {
+		t.Fatalf("after Enter: window %v, %v MHz held; want the map, 14.2", d.modal, d.mapModel.mapPane.propFreqMHz)
 	}
-	o, ok := d.mapPane.propGiven["propagation/reach"]
+	o, ok := d.mapModel.mapPane.propGiven["propagation/reach"]
 	if !ok || o.Grid == nil || len(o.Grid.Type.Breaks) != 1 || o.Grid.Type.Preset != "" || !o.Grid.Type.Edge {
 		t.Fatalf("the reach handed in is %+v (%v); want a two-class host field asked for as its edge (go-tuiMaps v0.3.0 Type.Edge)", o.Grid, ok)
 	}
@@ -70,27 +72,27 @@ func TestYourFrequencyDrawsItsReach(t *testing.T) {
 // clears it, the reach taken off and the row blank again.
 func TestYourFrequencyIsSaid(t *testing.T) {
 	d := enterFreq(t, chartDash(t), "14.2")
-	row := ttytest.StripANSI(d.propBlock(d.scrubW())[2])
+	row := ttytest.StripANSI(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())[2])
 	for _, want := range []string{"YOUR FREQUENCY 14.200 MHz", "skip zone to ~", "F change"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("the block's frequency row %q does not say %q", row, want)
 		}
 	}
-	if words := strings.Join(d.describeLinesAll(), " "); !strings.Contains(words, "Your frequency: 14.200 megahertz held; its reach: skip zone to about ") {
+	if words := strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), " "); !strings.Contains(words, "Your frequency: 14.200 megahertz held; its reach: skip zone to about ") {
 		t.Errorf("without the picture the frequency is not said: %q", words)
 	}
-	if chart := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); !strings.Contains(chart, "YOUR FREQUENCY 14.200 MHz") {
+	if chart := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n")); !strings.Contains(chart, "YOUR FREQUENCY 14.200 MHz") {
 		t.Errorf("the chart does not say the frequency held:\n%s", chart)
 	}
 	d = enterFreq(t, d, "40 m")
-	if d.mapPane.propFreqLabel != "40m" || d.mapPane.propFreqMHz != 7 {
-		t.Errorf("\"40 m\" is held as %q at %v MHz; want the band 40m at its lower edge, 7", d.mapPane.propFreqLabel, d.mapPane.propFreqMHz)
+	if d.mapModel.mapPane.propFreqLabel != "40m" || d.mapModel.mapPane.propFreqMHz != 7 {
+		t.Errorf("\"40 m\" is held as %q at %v MHz; want the band 40m at its lower edge, 7", d.mapModel.mapPane.propFreqLabel, d.mapModel.mapPane.propFreqMHz)
 	}
 	d = enterFreq(t, d, "")
-	if _, drawn := d.mapPane.propGiven["propagation/reach"]; drawn || d.mapPane.propFreqMHz != 0 {
+	if _, drawn := d.mapModel.mapPane.propGiven["propagation/reach"]; drawn || d.mapModel.mapPane.propFreqMHz != 0 {
 		t.Error("an empty Enter left the frequency held or its reach drawn")
 	}
-	if row := ttytest.StripANSI(d.propBlock(d.scrubW())[2]); strings.TrimSpace(row) != "" {
+	if row := ttytest.StripANSI(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())[2]); strings.TrimSpace(row) != "" {
 		t.Errorf("with no frequency held the row is %q; D-163's blank row", row)
 	}
 }
@@ -109,19 +111,19 @@ func TestABadFrequencyIsSaidNotGuessed(t *testing.T) {
 		}
 		m, _ := d.Update(mapKeyMsg(t, "enter"))
 		d = m.(Dashboard)
-		text := ttytest.StripANSI(strings.Join(d.propFreqLines(d.opts()), "\n"))
+		text := ttytest.StripANSI(strings.Join(d.mapModel.propFreqLines(d.opts()), "\n"))
 		if d.modal != modalPropFreq || !strings.Contains(text, errFreqWords) {
 			t.Errorf("%q: window %v, the entry says:\n%s", bad, d.modal, text)
 		}
 		if strings.Contains(strings.ReplaceAll(text, "MHz or band: "+bad, ""), bad) {
 			t.Errorf("%q: the refusal quotes what was typed:\n%s", bad, text)
 		}
-		if d.mapPane.propFreqMHz != 7.188 {
-			t.Errorf("%q: the frequency held moved to %v", bad, d.mapPane.propFreqMHz)
+		if d.mapModel.mapPane.propFreqMHz != 7.188 {
+			t.Errorf("%q: the frequency held moved to %v", bad, d.mapModel.mapPane.propFreqMHz)
 		}
 		m, _ = d.Update(mapKeyMsg(t, "esc"))
-		if back := m.(Dashboard); back.modal != modalMap || back.mapPane.propFreqMHz != 7.188 {
-			t.Errorf("%q: Esc left window %v holding %v MHz", bad, back.modal, back.mapPane.propFreqMHz)
+		if back := m.(Dashboard); back.modal != modalMap || back.mapModel.mapPane.propFreqMHz != 7.188 {
+			t.Errorf("%q: Esc left window %v holding %v MHz", bad, back.modal, back.mapModel.mapPane.propFreqMHz)
 		}
 	}
 }
@@ -163,21 +165,21 @@ func TestHourStepsAskOneReachAtATime(t *testing.T) {
 	for range 3 {
 		d = stepAhead(t, d, "shift+right") // each hour worked out, as its command does
 	}
-	if d.mapPane.propReachAsked != d.mapPane.propReach.key {
+	if d.mapModel.mapPane.propReachAsked != d.mapModel.mapPane.propReach.key {
 		t.Error("a reach was asked while the hours were still stepping")
 	}
 	d = settled(t, d) // the hour stands: the Update asks its reach
-	first, _ := d.propReachWanted()
-	if d.mapPane.propReachAsked != first {
+	first, _ := d.mapModel.propReachWanted(d.mapEnv())
+	if d.mapModel.mapPane.propReachAsked != first {
 		t.Fatal("the hour stood and its reach was not asked")
 	}
 	d = settled(t, stepAhead(t, d, "shift+right"))
-	latest, _ := d.propReachWanted()
-	if d.mapPane.propReachAsked != first {
+	latest, _ := d.mapModel.propReachWanted(d.mapEnv())
+	if d.mapModel.mapPane.propReachAsked != first {
 		t.Error("a second reach was asked while the first was in flight")
 	}
 	m, _ := d.Update(propReachMsg{reach: propReach{key: first}}) // the first answered, its hour now passed
-	if d = m.(Dashboard); d.mapPane.propReachAsked != latest {
-		t.Errorf("once the first was answered, the latest hour's reach was not asked: asked %+v", d.mapPane.propReachAsked.hour)
+	if d = m.(Dashboard); d.mapModel.mapPane.propReachAsked != latest {
+		t.Errorf("once the first was answered, the latest hour's reach was not asked: asked %+v", d.mapModel.mapPane.propReachAsked.hour)
 	}
 }

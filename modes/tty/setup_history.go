@@ -68,8 +68,9 @@ func (d Dashboard) historyLines(o render.Opts) ([]string, int) {
 	focus := d.setup.focus
 	// AS NARROW AS THEIR VALUES: the group's own widths, so a picker as wide as
 	// the map's does not widen the Data tab.
-	lines, at = d.mapRowW(o, lines, at, rowHistoryHours, "Hourly detail -", d.mapPickerW(o, rowHistoryHours, historyHourChoices[historyAt(historyHourChoices, d.setup.history.Hours)].label, historyValueW), historyLabelW)
-	lines, at = d.mapRowW(o, lines, at, rowHistoryTrends, "Trends -", d.mapPickerW(o, rowHistoryTrends, historyTrendChoices[historyAt(historyTrendChoices, d.setup.history.Trends)].label, historyValueW), historyLabelW)
+	sv := d.mapSettings()
+	lines, at = d.mapModel.mapRowW(o, sv, lines, at, rowHistoryHours, "Hourly detail -", d.mapModel.mapPickerW(o, sv, rowHistoryHours, historyHourChoices[historyAt(historyHourChoices, d.setup.history.Hours)].label, historyValueW), historyLabelW)
+	lines, at = d.mapModel.mapRowW(o, sv, lines, at, rowHistoryTrends, "Trends -", d.mapModel.mapPickerW(o, sv, rowHistoryTrends, historyTrendChoices[historyAt(historyTrendChoices, d.setup.history.Trends)].label, historyValueW), historyLabelW)
 	if focus == rowHistoryClear {
 		at = len(lines)
 	}
@@ -114,7 +115,7 @@ func (d Dashboard) confirmClearHistory(key tea.KeyPressMsg) (Dashboard, tea.Cmd)
 // applyHistoryCleared says, beside the row, that it went.
 func (d Dashboard) applyHistoryCleared(v historyClearedMsg) Dashboard {
 	note, tone := historyClearedNote, noticeDone
-	if partly, ok := d.partlyCleared("Clear history", leafErrors(v.err)); ok {
+	if partly, ok := d.mapModel.partlyCleared("Clear history", leafErrors(v.err), d.mapEnv()); ok {
 		note, tone = partly, noticeFail
 	}
 	d.setup.note, d.setup.noteRow, d.setup.noteTone = note, rowHistoryClear, tone

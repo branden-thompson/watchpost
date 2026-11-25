@@ -26,28 +26,28 @@ var propertyRuns = 200
 // the window's inputs: its size, bound, view, units, nearby and overlays.
 func secondMapLines(t *testing.T, d Dashboard, feed func(context.Context, MapAsk) MapFeed) []string {
 	t.Helper()
-	size := d.mapBodySize()
+	size := d.mapModel.mapBodySize(d.mapEnv())
 	m2, err := embeddedMap(size)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer m2.Close()
 	d2 := d
-	d2.mapPane.m, d2.mapPane.calls, d2.mapPane.where = m2, nil, nil
-	d2.boundMap()
-	centre, zoom := d.mapPane.m.Centre()
+	d2.mapModel.mapPane.m, d2.mapModel.mapPane.calls, d2.mapModel.mapPane.where = m2, nil, nil
+	d2.mapModel.boundMap(d2.mapEnv())
+	centre, zoom := d.mapModel.mapPane.m.Centre()
 	miles := d.units != 0
 	for _, step := range []func() error{
 		func() error { return m2.Zoom(zoom) },
 		func() error { return m2.Recentre(centre) },
-		func() error { return m2.SetNearby(float64(d.mapNearbyKm)) },
+		func() error { return m2.SetNearby(float64(d.mapModel.mapNearbyKm)) },
 	} {
 		if err := step(); err != nil {
 			t.Fatal(err)
 		}
 	}
 	m2.Units(miles, miles)
-	for _, o := range d.feedForLayers(feed(context.Background(), d.mapAsk())).Overlays {
+	for _, o := range d.mapModel.feedForLayers(feed(context.Background(), d.mapModel.mapAsk(d.mapEnv())), d.mapEnv()).Overlays {
 		if _, err := m2.Set(o); err != nil {
 			t.Fatal(err)
 		}
@@ -97,20 +97,20 @@ func TestThePrintedMapIsAFreshRender(t *testing.T) {
 			case k < 9:
 				msg = SnapshotMsg{Snap: placedSnap()}
 			default:
-				msg = mapTickMsg{at: d.mapPane.tickAt}
+				msg = mapTickMsg{at: d.mapModel.mapPane.tickAt}
 			}
 			trail = append(trail, typeName(msg))
 			m, _ := d.Update(msg)
 			d = m.(Dashboard)
 		}
 		d = feedAndSettle(t, d)
-		if !d.mapFits() {
+		if !d.mapModel.mapFits(d.mapEnv()) {
 			continue // under the floor nothing is drawn (FR-1.4); the floor's own tests hold it
 		}
-		if want := secondMapLines(t, d, feed); !slices.Equal(d.mapPane.lines, want) {
-			t.Fatalf("run %d, after %v: the printed map is not a fresh render of the same inputs:\n%s", run, trail, lineDiff(d.mapPane.lines, want))
+		if want := secondMapLines(t, d, feed); !slices.Equal(d.mapModel.mapPane.lines, want) {
+			t.Fatalf("run %d, after %v: the printed map is not a fresh render of the same inputs:\n%s", run, trail, lineDiff(d.mapModel.mapPane.lines, want))
 		}
-		d.closeMap()
+		d.mapModel.closeMap()
 	}
 }
 

@@ -121,7 +121,7 @@ func setupCursor(o render.Opts, lines []string) (row, col int, ok bool) {
 func (d Dashboard) mapWordsCursor(lines []string) (row, col int, ok bool) {
 	under := -1
 	for i, l := range lines {
-		if d.mapPane.alertsOn && i+1 < len(lines) && strings.Contains(plaintext.StripSGR(l), "┌─ Description") {
+		if d.mapModel.mapPane.alertsOn && i+1 < len(lines) && strings.Contains(plaintext.StripSGR(l), "┌─ Description") {
 			if c, found := wordStart(lines[i+1]); found {
 				return i + 1, c, true
 			}

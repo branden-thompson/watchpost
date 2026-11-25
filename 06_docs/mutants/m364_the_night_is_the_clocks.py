@@ -4,4 +4,4 @@ import pathlib
 p = pathlib.Path('modes/tty/map_prop_draw.go'); s = p.read_text()
 old = '\treturn shown.Now.At.UTC().Truncate(nightStep)\n'
 assert old in s, 'm364'
-p.write_text(s.replace(old, '\treturn shown.Now.At.Add(d.now().Sub(shown.Now.At)).UTC().Truncate(nightStep)\n', 1))
+p.write_text(s.replace(old, '\treturn shown.Now.At.Add(e.Now().Sub(shown.Now.At)).UTC().Truncate(nightStep)\n', 1))

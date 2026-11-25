@@ -1416,3 +1416,77 @@ B4.3 moves the map's other fields and its methods onto it.
 | tests, `modes/tty` and `app` | 59 files, +381 −180 | 139 literal elements moved into `Map: &Hooks{…}`; 38 writes to `ownHooks`, 4 to `configHooks`; `app`'s reads of a built `Config` through `.Map`; two timing tests set both ears; the guard and its helpers new (D-14 rows) |
 | instruments | `tools/graph/figures.go`, `exported-tty.txt`, `record_test.go`, m772 | `Hooks` the map's carrier; `Hooks` listed; A-20's claim on `map_model.go`; m772's anchor, old `d.cfg.MapAreaName(centre, viewWidthKm(v, centre.Lat))`, new `d.mapHooks.MapAreaName(centre, viewWidthKm(v, centre.Lat))` |
 | goldens | `model-from-config.golden` (+2), `union-decls.txt` | `mapHooks` among the fields built from the `Config`; 41 declarations edited, `Hooks`, `mapModel` and `noHooks` new |
+
+## Before B4: the map's model, its fields and its methods (A-66; D-79 to D-82)
+
+**The names (D-79, D-80).** The seam's types are unexported and `map`-prefixed in 2a: `mapEnv`,
+`mapWant`, `mapStep`, `mapPick`, `mapStation`, `mapModal`, and MS-4's view and want as
+`mapSettingsView` and `mapSettingsWant`. The model's receiver is `mm`, so the library's map stays `m`.
+
+**The model.** `mapModel` holds the pane, the choices, the cost, the closings and release delay, the
+keymaps, the hooks and `ackSeen`. The 387 methods moved onto it by a type-aware rewrite: the receiver
+`(mm mapModel)`, `Dashboard` results `mapModel`, `e mapEnv` last on the 284 that read the root, each
+root read its Env field, and each call to one of them passing `e`. 84 sites the rewrite could not map
+were cut by hand: the eleven split sites, the Settings rows, and five method values.
+
+**The split sites.** Each write the map made to the root is now an ask the Dashboard applies after the
+call (`applyMapWant`), and where the map read what the write changed, the call ends at the write and
+the map's own step runs after it with a fresh Env. Two things the tests found:
+- `erase_test` showed the five key adapters must each name their window, not ask the Dashboard's
+  `modal`: a test may hand an adapter a key with no window open.
+- The router trace showed a save first in the batch nested the map's batch inside the Dashboard's
+  (`batch(r04,batch(r03,…))` where it had `batch(r04,r03,…)`). The calls that save first hand their
+  commands back with the save (`Settings.Led`), so the Dashboard batches them flat after it, as the
+  map's code did; the trace golden is unchanged.
+
+**The named field (D-81).** Embedded, the model's 387 methods were promoted onto the `Dashboard`, and
+because the `Dashboard` is a `tea.Model`, the compiler emitted a wrapper for each: `gcprobe` counted a
+small body's escapes three times. Named, no wrapper is left. Every path that read through the
+embedding was re-pointed by a second type-aware pass, 1,693 selectors in 93 files, before the field was
+named. With the field named, the memo guard's walk descended into the model once and stopped, leaving
+the pane and the choices unperturbed and the guard green: it now walks the model as a model of its own
+(A-31's twice). Planted, `mapPane.failed` out of the memo key fails it with the second walk and passes
+silently without it.
+
+**The compiler (D-82).** Against `e57afeaf`, `gcprobe` failed four ways. The shared bodies' wrappers
+made callers inline more than they had (`after`, `clock`, `markEnds`, the selection): the map now calls
+the shared functions direct, and five methods came back under the inline budget. Two more stayed over
+it, `rainIsRadar` and `radarChip`, until each took the one value it reads (`radarFace` the ASCII flag;
+`rainIsRadar` its caller's mode, asked once before the loop). What no rename can carry, the code carved
+into new functions and the calls the seam made field reads, is `excused-B4.tsv`'s 135 keys, each with
+its class; `gcprobe` fails on a key outside it, past its count, or no longer needed, seen failing with
+one line held out. The alloc pins pass, and the trees inline more calls in all than at baseline.
+
+**The mutants.** 159 anchors drifted. 133 were carried by the rewrite's own rules, anchor and
+replacement alike, each accepted only where it matched once; 26 by hand at the sites the split cut,
+each the same fault in the new code. `06_docs/mutants/repoint-B4.tsv` is A-11's old-and-new table.
+Seven new, mMS1 to mMS7, over the switches A-31 names: run against the whole tty suite, five were
+killed and two survived, the scroll a call reads after its own write; `TestPgDnKeepsTheMenusFocusInView`
+now holds that site, green on B4.2's tree, and kills both.
+
+**The first gate failed at `make dupes`** (`verify-runs.md`): two new groups, `openPropFind` and
+`openPropFreq` once each had the mode's test in place, and the two translations between the
+Dashboard's windows and the map's, mirrored switches. The two entries now wrap one `openPropEntry`,
+which is not inlined, so they inline into `onMapKey` as at baseline; the translations read one table,
+`mapWindows`, mMS1 re-pointed to it and killed again.
+
+**The second gate failed at `make mutant-check`** (4,727 s, `verify-runs.md`): m123, m364 and m399 left
+the tree uncompilable. Their anchors held through the move, so the drift list never named them, and
+their replacements still read the Dashboard's `d`. The replacements now read the model and its Env,
+the same fault; each compiles and is killed by the test it names, in a scratch copy. The table carries
+the three, the same anchor before and after.
+
+**A finding for B4.4.** `propRadiusKm`, in the memo key's choices part, reads the station and the role
+from the Env, where A-31 has 2b's `MemoKey` choices part take none.
+
+**The changed-line table.**
+
+| Kind | Lines | What |
+|---|---|---|
+| production, `modes/tty` | 50 files, +3,140 −2,526; `observer_map.go` and `map_timing.go` new | the 387 methods re-homed; the seam's types; the split sites; the shared bodies' owners; `timing.go` split at the receiver |
+| tests, `modes/tty` | 83 files, +1,521 −1,311 | the calls re-pointed (`withModel`, `withMap`, `envOf`); 330 assertion lines change only the path through the named field (D-81) and 319 the path and the Env a method gained (A-31); the rest are the tests new here, the Config listing's walk, the memo guard's second walk, and `ackSeen` read where it now lives |
+| production, `app` | `timing.go` | a comment names both halves of the instrument |
+| instruments | `tools/gcprobe`, `renames.tsv`, `excused-B4.tsv`, `record_test.go`, `measure_test.go` | the reviewed list and its test; 387 re-homes, the shared bodies, the receiver's text, `rainIsRadar`; A-20's claims on `map_timing.go` and `observer_map.go` |
+| mutants | 169 files | 162 re-pointed, 7 new; the table |
+| goldens | `model-from-config.golden` (+2), `union-decls.txt` | `ackSeen` among the fields built from the `Config`; 505 declarations new or edited, 439 gone or edited |
+| docs | `where-things-happen.md`, `doc.go` | the map's open and its keys through the seam's adapters; `observer_map.go`'s row |

@@ -18,8 +18,8 @@ import (
 // regionShown is the region the map is bound to, and whether the map's
 // centre lies in it.
 func regionShown(d Dashboard) (string, bool) {
-	c, _ := d.mapPane.m.Centre()
-	return d.mapPane.region.Name, d.mapPane.region.Contains(c.Lat, c.Lon)
+	c, _ := d.mapModel.mapPane.m.Centre()
+	return d.mapModel.mapPane.region.Name, d.mapModel.mapPane.region.Contains(c.Lat, c.Lon)
 }
 
 func TestTheRegionKeysSnapToEachRegion(t *testing.T) {
@@ -31,19 +31,19 @@ func TestTheRegionKeysSnapToEachRegion(t *testing.T) {
 			t.Errorf("%s shows %q (centre inside: %v), want %s", key, got, inside, want)
 		}
 	}
-	if d.mapPane.flash != mapRegionActs[5] {
-		t.Errorf("6 blinked %q, not its chip", d.mapPane.flash)
+	if d.mapModel.mapPane.flash != mapRegionActs[5] {
+		t.Errorf("6 blinked %q, not its chip", d.mapModel.mapPane.flash)
 	}
 }
 
 // panUntilRegion presses a pan key until the region changes, up to a bound.
 func panUntilRegion(t *testing.T, d Dashboard, code rune) Dashboard {
 	t.Helper()
-	was := d.mapPane.region.Name
+	was := d.mapModel.mapPane.region.Name
 	for range 80 {
 		m, _ := d.Update(tea.KeyPressMsg{Code: code})
 		d = m.(Dashboard)
-		if d.mapPane.region.Name != was {
+		if d.mapModel.mapPane.region.Name != was {
 			return d
 		}
 	}
@@ -94,7 +94,7 @@ func TestPanningPastAnEdgeMovesToTheNeighbour(t *testing.T) {
 
 func TestTheRegionKeysAreShownWithTheControls(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	box := ttytest.StripANSI(strings.Join(d.controlsBox(), "\n"))
+	box := ttytest.StripANSI(strings.Join(d.mapModel.controlsBox(d.mapEnv()), "\n"))
 	for _, want := range []string{"1", "6", "region"} {
 		if !strings.Contains(box, want) {
 			t.Errorf("the controls box does not show %q:\n%s", want, box)
@@ -128,7 +128,7 @@ func TestTheEdgeShowsItsNeighbourBeforeCrossing(t *testing.T) {
 	// press on one copy moves the map under every other.
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyLeft}) // another way, from the chip
 	d = m.(Dashboard)
-	if strings.Contains(bodyText(d), "US CARIBBEAN") || d.mapPane.edgeShown {
+	if strings.Contains(bodyText(d), "US CARIBBEAN") || d.mapModel.mapPane.edgeShown {
 		t.Error("a press another way left the chip")
 	}
 	if got, _ := regionShown(d); got != geo.RegionContiguous {
@@ -141,7 +141,7 @@ func TestTheEdgeShowsItsNeighbourBeforeCrossing(t *testing.T) {
 	}
 	d = untilChip(t, pressCode(m.(Dashboard), '1', "1"), tea.KeyRight)
 	m, _ = d.Update(tea.KeyPressMsg{Code: '+', Text: "+"})
-	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionContiguous || m.(Dashboard).mapPane.edgeShown {
+	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionContiguous || m.(Dashboard).mapModel.mapPane.edgeShown {
 		t.Error("a key other than a pan left the chip standing, or crossed")
 	}
 	for _, c := range []struct {
@@ -160,14 +160,14 @@ func TestTheEdgeShowsItsNeighbourBeforeCrossing(t *testing.T) {
 // unchanged, up to a bound.
 func untilChip(t *testing.T, d Dashboard, code rune) Dashboard {
 	t.Helper()
-	was := d.mapPane.region.Name
+	was := d.mapModel.mapPane.region.Name
 	for range 80 {
 		m, _ := d.Update(tea.KeyPressMsg{Code: code})
 		d = m.(Dashboard)
-		if d.mapPane.region.Name != was {
+		if d.mapModel.mapPane.region.Name != was {
 			t.Fatalf("a press crossed from %s with no chip shown first", was)
 		}
-		if d.mapPane.edgeShown {
+		if d.mapModel.mapPane.edgeShown {
 			return d
 		}
 	}

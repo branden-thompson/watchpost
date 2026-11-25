@@ -123,7 +123,7 @@ func TestTheMenusFocusStaysOnScreenWithoutAPicture(t *testing.T) {
 // a window of its own: every copy of one shares its library map.
 func TestEveryMapKeyChangesTheScreen(t *testing.T) {
 	for _, mode := range screenModes {
-		keys := screenDash(t, mode.desc, mode.ascii).mapKeys
+		keys := screenDash(t, mode.desc, mode.ascii).mapModel.mapKeys
 		for _, act := range mapActions {
 			for _, key := range keys[act].Keys {
 				if _, ok := invisibleKeys[mode.name][key]; ok {

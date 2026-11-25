@@ -51,7 +51,7 @@ func TestThePicturesWindowNeverScrolls(t *testing.T) {
 			if !open {
 				d = pressCode(d, 'A', "A")
 			}
-			if !d.mapFits() {
+			if !d.mapModel.mapFits(d.mapEnv()) {
 				t.Fatalf("%dx%d: under the floor", size.w, size.h)
 			}
 			lines := d.modalLines()
@@ -70,12 +70,12 @@ func TestThePicturesWindowNeverScrolls(t *testing.T) {
 // its time.
 func TestTheBoxesLeaveTheFurnitureRowsAlone(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	size := d.mapBodySize()
-	lines := d.withControls(d.mapPane.lines, size)
-	if last := ttytest.StripANSI(lines[size.Rows-1]); strings.Contains(last, "Controls") || strings.Contains(last, "┘") && !strings.Contains(ttytest.StripANSI(d.mapPane.lines[size.Rows-1]), "┘") {
+	size := d.mapModel.mapBodySize(d.mapEnv())
+	lines := d.mapModel.withControls(d.mapModel.mapPane.lines, size, d.mapEnv())
+	if last := ttytest.StripANSI(lines[size.Rows-1]); strings.Contains(last, "Controls") || strings.Contains(last, "┘") && !strings.Contains(ttytest.StripANSI(d.mapModel.mapPane.lines[size.Rows-1]), "┘") {
 		t.Errorf("the controls cover the credit row: %q", last)
 	}
-	if got, want := ttytest.StripANSI(lines[size.Rows-1]), ttytest.StripANSI(d.mapPane.lines[size.Rows-1]); got != want {
+	if got, want := ttytest.StripANSI(lines[size.Rows-1]), ttytest.StripANSI(d.mapModel.mapPane.lines[size.Rows-1]); got != want {
 		t.Errorf("the credit row changed under the controls:\n got %q\nwant %q", got, want)
 	}
 }
@@ -85,7 +85,7 @@ func TestTheBoxesLeaveTheFurnitureRowsAlone(t *testing.T) {
 // is as wide as the window less its borders.
 func TestTheMapRunsBorderToBorder(t *testing.T) {
 	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
-	if got, want := d.mapBodySize().Cols, d.modalWidth()-2; got != want {
+	if got, want := d.mapModel.mapBodySize(d.mapEnv()).Cols, d.modalWidth()-2; got != want {
 		t.Errorf("the map is %d wide in a window of %d; want %d", got, d.modalWidth(), want)
 	}
 	braille := func(r rune) bool { return r >= 0x2800 && r <= 0x28ff }

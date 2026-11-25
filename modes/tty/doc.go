@@ -30,7 +30,9 @@
 //	`credit_row.go`, `debug.go`                and the ctrl+d diagnostics window
 //	`setup*`                                   Settings: the row table, the tabs, the layout, each group
 //	`map_*`                                    the map pane, its modes, layers, Settings rows, and the
-//	                                           Propagation mode (`map_prop_*`)
+//	                                           Propagation mode (`map_prop_*`), on the map's model
+//	`observer_map.go`                          the Observer's side of the map's seam: what it lends the
+//	                                           map, what it does for it, the map windows' key adapters
 //	`request.go`                               the console's Line-Up Request window
 //	`card_window.go`                           the Observer's window for a console card: the card it
 //	                                           is handed to draw, and its move and drop prompts

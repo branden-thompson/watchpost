@@ -18,15 +18,15 @@ import (
 func scaled(t *testing.T, sc ionomaps.Scales) Dashboard {
 	t.Helper()
 	d := chartDash(t)
-	snap := *d.mapPane.propSnap
+	snap := *d.mapModel.mapPane.propSnap
 	snap.Scales = sc
-	d.mapPane.propSnap = &snap
+	d.mapModel.mapPane.propSnap = &snap
 	return d
 }
 
 // chartText is the chart window's text, plain.
 func chartText(d Dashboard) string {
-	return ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	return ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 }
 
 // TestARaisedScaleIsNamed is FR-1.18 (D-88): a scale above 0 is named, by
@@ -65,9 +65,9 @@ func TestAStormSaysTypicalMayNotHold(t *testing.T) {
 		storm bool
 	}{{1, true}, {4, true}, {0, false}, {ionomaps.ScaleUnset, false}} {
 		d := scaled(t, ionomaps.Scales{G: c.g, Valid: drawnAt})
-		d.mapPane.propAhead = 3
-		lat, lon := d.mapPane.propOrigin.at.Lat, d.mapPane.propOrigin.at.Lon
-		label, words := d.propAheadLabel(lat, lon), d.propAheadWords(lat, lon)
+		d.mapModel.mapPane.propAhead = 3
+		lat, lon := d.mapModel.mapPane.propOrigin.at.Lat, d.mapModel.mapPane.propOrigin.at.Lon
+		label, words := d.mapModel.propAheadLabel(lat, lon), d.mapModel.propAheadWords(lat, lon)
 		if got := strings.Contains(label, "STORM: TYPICAL MAY NOT HOLD"); got != c.storm {
 			t.Errorf("G%d: the hour ahead's label %q", c.g, label)
 		}

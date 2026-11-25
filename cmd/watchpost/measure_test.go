@@ -18,7 +18,7 @@ package main
 // pressed and the open's events are read from the loopback debug server's
 // /debug/counters for up to m5Bound: m5 - the dashboard's own interval from g
 // to the first complete frame holding every alert's area
-// (modes/tty/timing.go) - and the others the open said on the way. The
+// (modes/tty/map_timing.go) - and the others the open said on the way. The
 // basemap's tiles at the place and the radar are fetched by clients that
 // read nothing from the HTTP cache, so on recorded responses they are refused
 // like everything else; an open whose basemap never completes has no m5, and

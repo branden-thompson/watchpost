@@ -149,18 +149,18 @@ func slotOf(n settingsNotice, shown bool, could ...string) noticeSlot {
 // stations.
 func (d Dashboard) mapNoticeSlots() []noticeSlot {
 	return []noticeSlot{
-		slotOf(settingsNotice{"Temperature", meteredNote, noticeWarn}, !d.mapTempNDFD),
-		slotOf(settingsNotice{"Rain Day 4+", rainFullNote, noticeWarn}, d.mapRainFull),
-		slotOf(settingsNotice{"UV cities", uvCitiesNote(d.mapUVCities), noticeInfo}, d.setup.focus == rowMapUVCities, uvCitiesNote(uvCityChoices[len(uvCityChoices)-1])),
-		slotOf(settingsNotice{"HF refresh", propRefreshNote(d.mapPropRefresh), noticeInfo}, d.setup.focus == rowMapPropRefresh, propRefreshNote(refreshEvery10)),
-		slotOf(settingsNotice{"HF stations", stationsNote(d.mapPropNoGIRO), noticeInfo}, d.setup.focus == rowMapPropStations, stationsNote(false)),
+		slotOf(settingsNotice{"Temperature", meteredNote, noticeWarn}, !d.mapModel.mapTempNDFD),
+		slotOf(settingsNotice{"Rain Day 4+", rainFullNote, noticeWarn}, d.mapModel.mapRainFull),
+		slotOf(settingsNotice{"UV cities", uvCitiesNote(d.mapModel.mapUVCities), noticeInfo}, d.setup.focus == rowMapUVCities, uvCitiesNote(uvCityChoices[len(uvCityChoices)-1])),
+		slotOf(settingsNotice{"HF refresh", propRefreshNote(d.mapModel.mapPropRefresh), noticeInfo}, d.setup.focus == rowMapPropRefresh, propRefreshNote(refreshEvery10)),
+		slotOf(settingsNotice{"HF stations", stationsNote(d.mapModel.mapPropNoGIRO), noticeInfo}, d.setup.focus == rowMapPropStations, stationsNote(false)),
 	}
 }
 
 // mapLayersNoticeSlots are the Map Layers tab's (D-364): what the layers
 // cost, and what the map keeps or what clearing it did.
 func (d Dashboard) mapLayersNoticeSlots() []noticeSlot {
-	head, detail := costWarningParts(d.mapCost)
+	head, detail := costWarningParts(d.mapModel.mapCost)
 	worstHead, worstDetail := costWarningParts(worstMapCost)
 	return []noticeSlot{
 		slotOf(settingsNotice{"Map layers", strings.TrimSpace(head + " " + detail), noticeWarn}, true, worstHead+" "+worstDetail),

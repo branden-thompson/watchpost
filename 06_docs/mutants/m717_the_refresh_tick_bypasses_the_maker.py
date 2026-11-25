@@ -3,6 +3,6 @@ import pathlib
 # maker, so a test tells an armed tick from an answer by type, not by a clock.
 # Killed by TestStationsNextAsksAgainAtOnce.
 p = pathlib.Path('modes/tty/map_prop_update.go'); s = p.read_text()
-old = '\treturn d, d.after(every, tick)\n'
+old = '\treturn mm, tickAfter(e.Ticks, every, tick)\n'
 assert s.count(old) == 1, 'm717'
-p.write_text(s.replace(old, '\treturn d, tea.Tick(every, func(time.Time) tea.Msg { return tick })\n', 1))
+p.write_text(s.replace(old, '\treturn mm, tea.Tick(every, func(time.Time) tea.Msg { return tick })\n', 1))

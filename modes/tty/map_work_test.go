@@ -29,13 +29,13 @@ func runCmdElsewhere(cmd tea.Cmd) tea.Msg {
 func TestEveryCallButWorkIsOnTheUpdateGoroutine(t *testing.T) {
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	where := &[]callSite{}
-	d.mapPane.where = where
+	d.mapModel.mapPane.where = where
 	d, _ = pressKey(d, "g")
-	if feed := d.mapFeedCmd(laneAlerts); feed != nil {
+	if feed := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv()); feed != nil {
 		m, _ := d.Update(runCmdElsewhere(feed))
 		d = m.(Dashboard)
 	}
-	for work := d.mapWorkCmd(); work != nil; {
+	for work := d.mapModel.mapWorkCmd(d.mapEnv()); work != nil; {
 		m, next := d.Update(runCmdElsewhere(work))
 		d, work = m.(Dashboard), next
 	}
@@ -72,28 +72,28 @@ func TestTheMapAsksToBeDrawnWhenItSaysSo(t *testing.T) {
 	d.now = func() time.Time { return now }
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	at, ok := d.mapPane.m.NextCall(now)
+	at, ok := d.mapModel.mapPane.m.NextCall(now)
 	if !ok {
 		t.Fatal("the library wants no call: this measures nothing")
 	}
-	if !d.mapPane.tickAt.Equal(at) {
-		t.Fatalf("the outstanding tick is for %v, the library wants %v", d.mapPane.tickAt, at)
+	if !d.mapModel.mapPane.tickAt.Equal(at) {
+		t.Fatalf("the outstanding tick is for %v, the library wants %v", d.mapModel.mapPane.tickAt, at)
 	}
-	if _, again := d.armMapTick(); again != nil {
+	if _, again := d.mapModel.armMapTick(d.mapEnv()); again != nil {
 		t.Error("a tick already outstanding was armed again")
 	}
-	gen := d.mapPane.gen
+	gen := d.mapModel.mapPane.gen
 	m, _ := d.Update(mapTickMsg{at: at.Add(-time.Minute)})
-	if m.(Dashboard).mapPane.gen != gen {
+	if m.(Dashboard).mapModel.mapPane.gen != gen {
 		t.Error("a tick for a time no longer wanted drew")
 	}
 	m, _ = d.Update(mapTickMsg{at: at})
-	if m.(Dashboard).mapPane.gen == gen {
+	if m.(Dashboard).mapModel.mapPane.gen == gen {
 		t.Error("the outstanding tick did not draw")
 	}
 	d, _ = pressKey(m.(Dashboard), "g") // closed
-	if !d.mapPane.tickAt.IsZero() {
-		t.Errorf("a closed window keeps a tick for %v", d.mapPane.tickAt)
+	if !d.mapModel.mapPane.tickAt.IsZero() {
+		t.Errorf("a closed window keeps a tick for %v", d.mapModel.mapPane.tickAt)
 	}
 	if _, cmd := d.Update(mapTickMsg{at: at}); cmd != nil {
 		t.Error("a tick to a closed window scheduled more")
@@ -113,18 +113,18 @@ func TestClosingTheMapJoinsItsWorkers(t *testing.T) {
 	}
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: blocking}})
 	d, _ = pressKey(d, "g")
-	feed := d.mapFeedCmd(laneAlerts)
+	feed := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv())
 	go feed()
 	for started.Load() == 0 {
 		time.Sleep(time.Millisecond)
 	}
 	calls := &[]string{}
-	d.mapPane.calls = calls
-	d.closeMap()
+	d.mapModel.mapPane.calls = calls
+	d.mapModel.closeMap()
 	if finished.Load() != 1 {
 		t.Fatal("the close returned with a worker still running")
 	}
-	late := d.mapFeedCmd(laneAlerts)
+	late := d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv())
 	if late == nil {
 		late = func() tea.Msg { return nil }
 	}
@@ -144,7 +144,7 @@ func TestTheRouterClosesObserversMap(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	r := NewRouter(d)
 	r.CloseMap()
-	if err := d.mapPane.m.Recentre(tuimaps.LonLat{Lon: -100, Lat: 40}); err == nil {
+	if err := d.mapModel.mapPane.m.Recentre(tuimaps.LonLat{Lon: -100, Lat: 40}); err == nil {
 		t.Error("the map still moves after the router closed it")
 	}
 }

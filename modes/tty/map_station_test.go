@@ -43,7 +43,7 @@ func stationMap(t *testing.T, cfg Config) Dashboard {
 // near reports whether the map's centre is within a hundredth of a degree of
 // a place.
 func near(d Dashboard, lat, lon float64) bool {
-	c, _ := d.mapPane.m.Centre()
+	c, _ := d.mapModel.mapPane.m.Centre()
 	return math.Abs(c.Lat-lat) < 0.01 && math.Abs(c.Lon-lon) < 0.01
 }
 
@@ -59,13 +59,13 @@ func TestTheConsoleOpensTheMapOnTheStation(t *testing.T) {
 		for _, k := range keys {
 			r = press(t, r, k)
 		}
-		t.Cleanup(r.observer.closeMap)
-		if r.observer.modal != modalMap || r.observer.mapPane.m == nil {
+		t.Cleanup(r.observer.mapModel.closeMap)
+		if r.observer.modal != modalMap || r.observer.mapModel.mapPane.m == nil {
 			t.Errorf("%v on the console: the window shown is %v, not the map", keys, r.observer.modal)
 			continue
 		}
 		if !near(r.observer, tx.Lat, tx.Lon) {
-			c, _ := r.observer.mapPane.m.Centre()
+			c, _ := r.observer.mapModel.mapPane.m.Centre()
 			t.Errorf("%v: the map is on %v; the station is at %.2f, %.2f", keys, c, tx.Lat, tx.Lon)
 		}
 	}
@@ -98,17 +98,17 @@ func TestTheConsoleKeysDoNotClash(t *testing.T) {
 // marked.
 func serviceArea(t *testing.T, mode string, d Dashboard, lat, lon, mi float64) {
 	t.Helper()
-	o, ok := d.mapPane.zoneGiven[serviceAreaID]
+	o, ok := d.mapModel.mapPane.zoneGiven[serviceAreaID]
 	if !ok || len(o.Features) != 1 {
 		t.Fatalf("%s: no service area handed in", mode)
 	}
 	if f := o.Features[0]; f.Kind != tuimaps.Circle || f.Role != tuimaps.Zone || f.RadiusKm != mi*units.KmPerMile || f.Centre != (tuimaps.LonLat{Lon: lon, Lat: lat}) {
 		t.Errorf("%s: the service area is %+v; a zone of %.0f mi around the tower", mode, f, mi)
 	}
-	if !slices.Contains(d.mapPane.m.Overlays(), serviceAreaID) {
+	if !slices.Contains(d.mapModel.mapPane.m.Overlays(), serviceAreaID) {
 		t.Errorf("%s: the library does not hold the service area", mode)
 	}
-	if !slices.ContainsFunc(d.mapPane.m.Places(), func(p tuimaps.Place) bool { return p.ID == towerPlaceID }) {
+	if !slices.ContainsFunc(d.mapModel.mapPane.m.Places(), func(p tuimaps.Place) bool { return p.ID == towerPlaceID }) {
 		t.Errorf("%s: the tower is not marked", mode)
 	}
 }
@@ -124,7 +124,7 @@ func TestTheServiceAreaIsAlwaysDrawn(t *testing.T) {
 	prop := chartDash(t) // the Propagation mode, opened on Observer, then swapped to the console
 	tx := bonsall
 	prop.cfg.Transmitter, prop.cfg.ServiceRadiusMi, prop.surface = &tx, 100, SurfaceBroadcaster
-	prop = prop.renderMap()
+	prop.mapModel = prop.mapModel.renderMap(prop.mapEnv())
 	serviceArea(t, "propagation", prop, bonsall.Lat, bonsall.Lon, 100)
 	if !near(prop, bonsall.Lat, bonsall.Lon) {
 		t.Error("a swap to the console with the map open leaves the map off the station")
@@ -133,7 +133,7 @@ func TestTheServiceAreaIsAlwaysDrawn(t *testing.T) {
 	d.setup.serviceMi = "60"
 	serviceArea(t, "saved", d.commitToModel(), bonsall.Lat, bonsall.Lon, 60)
 	obs := openMap(t, Config{ServiceRadiusMi: 100}, 133, 44)
-	if len(obs.mapPane.zoneGiven) != 0 || slices.ContainsFunc(obs.mapPane.m.Places(), func(p tuimaps.Place) bool { return p.ID == towerPlaceID }) {
+	if len(obs.mapModel.mapPane.zoneGiven) != 0 || slices.ContainsFunc(obs.mapModel.mapPane.m.Places(), func(p tuimaps.Place) bool { return p.ID == towerPlaceID }) {
 		t.Error("Observer's map draws the station's service area or tower")
 	}
 }
@@ -159,7 +159,7 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 	if moved.selected != bc.selected || !near(moved, bonsall.Lat, bonsall.Lon) {
 		t.Error("] on the Broadcaster's map moved it off the station")
 	}
-	if box := ttytest.StripANSI(strings.Join(bc.controlsBox(), "\n")); strings.Contains(box, "place") || !strings.Contains(box, "red: service") {
+	if box := ttytest.StripANSI(strings.Join(bc.mapModel.controlsBox(bc.mapEnv()), "\n")); strings.Contains(box, "place") || !strings.Contains(box, "red: service") {
 		t.Errorf("the Broadcaster's controls box offers the place keys, or does not say the red ring:\n%s", box)
 	}
 	for _, r := range mapHelpRows(bc.helpKeys(), false) { // the keys Help lists on the Broadcaster (D-195)
@@ -174,7 +174,7 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 	if stepped := pressMap(t, obs, "]"); stepped.selected == obs.selected {
 		t.Error("control: ] on Observer's map does not step to the next place, so this proves nothing")
 	}
-	if box := ttytest.StripANSI(strings.Join(obs.controlsBox(), "\n")); !strings.Contains(box, "place") {
+	if box := ttytest.StripANSI(strings.Join(obs.mapModel.controlsBox(obs.mapEnv()), "\n")); !strings.Contains(box, "place") {
 		t.Errorf("Observer's controls box does not offer the place keys:\n%s", box)
 	}
 }
@@ -184,11 +184,11 @@ func TestTheBroadcastersMapOffersNoPlaceKeys(t *testing.T) {
 // tower - not its colour, which the map draws only where it draws colour
 // (AX-12); Observer's say nothing of one.
 func TestTheServiceAreaIsSaid(t *testing.T) {
-	words := strings.Join(stationMap(t, Config{}).describeLinesAll(), " ")
+	words := strings.Join(mapModel.describeLinesAll(envOf(stationMap(t, Config{}))), " ")
 	if !strings.Contains(words, "The circle around Bonsall, CA is the station's service area: ") || strings.Contains(words, "red") {
 		t.Errorf("the words do not say the service area: %q", words)
 	}
-	if obs := strings.Join(openMap(t, Config{ServiceRadiusMi: 100}, 133, 44).describeLinesAll(), " "); strings.Contains(obs, "service area") {
+	if obs := strings.Join(mapModel.describeLinesAll(envOf(openMap(t, Config{ServiceRadiusMi: 100}, 133, 44))), " "); strings.Contains(obs, "service area") {
 		t.Errorf("Observer's words speak of a service area: %q", obs)
 	}
 }
@@ -200,14 +200,15 @@ func TestTheNearVerticalAnswersUseTheServiceRadius(t *testing.T) {
 	d := stationDash(t)
 	tx := bonsall
 	d.cfg.Transmitter, d.cfg.ServiceRadiusMi = &tx, 100
-	d = workChart(t, d.renderMap())
-	if k := d.mapPane.propChart.key.radiusKm; k != 161 {
+	d = workChart(t, withModel(d, d.mapModel.renderMap(d.mapEnv())))
+	if k := d.mapModel.mapPane.propChart.key.radiusKm; k != 161 {
 		t.Errorf("the Broadcaster's chart answers to %.0f km; the service radius is 161", k)
 	}
-	if block := strings.Join(d.propBlock(d.scrubW()), "\n"); !strings.Contains(ttytest.StripANSI(block), "Local, to ~161 km (service area): ") {
+	if block := strings.Join(d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv()), "\n"); !strings.Contains(ttytest.StripANSI(block), "Local, to ~161 km (service area): ") {
 		t.Errorf("the block does not say the service radius:\n%s", ttytest.StripANSI(block))
 	}
-	if block := ttytest.StripANSI(strings.Join(chartDash(t).propBlock(80), "\n")); !strings.Contains(block, "km (NVIS): ") {
+	chart := chartDash(t)
+	if block := ttytest.StripANSI(strings.Join(chart.mapModel.propBlock(80, chart.mapEnv()), "\n")); !strings.Contains(block, "km (NVIS): ") {
 		t.Errorf("Observer's block does not answer to the NVIS radius:\n%s", block)
 	}
 }
@@ -220,16 +221,16 @@ func TestTheStationIsTheWatchlistsOwnRecord(t *testing.T) {
 	d.surface = SurfaceBroadcaster
 	own := d.snap.Locations[0]
 	d.cfg.Transmitter = &snapshot.LocationRef{Label: "the station", Lat: own.Lat, Lon: own.Lon}
-	if got := d.stationPlace(); got != &d.snap.Locations[0] || d.noTransmitter() {
+	if got := d.mapModel.stationPlace(d.mapEnv()); got != &d.snap.Locations[0] || d.mapModel.noTransmitter(d.mapEnv()) {
 		t.Errorf("a transmitter at %s is %+v, not the watchlist's record", own.Label, got)
 	}
 	tx := bonsall
 	d.cfg.Transmitter = &tx
-	if got := d.stationPlace(); got == nil || got.Label != bonsall.Label || d.noTransmitter() {
+	if got := d.mapModel.stationPlace(d.mapEnv()); got == nil || got.Label != bonsall.Label || d.mapModel.noTransmitter(d.mapEnv()) {
 		t.Errorf("a transmitter elsewhere is %+v; the place Settings gave", got)
 	}
 	d.cfg.Transmitter = nil
-	if got := d.stationPlace(); got != d.selectedLocation() || !d.noTransmitter() {
+	if got := d.mapModel.stationPlace(d.mapEnv()); got != d.selectedLocation() || !d.mapModel.noTransmitter(d.mapEnv()) {
 		t.Errorf("with no transmitter the station is %+v; the selected place, standing in", got)
 	}
 }

@@ -71,36 +71,36 @@ type propReachMsg struct{ reach propReach }
 // propReachWanted is the reach the window wants: for the frequency held,
 // the snapshot shown and the selected place; false with no frequency held
 // or nothing to work it out from.
-func (d Dashboard) propReachWanted() (propReachKey, bool) {
-	key, ok := d.propChartWanted()
-	if !ok || d.mapPane.propFreqMHz == 0 {
+func (mm mapModel) propReachWanted(e mapEnv) (propReachKey, bool) {
+	key, ok := mm.propChartWanted(e)
+	if !ok || mm.mapPane.propFreqMHz == 0 {
 		return propReachKey{}, false
 	}
-	return propReachKey{made: key.made, hour: key.hour, origin: key.origin, mhz: d.mapPane.propFreqMHz}, true
+	return propReachKey{made: key.made, hour: key.hour, origin: key.origin, mhz: mm.mapPane.propFreqMHz}, true
 }
 
 // armPropReach asks for the reach when what it is worked out from has
 // changed (about 0.2 s, never in Update; D-227), one at a time.
-func (d Dashboard) armPropReach() (Dashboard, tea.Cmd) {
-	if d.viewSettling() {
-		return d, nil
+func (mm mapModel) armPropReach(e mapEnv) (mapModel, tea.Cmd) {
+	if mm.viewSettling() {
+		return mm, nil
 	}
-	if d.mapPane.propReachAsked != (propReachKey{}) && d.mapPane.propReachAsked != d.mapPane.propReach.key {
-		return d, nil // one reach at a time (D-227): the one asked is answered first, then the latest wanted is asked
+	if mm.mapPane.propReachAsked != (propReachKey{}) && mm.mapPane.propReachAsked != mm.mapPane.propReach.key {
+		return mm, nil // one reach at a time (D-227): the one asked is answered first, then the latest wanted is asked
 	}
-	key, ok := d.propReachWanted()
-	cmd := askAnswer(&d, key, ok, d.mapPane.propReach.key, &d.mapPane.propReachAsked, func(snap ionomaps.Snapshot, key propReachKey) tea.Msg {
+	key, ok := mm.propReachWanted(e)
+	cmd := askAnswer(&mm, key, ok, mm.mapPane.propReach.key, &mm.mapPane.propReachAsked, func(snap ionomaps.Snapshot, key propReachKey) tea.Msg {
 		field, err := snap.Reach(key.origin, key.mhz)
 		return propReachMsg{reach: propReach{key: key, field: field, err: err}}
 	})
-	return d, cmd
+	return mm, cmd
 }
 
 // propReachShown is the reach for what the window shows now; false while
 // none is held, or it is being worked out.
-func (d Dashboard) propReachShown() (ionomaps.ReachField, bool) {
-	key, ok := d.propReachWanted()
-	r := d.mapPane.propReach
+func (mm mapModel) propReachShown(e mapEnv) (ionomaps.ReachField, bool) {
+	key, ok := mm.propReachWanted(e)
+	r := mm.mapPane.propReach
 	return r.field, ok && key == r.key && r.err == nil
 }
 
@@ -116,12 +116,12 @@ func propReachOverlay(f ionomaps.ReachField, at time.Time) tuimaps.Overlay {
 // propFreqLine is the block's line for the frequency held (D-179): its
 // value, how far the skip zone runs, and the key that changes it; "" while
 // none is held.
-func (d Dashboard) propFreqLine() string {
-	if d.mapPane.propFreqMHz == 0 {
+func (mm mapModel) propFreqLine(e mapEnv) string {
+	if mm.mapPane.propFreqMHz == 0 {
 		return ""
 	}
-	line := "YOUR FREQUENCY " + d.mapPane.propFreqLabel + " · " + d.propReachRow()
-	if keys := d.mapKeys[actMapFreq].Keys; len(keys) > 0 {
+	line := "YOUR FREQUENCY " + mm.mapPane.propFreqLabel + " · " + mm.propReachRow(e)
+	if keys := mm.mapKeys[actMapFreq].Keys; len(keys) > 0 {
 		line += " · " + keys[0] + " change"
 	}
 	return line
@@ -130,23 +130,23 @@ func (d Dashboard) propFreqLine() string {
 // propReachWords say the frequency held's reach (D-178): its skip zone and
 // the limit that stops it, that it reaches nowhere and why, or that it is
 // being worked out - the words in full, the block's row short (propReachRow).
-func (d Dashboard) propReachWords() string { return d.propReach(true) }
+func (mm mapModel) propReachWords(e mapEnv) string { return mm.propReach(true, e) }
 
 // propReachRow is the reach for the block's row: a reach that goes
 // somewhere without its limit, which the words say, so the row keeps its key.
-func (d Dashboard) propReachRow() string { return d.propReach(false) }
+func (mm mapModel) propReachRow(e mapEnv) string { return mm.propReach(false, e) }
 
 // propReach is the reach said, in full or short.
-func (d Dashboard) propReach(full bool) string {
-	field, ok := d.propReachShown()
-	key, wanted := d.propReachWanted()
+func (mm mapModel) propReach(full bool, e mapEnv) string {
+	field, ok := mm.propReachShown(e)
+	key, wanted := mm.propReachWanted(e)
 	switch {
-	case !ok && wanted && key == d.mapPane.propReach.key && d.mapPane.propReach.err != nil:
-		return d.propNotAvailable() // AX-9
+	case !ok && wanted && key == mm.mapPane.propReach.key && mm.mapPane.propReach.err != nil:
+		return mm.propNotAvailable() // AX-9
 	case !ok:
 		return "being worked out"
 	}
-	return reachSaid(field, d.roundDistance(float64(field.SkipKm)), full)
+	return reachSaid(field, mm.roundDistance(float64(field.SkipKm), e), full)
 }
 
 // reachLimitWords are the words for the limit a reach names (D-205): where
@@ -181,9 +181,9 @@ func reachSaid(f ionomaps.ReachField, skip string, full bool) string {
 
 // roundDistance is a distance in the units the description speaks, to the
 // nearest hundred.
-func (d Dashboard) roundDistance(km float64) string {
+func (mm mapModel) roundDistance(km float64, e mapEnv) string {
 	unit := "km"
-	if d.units == render.UnitF {
+	if e.Opts.Units == render.UnitF {
 		km, unit = units.MilesOf(km), "miles"
 	}
 	n := int(math.Round(km/100) * 100)
@@ -196,18 +196,22 @@ func (d Dashboard) roundDistance(km float64) string {
 
 // openPropFreq is F: the frequency entry over the map, in the Propagation
 // mode alone, holding the frequency already held.
-func (d Dashboard) openPropFreq() Dashboard {
-	d.mapPane.propFreqQuery, d.mapPane.propFreqErr = "", ""
-	return d.openInPropagation(modalPropFreq)
+func (mm mapModel) openPropFreq(e mapEnv) (mapModel, mapWant) {
+	return mm.openPropEntry(mapModalPropFreq, e)
 }
 
-// openInPropagation opens one of the Propagation mode's entries over the
-// map: in that mode alone.
-func (d Dashboard) openInPropagation(m modal) Dashboard {
-	if !d.inPropagation() {
-		return d
+// openPropEntry opens one of the Propagation mode's two entries over the map,
+// its field emptied: in that mode alone.
+func (mm mapModel) openPropEntry(w mapModal, e mapEnv) (mapModel, mapWant) {
+	if w == mapModalPropFind {
+		mm.mapPane.propFindQuery, mm.mapPane.propFindErr = "", ""
+	} else {
+		mm.mapPane.propFreqQuery, mm.mapPane.propFreqErr = "", ""
 	}
-	return d.open(m)
+	if !mm.inPropagation(e) {
+		return mm, mapWant{} // the Propagation mode's entry, in that mode alone
+	}
+	return mm, mapWant{Open: w}
 }
 
 // propFreqWidth is the entry's width: within the 80-column floor.
@@ -215,45 +219,45 @@ const propFreqWidth = 60
 
 // propFreqLines are the entry's lines (D-178): what is typed, why it was not
 // taken, what is accepted, and its keys.
-func (d Dashboard) propFreqLines(o render.Opts) []string {
-	lines := []string{"", "  MHz or band: " + d.mapPane.propFreqQuery + o.Glyphs().Cursor, ""}
-	if d.mapPane.propFreqErr != "" {
-		lines = append(lines, "  "+o.Glyphs().Alert+" "+d.mapPane.propFreqErr, "")
+func (mm mapModel) propFreqLines(o render.Opts) []string {
+	lines := []string{"", "  MHz or band: " + mm.mapPane.propFreqQuery + o.Glyphs().Cursor, ""}
+	if mm.mapPane.propFreqErr != "" {
+		lines = append(lines, "  "+o.Glyphs().Alert+" "+mm.mapPane.propFreqErr, "")
 	}
-	if d.mapPane.propFreqMHz != 0 {
-		lines = append(lines, "  Now drawn: "+d.mapPane.propFreqLabel+". An empty Enter clears it.", "")
+	if mm.mapPane.propFreqMHz != 0 {
+		lines = append(lines, "  Now drawn: "+mm.mapPane.propFreqLabel+". An empty Enter clears it.", "")
 	}
 	lines = append(lines, "  1.8 to 30 MHz, or a band: 160m to 10m.", "")
 	return append(lines, "  "+o.Controls("   ", render.Ctl("enter", "Draw"), render.Ctl("esc", "Cancel")))
 }
 
-// handlePropFreqKey is the entry's keyboard: printable keys build what is
+// onPropFreqKey is the entry's keyboard: printable keys build what is
 // typed, so no binding fires mid-typing; Enter draws it, or with nothing
 // typed clears the frequency held; Esc leaves it as it was.
-func (d Dashboard) handlePropFreqKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
+func (mm mapModel) onPropFreqKey(key tea.KeyPressMsg) (mapModel, tea.Cmd, mapWant) {
 	switch key.String() {
 	case "enter":
-		q := strings.TrimSpace(d.mapPane.propFreqQuery)
+		q := strings.TrimSpace(mm.mapPane.propFreqQuery)
 		if q == "" {
-			d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 0, ""
-			return d.close().setProp().renderMap(), nil
+			mm.mapPane.propFreqMHz, mm.mapPane.propFreqLabel = 0, ""
+			return mm, nil, mapWant{Close: true, Then: mapStepSetPropRender}
 		}
 		mhz, label, ok := parsePropFreq(q)
 		if !ok {
-			d.mapPane.propFreqErr = errFreqWords
-			return d, nil
+			mm.mapPane.propFreqErr = errFreqWords
+			return mm, nil, mapWant{}
 		}
-		d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = mhz, label
-		return d.close().renderMap(), nil
+		mm.mapPane.propFreqMHz, mm.mapPane.propFreqLabel = mhz, label
+		return mm, nil, mapWant{Close: true, Then: mapStepRender}
 	case "esc":
-		return d.close(), nil
+		return mm, nil, mapWant{Close: true}
 	case "backspace":
-		d.mapPane.propFreqQuery = eraseRune(d.mapPane.propFreqQuery)
+		mm.mapPane.propFreqQuery = eraseRune(mm.mapPane.propFreqQuery)
 	default:
-		if key.Text != "" && len([]rune(d.mapPane.propFreqQuery)) < 16 {
-			d.mapPane.propFreqQuery += key.Text
+		if key.Text != "" && len([]rune(mm.mapPane.propFreqQuery)) < 16 {
+			mm.mapPane.propFreqQuery += key.Text
 		}
 	}
-	d.mapPane.propFreqErr = ""
-	return d, nil
+	mm.mapPane.propFreqErr = ""
+	return mm, nil, mapWant{}
 }

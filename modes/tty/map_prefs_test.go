@@ -26,7 +26,7 @@ func TestTheDefaultScaleOpensTheMapAsChosen(t *testing.T) {
 	zoomAt := func(scale string) float64 {
 		d := mapDash(t, Config{MapScale: scale})
 		d, _ = pressKey(d, "g")
-		_, z := d.mapPane.m.Centre()
+		_, z := d.mapModel.mapPane.m.Centre()
 		return z
 	}
 	region, state, county := zoomAt("region"), zoomAt("state"), zoomAt("county")
@@ -41,7 +41,7 @@ func TestTheDefaultScaleOpensTheMapAsChosen(t *testing.T) {
 	d = pressCode(d, '-', "-")
 	d, _ = pressKey(d, "g")
 	d, _ = pressKey(d, "g")
-	if _, z := d.mapPane.m.Centre(); z != county {
+	if _, z := d.mapModel.mapPane.m.Centre(); z != county {
 		t.Errorf("reopened at %v, want the chosen scale %v again", z, county)
 	}
 }
@@ -52,14 +52,14 @@ func TestTheScaleAndNearbyRowsSave(t *testing.T) {
 	d, got := uiDash(t, rowMapScale)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapScale != mapScaleCounty {
-		t.Errorf("→ from the state scale went to %v, want county", d.mapScale)
+	if d.mapModel.mapScale != mapScaleCounty {
+		t.Errorf("→ from the state scale went to %v, want county", d.mapModel.mapScale)
 	}
 	d.setup.focus = rowMapNearby
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapNearbyKm != 25 {
-		t.Errorf("→ from 15 km went to %d, want 25", d.mapNearbyKm)
+	if d.mapModel.mapNearbyKm != 25 {
+		t.Errorf("→ from 15 km went to %d, want 25", d.mapModel.mapNearbyKm)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
@@ -80,11 +80,11 @@ func TestTheScaleAndNearbyRowsSave(t *testing.T) {
 func TestNearbyReadsInTheStationsUnits(t *testing.T) {
 	d, _ := uiDash(t, rowMapNearby)
 	d.units = render.UnitC
-	if got := d.nearbyLabel(); got != "15 km" {
+	if got := d.mapModel.nearbyLabel(d.mapEnv()); got != "15 km" {
 		t.Errorf("in Celsius nearby reads %q, want 15 km", got)
 	}
 	d.units = render.UnitF
-	if got := d.nearbyLabel(); got != "9 miles (15 km)" {
+	if got := d.mapModel.nearbyLabel(d.mapEnv()); got != "9 miles (15 km)" {
 		t.Errorf("in Fahrenheit nearby reads %q", got)
 	}
 	if k := mapNearbyByKm(7); k != mapNearbyDefaultKm {
@@ -120,7 +120,7 @@ func TestTheNearbySettingReachesTheDescription(t *testing.T) {
 func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: alertLayers, MapLayerChoice: map[string]bool{"alert": false}, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	d = pressCode(d, 'A', "A") // the Description box, closed on open (D-87)
@@ -129,14 +129,14 @@ func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 			t.Fatal("an overlay of a layer switched off was drawn")
 		}
 	}
-	if text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Alert areas are switched off") {
+	if text := ttytest.StripANSI(strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n")); !strings.Contains(text, "Alert areas are switched off") {
 		t.Errorf("the description does not say the alert areas are off:\n%s", text)
 	}
 	on := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
 	on, _ = pressKey(on, "g")
 	on = feedAndSettle(t, on)
-	if len(on.mapPane.given) != 1 {
-		t.Errorf("with the layer on %d overlays are shown, want 1", len(on.mapPane.given))
+	if len(on.mapModel.mapPane.given) != 1 {
+		t.Errorf("with the layer on %d overlays are shown, want 1", len(on.mapModel.mapPane.given))
 	}
 }
 
@@ -151,7 +151,7 @@ func TestTheLayersRowTogglesAndSaves(t *testing.T) {
 		t.Errorf("the layers group does not name the layer with its picker:\n%s", text)
 	}
 	d = d.setupSpace()
-	if d.layerOn("alert") {
+	if d.mapModel.layerOn("alert", d.mapEnv()) {
 		t.Error("space did not switch the alert areas off")
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -170,8 +170,8 @@ func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 	d.cfg.MapLayers = append(append([]MapLayer(nil), alertLayers...), MapLayer{Key: "quake", Label: "Quakes"})
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	one := m
-	if one.setupTab() != tabMapLayers || one.layerOn("alert") {
-		t.Fatalf("→ on Alert areas: tab %s, alert on %v; want it switched off, here", one.setupTab().Label(), one.layerOn("alert"))
+	if one.setupTab() != tabMapLayers || one.mapModel.layerOn("alert", one.mapEnv()) {
+		t.Fatalf("→ on Alert areas: tab %s, alert on %v; want it switched off, here", one.setupTab().Label(), one.mapModel.layerOn("alert", one.mapEnv()))
 	}
 	m, _ = one.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
 	two := m
@@ -179,7 +179,7 @@ func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 		t.Fatalf("↓ went to row %d, layer %d; want the next layer", two.setup.focus, two.setup.layerAt)
 	}
 	m, _, _ = two.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if !m.layerOn("quake") || m.layerOn("alert") {
+	if !m.mapModel.layerOn("quake", m.mapEnv()) || m.mapModel.layerOn("alert", m.mapEnv()) {
 		t.Error("← did not switch on the layer under the cursor alone")
 	}
 	m, _ = two.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -204,7 +204,7 @@ func TestALayersRowIsAPickerAndTheArrowsWalkThem(t *testing.T) {
 	single, _ := uiDash(t, rowMapLayers)
 	single.cfg.MapLayers = alertLayers
 	m, _, _ = single.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m; got.setupTab() != tabMapLayers || got.layerOn("alert") {
+	if got := m; got.setupTab() != tabMapLayers || got.mapModel.layerOn("alert", got.mapEnv()) {
 		t.Error("with one layer → did not switch it, here")
 	}
 	single.cfg.MapLayers = nil
@@ -248,7 +248,7 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	if text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Est. 5.0MB / 515 Requests") {
+	if text := ttytest.StripANSI(strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n")); !strings.Contains(text, "Est. 5.0MB / 515 Requests") {
 		t.Errorf("the map does not warn:\n%s", text)
 	}
 	d, _ = pressKey(d, "esc")
@@ -270,12 +270,12 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 func TestThePickersGoBackToo(t *testing.T) {
 	d, _ := uiDash(t, rowMapScale)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.mapScale; got != mapScaleRegion {
+	if got := m.mapModel.mapScale; got != mapScaleRegion {
 		t.Errorf("← from the state scale went to %v, want the region", got)
 	}
 	d.setup.focus = rowMapNearby
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.mapNearbyKm; got != 10 {
+	if got := m.mapModel.mapNearbyKm; got != 10 {
 		t.Errorf("← from 15 km went to %d, want 10", got)
 	}
 }
@@ -291,8 +291,8 @@ func TestTheAlertLayersNotesGoWithIt(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: alertLayers, MapLayerChoice: map[string]bool{"alert": false}, Map: &Hooks{MapFeed: noted}})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	if len(d.mapPane.notes) != 0 || len(d.mapPane.inMissing) != 0 {
-		t.Errorf("with the alert areas off the window keeps notes %v and missing %v", d.mapPane.notes, d.mapPane.inMissing)
+	if len(d.mapModel.mapPane.notes) != 0 || len(d.mapModel.mapPane.inMissing) != 0 {
+		t.Errorf("with the alert areas off the window keeps notes %v and missing %v", d.mapModel.mapPane.notes, d.mapModel.mapPane.inMissing)
 	}
 }
 
@@ -308,18 +308,18 @@ func TestTheEstimateIsAskedWhereItCanChange(t *testing.T) {
 	}
 	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)}})
 	d = d.openSetupAt(rowMapLayers)
-	if d.mapCost.Requests == 0 {
+	if d.mapModel.mapCost.Requests == 0 {
 		t.Error("opening Settings did not ask the estimate")
 	}
 	d, _ = pressKey(d, "esc")
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	was := d.mapCost.Requests
+	was := d.mapModel.mapCost.Requests
 	s := placedSnap()
 	s.Locations[0].Alerts = append(s.Locations[0].Alerts, snapshot.Alert{ID: "x"}, snapshot.Alert{ID: "y"})
 	m, _ := d.Update(SnapshotMsg{Snap: s})
 	d = feedAndSettle(t, m.(Dashboard))
-	if d.mapCost.Requests == was {
+	if d.mapModel.mapCost.Requests == was {
 		t.Errorf("new data left the estimate at %d requests", was)
 	}
 }

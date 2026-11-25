@@ -36,9 +36,9 @@ func openRainMap(t *testing.T, radarOn bool) Dashboard {
 func switchLayer(t *testing.T, d Dashboard, key string) Dashboard {
 	t.Helper()
 	d = pressCode(d, 'O', "O")
-	for i, r := range d.overlayRows() {
+	for i, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		if r.key == key {
-			d.mapPane.menuAt = i
+			d.mapModel.mapPane.menuAt = i
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
@@ -48,7 +48,7 @@ func switchLayer(t *testing.T, d Dashboard, key string) Dashboard {
 // rainGiven counts the rain grids handed in.
 func rainGiven(d Dashboard) int {
 	n := 0
-	for id := range d.mapPane.tempGiven {
+	for id := range d.mapModel.mapPane.tempGiven {
 		if strings.HasPrefix(id, RainLayer+"/") {
 			n++
 		}
@@ -58,7 +58,7 @@ func rainGiven(d Dashboard) int {
 
 // menuHas reports whether the Overlays menu has a row of the key.
 func menuHas(d Dashboard, key string) bool {
-	for _, r := range d.overlayRows() {
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		if r.key == key {
 			return true
 		}
@@ -77,13 +77,13 @@ func TestRainIsForecastModesRow(t *testing.T) {
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if !menuHas(d, RainLayer) || !d.layerOn(RainLayer) {
+	if !menuHas(d, RainLayer) || !d.mapModel.layerOn(RainLayer, d.mapEnv()) {
 		t.Fatal("Forecast mode's menu has no rain and snow row, on")
 	}
 	if n := rainGiven(d); n != 1+forecastDays {
 		t.Errorf("Forecast mode handed in %d rain grids; want Now's and every day's, up front", n)
 	}
-	if !d.layerOn(TemperatureLayer) {
+	if !d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) {
 		t.Error("with rain on, Forecast mode did not turn temperature on as the tint under it (D-104, D-117)")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // back to Radar mode, Forecast mode's answer still held
@@ -98,17 +98,17 @@ func TestRainIsForecastModesRow(t *testing.T) {
 // the row is temperature's again.
 func TestForecastModesRainSaysItIsNotRadar(t *testing.T) {
 	d := openRainMap(t, false)
-	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}},
+	d.mapModel.mapPane.legend = []tuimaps.LegendEntry{{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}},
 		{Preset: "temperature", Classes: []tuimaps.Class{{Label: "50 to 60", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true}}}}
-	row := ttytest.StripANSI(d.scrubRows(100)[0])
+	row := ttytest.StripANSI(d.mapModel.scrubRows(100, d.mapEnv())[0])
 	if !strings.Contains(row, "MODEL RAIN") || !strings.Contains(row, "NOT RADAR") {
 		t.Errorf("with rain drawn, the colour row is %q; want radar's colours said to be a model's, not radar", row)
 	}
-	if b := ttytest.StripANSI(strings.Join(d.badges(), " ")); !strings.Contains(b, "RAIN   O-METEO  ") {
+	if b := ttytest.StripANSI(strings.Join(d.mapModel.badges(d.mapEnv()), " ")); !strings.Contains(b, "RAIN   O-METEO  ") {
 		t.Errorf("the badges are %q; want the rain's source (D-133)", b)
 	}
 	d = switchLayer(t, d, RainLayer)
-	if row := ttytest.StripANSI(d.scrubRows(100)[0]); !strings.Contains(row, "TEMPERATURE") || rainGiven(d) != 0 {
+	if row := ttytest.StripANSI(d.mapModel.scrubRows(100, d.mapEnv())[0]); !strings.Contains(row, "TEMPERATURE") || rainGiven(d) != 0 {
 		t.Errorf("with rain off the row is %q and %d rain grids are drawn", row, rainGiven(d))
 	}
 }
@@ -118,14 +118,14 @@ func TestForecastModesRainSaysItIsNotRadar(t *testing.T) {
 // said to be NDFD's totals - not a model's rain in radar's colours.
 func TestNDFDsTotalsAreKeyedInTheirOwnScale(t *testing.T) {
 	d := openRainMap(t, false)
-	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "qpf", Classes: []tuimaps.Class{{Label: "under 0.25"}, {Label: "0.25 to 2.5", Colour: tuimaps.RGB{R: 133, G: 248, B: 24}, Drawn: true}}},
+	d.mapModel.mapPane.legend = []tuimaps.LegendEntry{{Preset: "qpf", Classes: []tuimaps.Class{{Label: "under 0.25"}, {Label: "0.25 to 2.5", Colour: tuimaps.RGB{R: 133, G: 248, B: 24}, Drawn: true}}},
 		{Preset: "temperature", Classes: []tuimaps.Class{{Label: "50 to 60", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true}}}}
-	row := ttytest.StripANSI(d.scrubRows(100)[0])
+	row := ttytest.StripANSI(d.mapModel.scrubRows(100, d.mapEnv())[0])
 	if !strings.Contains(row, "NDFD TOTALS") || strings.Contains(row, "MODEL RAIN") || !strings.Contains(row, "under 0.25") {
 		t.Errorf("with NDFD's totals drawn, the colour row is %q; want the totals' classes, said to be NDFD's", row)
 	}
-	d.mapPane.legend = append(d.mapPane.legend, tuimaps.LegendEntry{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}})
-	if row := ttytest.StripANSI(d.scrubRows(100)[0]); !strings.Contains(row, "MODEL RAIN") {
+	d.mapModel.mapPane.legend = append(d.mapModel.mapPane.legend, tuimaps.LegendEntry{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}})
+	if row := ttytest.StripANSI(d.mapModel.scrubRows(100, d.mapEnv())[0]); !strings.Contains(row, "MODEL RAIN") {
 		t.Errorf("with a model's rain drawn too, the row is %q; want radar's colours, said to be a model's", row)
 	}
 }
@@ -135,8 +135,8 @@ func TestNDFDsTotalsAreKeyedInTheirOwnScale(t *testing.T) {
 func TestTheBadgeSaysRainWhenItIsAlone(t *testing.T) {
 	d := openRainMap(t, false)
 	d = switchLayer(t, d, TemperatureLayer)
-	d.mapPane.fcStep = 1
-	if got := d.badgeStep(); got != "TODAY RAIN" {
+	d.mapModel.mapPane.fcStep = 1
+	if got := d.mapModel.badgeStep(d.mapEnv()); got != "TODAY RAIN" {
 		t.Errorf("the badge's step is %q; want TODAY RAIN", got)
 	}
 }
@@ -153,10 +153,10 @@ func TestTheHoursAheadNameOpenMeteo(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = shiftKey(settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd), tea.KeyRight)
-	if badge := ttytest.StripANSI(d.radarBadge()); !strings.Contains(badge, "RADAR FCST") || !strings.Contains(badge, "O-METEO") {
+	if badge := ttytest.StripANSI(d.mapModel.radarBadge(d.mapEnv())); !strings.Contains(badge, "RADAR FCST") || !strings.Contains(badge, "O-METEO") {
 		t.Errorf("ahead of now the badge is %q; want RADAR FCST and O-METEO", badge)
 	}
-	if row := ttytest.StripANSI(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST   O-METEO  ") {
+	if row := ttytest.StripANSI(d.mapModel.loopRow(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())); !strings.Contains(row, "FORECAST   O-METEO  ") {
 		t.Errorf("ahead of now the loop's row is %q; want it to lead FORECAST O-METEO", row)
 	}
 }

@@ -60,7 +60,7 @@ func propBench(tb testing.TB) Dashboard {
 
 // settleWork lands every piece of the map's work.
 func settleWork(d Dashboard) Dashboard {
-	for cmd := d.mapWorkCmd(); cmd != nil; cmd = d.mapWorkCmd() {
+	for cmd := d.mapModel.mapWorkCmd(d.mapEnv()); cmd != nil; cmd = d.mapModel.mapWorkCmd(d.mapEnv()) {
 		m, _ := d.Update(cmd())
 		d = m.(Dashboard)
 	}
@@ -89,7 +89,7 @@ func BenchmarkPropRenderMap(b *testing.B) {
 		west = !west
 		d, _ = keyCmd(b, d, key)
 		d = settleWork(d)
-		_ = d.renderMap()
+		_ = d.mapModel.renderMap(d.mapEnv())
 	}
 }
 
@@ -105,7 +105,7 @@ func TestPropagationFrameAllocBudget(t *testing.T) {
 		rendering.SetColorEnabledForTest(colour)
 		name := map[bool]string{false: "", true: " colour"}[colour]
 		calls := &[]string{}
-		d.mapPane.calls = calls
+		d.mapModel.mapPane.calls = calls
 		hit := allocpin.Pin(t, "Propagation window"+name+" hit", 20, func() { _ = d.View().Content })
 		miss := allocpin.Pin(t, "Propagation window"+name+" miss", 20, func() { d.mmemo.ok = false; _ = d.View().Content })
 		if len(*calls) != 0 {

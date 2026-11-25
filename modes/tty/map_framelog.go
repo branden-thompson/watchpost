@@ -62,13 +62,13 @@ type MapFrame struct {
 var placeWords = regexp.MustCompile(`[A-Z][A-Za-z'.-]{2,}(?: [A-Z][A-Za-z'.-]+)*`)
 
 // recordFrame tells the recorder the frame just drawn; nothing without one.
-func (d Dashboard) recordFrame(status tuimaps.Status) {
-	if d.mapHooks.MapFrame == nil || d.mapPane.m == nil {
+func (mm mapModel) recordFrame(status tuimaps.Status, e mapEnv) {
+	if mm.mapHooks.MapFrame == nil || mm.mapPane.m == nil {
 		return
 	}
-	st := d.mapPane.m.Loop()
-	c, z := d.mapPane.m.Centre()
-	plain := plaintext.StripSGR(strings.Join(d.mapPane.lines, "\n"))
+	st := mm.mapPane.m.Loop()
+	c, z := mm.mapPane.m.Centre()
+	plain := plaintext.StripSGR(strings.Join(mm.mapPane.lines, "\n"))
 	seen := map[string]bool{}
 	for _, w := range placeWords.FindAllString(plain, -1) {
 		seen[w] = true
@@ -78,14 +78,15 @@ func (d Dashboard) recordFrame(status tuimaps.Status) {
 		places = append(places, w)
 	}
 	sort.Strings(places)
-	d.mapHooks.MapFrame(MapFrame{At: d.now(), LoopIndex: st.Index, LoopCount: st.Count, LoopAt: st.At, Playing: st.Playing,
-		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: d.radarCells(), Cells: d.presetCells(), Given: d.tempGivenByLayer(), Text: d.frameText(plain), Spans: d.givenSpans(), Chips: d.frameChips(), Notes: d.frameNotes(), Places: places, Status: strconv.Itoa(int(status)), PendingAfter: d.mapPane.pending, Radar: d.radarGivenIDs(), RadarFrames: d.radarFrameCounts()})
+	mm.mapHooks.MapFrame(MapFrame{At: e.Now(), LoopIndex: st.Index, LoopCount: st.Count, LoopAt: st.At, Playing: st.Playing,
+		Lon: c.Lon, Lat: c.Lat, Zoom: z, RadarCells: mm.radarCells(), Cells: mm.presetCells(), Given: mm.tempGivenByLayer(), Text: mm.frameText(plain), Spans: mm.givenSpans(), Chips: mm.frameChips(), Notes: mm.frameNotes(),
+		Places: places, Status: strconv.Itoa(int(status)), PendingAfter: mm.mapPane.pending, Radar: mm.radarGivenIDs(), RadarFrames: mm.radarFrameCounts()})
 }
 
 // radarGivenIDs is the radar's loops handed in, by id, sorted.
-func (d Dashboard) radarGivenIDs() []string {
-	out := make([]string, 0, len(d.mapPane.radarGiven))
-	for id := range d.mapPane.radarGiven {
+func (mm mapModel) radarGivenIDs() []string {
+	out := make([]string, 0, len(mm.mapPane.radarGiven))
+	for id := range mm.mapPane.radarGiven {
 		out = append(out, id)
 	}
 	sort.Strings(out)
@@ -94,9 +95,9 @@ func (d Dashboard) radarGivenIDs() []string {
 
 // radarFrameCounts is each radar loop's frames with a picture and its gaps,
 // by id.
-func (d Dashboard) radarFrameCounts() map[string]string {
+func (mm mapModel) radarFrameCounts() map[string]string {
 	out := map[string]string{}
-	for id, o := range d.mapPane.radarGiven {
+	for id, o := range mm.mapPane.radarGiven {
 		if o.Image == nil {
 			continue
 		}
@@ -112,20 +113,20 @@ func (d Dashboard) radarFrameCounts() map[string]string {
 }
 
 // tempGivenByLayer counts the temperature feed's overlays by layer.
-func (d Dashboard) tempGivenByLayer() map[string]int {
-	t := d.mapPane.temp
+func (mm mapModel) tempGivenByLayer() map[string]int {
+	t := mm.mapPane.temp
 	return map[string]int{TemperatureLayer: len(t.Overlays) + len(t.High) + len(t.Low), FeelsLayer: len(t.Feels) + len(t.FeelsHigh) + len(t.FeelsLow),
 		WindLayer: len(t.Wind) + len(t.WindDays), UVLayer: len(t.UV) + len(t.UVDays), AirLayer: len(t.Air) + len(t.AirDays)}
 }
 
 // givenSpans are the temperature overlays handed in and their spans, while
 // the recorder keeps text.
-func (d Dashboard) givenSpans() map[string]string {
-	if !d.mapHooks.MapFrameText {
+func (mm mapModel) givenSpans() map[string]string {
+	if !mm.mapHooks.MapFrameText {
 		return nil
 	}
 	out := map[string]string{}
-	for id, o := range d.mapPane.tempGiven {
+	for id, o := range mm.mapPane.tempGiven {
 		out[id] = o.During.From.UTC().Format("15:04") + ".." + o.During.Until.UTC().Format("15:04")
 	}
 	return out
@@ -133,36 +134,36 @@ func (d Dashboard) givenSpans() map[string]string {
 
 // frameChips and frameNotes are the temperature feed's, while the recorder
 // keeps text.
-func (d Dashboard) frameChips() map[string][]string {
-	if !d.mapHooks.MapFrameText {
+func (mm mapModel) frameChips() map[string][]string {
+	if !mm.mapHooks.MapFrameText {
 		return nil
 	}
-	return d.mapPane.temp.Chips
+	return mm.mapPane.temp.Chips
 }
 
-func (d Dashboard) frameNotes() []string {
-	if !d.mapHooks.MapFrameText {
+func (mm mapModel) frameNotes() []string {
+	if !mm.mapHooks.MapFrameText {
 		return nil
 	}
-	return append(append([]string(nil), d.mapPane.temp.Notes...), d.mapPane.temp.Problems...)
+	return append(append([]string(nil), mm.mapPane.temp.Notes...), mm.mapPane.temp.Problems...)
 }
 
 // frameText is the frame's plain text while the recorder is asked for it.
-func (d Dashboard) frameText(plain string) string {
-	if !d.mapHooks.MapFrameText {
+func (mm mapModel) frameText(plain string) string {
+	if !mm.mapHooks.MapFrameText {
 		return ""
 	}
 	return plain
 }
 
 // radarCells counts the frame's cells drawn in one of the radar's colours.
-func (d Dashboard) radarCells() int { return d.presetCells()["radar"] }
+func (mm mapModel) radarCells() int { return mm.presetCells()["radar"] }
 
 // presetCells counts the frame's cells drawn in each legend preset's colours.
-func (d Dashboard) presetCells() map[string]int {
-	text := strings.Join(d.mapPane.lines, "\n")
+func (mm mapModel) presetCells() map[string]int {
+	text := strings.Join(mm.mapPane.lines, "\n")
 	out := map[string]int{}
-	for _, e := range d.mapPane.legend {
+	for _, e := range mm.mapPane.legend {
 		for _, c := range e.Classes {
 			if c.Drawn {
 				out[e.Preset] += strings.Count(text, strconv.Itoa(int(c.Colour.R))+";"+strconv.Itoa(int(c.Colour.G))+";"+strconv.Itoa(int(c.Colour.B))+"m")

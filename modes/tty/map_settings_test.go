@@ -21,12 +21,12 @@ func TestTheMapRowsSaveWithTheDisplayPreferences(t *testing.T) {
 	d, got := uiDash(t, rowMapDesc)
 	m0, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m0
-	if d.mapDesc != mapDescInstead {
-		t.Errorf("→ on the description's picker did not move it on: %v", d.mapDesc)
+	if d.mapModel.mapDesc != mapDescInstead {
+		t.Errorf("→ on the description's picker did not move it on: %v", d.mapModel.mapDesc)
 	}
 	d.setup.focus = rowMapsOn
 	d = d.setupSpace()
-	if !d.mapsOff {
+	if !d.mapModel.mapsOff {
 		t.Error("space on the maps row did not switch maps off")
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -47,11 +47,11 @@ func TestTheMapRowsSaveWithTheDisplayPreferences(t *testing.T) {
 // says is what the window opens with.
 func TestTheConfigWordsOpenTheWindowAsChosen(t *testing.T) {
 	d := mapDash(t, Config{Maps: "off", MapDescription: "off"})
-	if !d.mapsOff || d.mapDesc != mapDescOff {
-		t.Errorf("maps off and description off in the file opened as %v, %v", d.mapsOff, d.mapDesc)
+	if !d.mapModel.mapsOff || d.mapModel.mapDesc != mapDescOff {
+		t.Errorf("maps off and description off in the file opened as %v, %v", d.mapModel.mapsOff, d.mapModel.mapDesc)
 	}
-	if d := mapDash(t, Config{}); d.mapsOff || d.mapDesc != mapDescWith {
-		t.Errorf("an empty file opened as maps off %v, description %v; want on, with the picture", d.mapsOff, d.mapDesc)
+	if d := mapDash(t, Config{}); d.mapModel.mapsOff || d.mapModel.mapDesc != mapDescWith {
+		t.Errorf("an empty file opened as maps off %v, description %v; want on, with the picture", d.mapModel.mapsOff, d.mapModel.mapDesc)
 	}
 }
 
@@ -86,7 +86,7 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 			if c.mode == "" {
 				d = pressCode(d, 'A', "A") // D-87: the box waits for A
 			}
-			body := d.mapBodyLines()
+			body := d.mapModel.mapBodyLines(d.mapEnv())
 			text := ttytest.StripANSI(strings.Join(body, "\n"))
 			words := strings.Index(text, "Oceanside, CA - Currently:")
 			braille := strings.IndexFunc(text, func(r rune) bool { return r > 0x2800 && r <= 0x28ff })
@@ -108,10 +108,10 @@ func TestBelowTheFloorTheNoticeCarriesTheDescription(t *testing.T) {
 	m, _ := d.Update(tea.WindowSizeMsg{Width: 70, Height: 22})
 	d = m.(Dashboard)
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n"))
+	text := ttytest.StripANSI(strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n"))
 	if !strings.Contains(text, "69 × 12") || !strings.Contains(text, "Wind Warning") {
 		t.Errorf("below the floor the window says:\n%s", text)
 	}
@@ -134,10 +134,10 @@ func TestTheMapDrawsAtTheDocumentedFloor(t *testing.T) {
 		d = m.(Dashboard)
 		d, _ = pressKey(d, "g")
 		d = feedAndSettle(t, d)
-		if !d.mapFits() {
-			t.Errorf("description %s: at 80x24 the map is %+v, under the floor", mode, d.mapBodySize())
+		if !d.mapModel.mapFits(d.mapEnv()) {
+			t.Errorf("description %s: at 80x24 the map is %+v, under the floor", mode, d.mapModel.mapBodySize(d.mapEnv()))
 		}
-		text := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n"))
+		text := ttytest.StripANSI(strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n"))
 		if strings.IndexFunc(text, func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) < 0 {
 			t.Errorf("description %s: no map at 80x24:\n%s", mode, text)
 		}
@@ -155,13 +155,13 @@ func TestEverySizeShowsAStatedStateAndNeverOverflows(t *testing.T) {
 		for h := 10; h <= 80; h += 7 {
 			m, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: h})
 			sized := m.(Dashboard)
-			body := ttytest.StripANSI(strings.Join(sized.mapBodyLines(), "\n"))
+			body := ttytest.StripANSI(strings.Join(sized.mapModel.mapBodyLines(sized.mapEnv()), "\n"))
 			if strings.TrimSpace(body) == "" {
 				t.Fatalf("%dx%d: the window body is empty", w, h)
 			}
 			hasMap := strings.IndexFunc(body, func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) >= 0
-			if hasMap && (sized.mapBodySize().Cols < mapMinBody.Cols || sized.mapBodySize().Rows < mapMinBody.Rows) {
-				t.Errorf("%dx%d: a %+v map was drawn under the floor", w, h, sized.mapBodySize())
+			if hasMap && (sized.mapModel.mapBodySize(sized.mapEnv()).Cols < mapMinBody.Cols || sized.mapModel.mapBodySize(sized.mapEnv()).Rows < mapMinBody.Rows) {
+				t.Errorf("%dx%d: a %+v map was drawn under the floor", w, h, sized.mapModel.mapBodySize(sized.mapEnv()))
 			}
 			if !hasMap && !strings.ContainsAny(body, "abcdefghijklmnopqrstuvwxyz") {
 				t.Errorf("%dx%d: no map and no words", w, h)
@@ -180,7 +180,7 @@ func TestEverySizeShowsAStatedStateAndNeverOverflows(t *testing.T) {
 func TestTheDescriptionPickerGoesBothWays(t *testing.T) {
 	d, _ := uiDash(t, rowMapDesc)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.mapDesc; got != mapDescOff {
+	if got := m.mapModel.mapDesc; got != mapDescOff {
 		t.Errorf("← from with the picture went to %v, want off", got)
 	}
 }

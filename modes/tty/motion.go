@@ -33,22 +33,23 @@ func reduceMotionLabel(on bool) string {
 func (d Dashboard) cycleReduceMotion(bool) Dashboard {
 	d.reduceMotion = !d.reduceMotion
 	if d.reduceMotion {
-		d.mapPane.fcPlaying, d.mapPane.fcGen = false, d.mapPane.fcGen+1
+		d.mapModel.mapPane.fcPlaying, d.mapModel.mapPane.fcGen = false, d.mapModel.mapPane.fcGen+1
 		d.frame, d.vizBands = 0, nil
 	}
-	return d.applyMotion().uiTouched()
+	d.mapModel = d.mapModel.applyMotion(d.mapEnv())
+	return d.uiTouched()
 }
 
 // applyMotion hands the map the listener's choice; the same answer again
 // changes nothing.
-func (d Dashboard) applyMotion() Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) applyMotion(e mapEnv) mapModel {
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
-	on := d.reduceMotion
-	d.mapPane.call("ReduceMotion", func() { m.ReduceMotion(on) })
-	return d
+	on := e.ReduceMotion
+	mm.mapPane.call("ReduceMotion", func() { m.ReduceMotion(on) })
+	return mm
 }
 
 // shimmerStep moves the loading dots one phase on the tick; under Reduce
@@ -64,11 +65,15 @@ func (d Dashboard) shimmerStep() Dashboard {
 // markEnds is when a pressed chip's acknowledgement ends: after the 350 ms
 // blink, or under Reduce motion at the next key. Each blink is set and ended
 // on the model's clock, so a test that pins the clock pins the blinks.
-func (d Dashboard) markEnds() time.Time {
-	if d.reduceMotion {
-		return d.clock().Add(steadyMark)
+func (d Dashboard) markEnds() time.Time { return markEndsAt(d.now, d.reduceMotion) }
+
+// markEndsAt is that end on a model's clock, for the Dashboard and the map
+// alike.
+func markEndsAt(now func() time.Time, reduce bool) time.Time {
+	if reduce {
+		return clockOf(now).Add(steadyMark)
 	}
-	return d.clock().Add(pickerFlashDur)
+	return clockOf(now).Add(pickerFlashDur)
 }
 
 // keyClearsMarks ends every pressed chip's mark as a key arrives under
@@ -77,7 +82,7 @@ func (d Dashboard) keyClearsMarks() Dashboard {
 	if !d.reduceMotion {
 		return d
 	}
-	d.volFlash, d.mapPane.flash, d.mapPane.menuFlash, d.setup.flash = "", "", flashNone, flashNone
+	d.volFlash, d.mapModel.mapPane.flash, d.mapModel.mapPane.menuFlash, d.setup.flash = "", "", flashNone, flashNone
 	return d
 }
 

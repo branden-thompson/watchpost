@@ -23,23 +23,23 @@ const (
 const serviceAreaKeeps = 7 * 24 * time.Hour
 
 // serviceKm is the station's service radius in kilometres; zero unset.
-func (d Dashboard) serviceKm() float64 {
-	return float64(max(d.cfg.ServiceRadiusMi, 0)) * units.KmPerMile
+func (mm mapModel) serviceKm(e mapEnv) float64 {
+	return float64(max(e.Station.RadiusMi, 0)) * units.KmPerMile
 }
 
 // propRadiusKm is the near-vertical answers' radius (D-100, FR-2.3): on a UI
 // mode with a service area, the service radius; else the Setting's.
-func (d Dashboard) propRadiusKm() int {
-	if km := d.serviceKm(); d.mapRole().zone && km > 0 {
+func (mm mapModel) propRadiusKm(e mapEnv) int {
+	if km := mm.serviceKm(e); mm.mapRole(e).zone && km > 0 {
 		return int(math.Round(km))
 	}
-	return d.mapPropRadiusKm
+	return mm.mapPropRadiusKm
 }
 
 // propLocalName names the near-vertical area: the service area on a UI mode
 // with one (FR-2.3), else NVIS's (D-100).
-func (d Dashboard) propLocalName() string {
-	if d.mapRole().zone && d.serviceKm() > 0 {
+func (mm mapModel) propLocalName(e mapEnv) string {
+	if mm.mapRole(e).zone && mm.serviceKm(e) > 0 {
 		return "service area"
 	}
 	return "NVIS"
@@ -50,20 +50,20 @@ func (d Dashboard) propLocalName() string {
 // red, its inside tinted, stippled over a field its tint cannot blend with
 // (D-196) - in every mode; none for a UI mode without one, or with no
 // station or radius set.
-func (d Dashboard) zoneOverlays() []tuimaps.Overlay {
-	loc, km := d.mapPlace(), d.serviceKm()
-	if !d.mapRole().zone || loc == nil || km <= 0 {
+func (mm mapModel) zoneOverlays(e mapEnv) []tuimaps.Overlay {
+	loc, km := mm.mapPlace(e), mm.serviceKm(e)
+	if !mm.mapRole(e).zone || loc == nil || km <= 0 {
 		return nil
 	}
-	return []tuimaps.Overlay{{ID: serviceAreaID, Valid: d.now().UTC().Truncate(24 * time.Hour), Keeps: serviceAreaKeeps,
+	return []tuimaps.Overlay{{ID: serviceAreaID, Valid: e.Now().UTC().Truncate(24 * time.Hour), Keeps: serviceAreaKeeps,
 		Features: []tuimaps.Feature{{Kind: tuimaps.Circle, Centre: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}, RadiusKm: km, Role: tuimaps.Zone}}}}
 }
 
 // towerPlace is the tower's mark (D-25, D-195): a diamond at the station,
 // named for it; false for a UI mode without one, or with no station.
-func (d Dashboard) towerPlace() (tuimaps.Place, bool) {
-	loc := d.mapPlace()
-	if !d.mapRole().zone || loc == nil {
+func (mm mapModel) towerPlace(e mapEnv) (tuimaps.Place, bool) {
+	loc := mm.mapPlace(e)
+	if !mm.mapRole(e).zone || loc == nil {
 		return tuimaps.Place{}, false
 	}
 	return tuimaps.Place{ID: towerPlaceID, Name: loc.Label, At: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}, Marker: tuimaps.MarkerDiamond}, true
@@ -73,51 +73,51 @@ func (d Dashboard) towerPlace() (tuimaps.Place, bool) {
 // mode wants them, and takes off what it no longer does. The role it drew for
 // is kept, so a swap of UI modes with the map open puts the map on the new
 // role's place.
-func (d Dashboard) setZone() Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) setZone(e mapEnv) mapModel {
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
-	d.mapPane.zoneGiven, _ = d.reconcile(d.mapPane.zoneGiven, d.zoneOverlays(), func(o tuimaps.Overlay, err error) {
-		d.problem("Service area: " + o.ID + " not drawn - " + err.Error()) // ours to fix, never the listener's (D-124)
+	mm.mapPane.zoneGiven, _ = mm.reconcile(mm.mapPane.zoneGiven, mm.zoneOverlays(e), func(o tuimaps.Overlay, err error) {
+		mm.problem("Service area: "+o.ID+" not drawn - "+err.Error(), e) // ours to fix, never the listener's (D-124)
 	})
-	want, ok := d.towerPlace()
-	if had := d.mapPane.tower; had != want || !ok {
+	want, ok := mm.towerPlace(e)
+	if had := mm.mapPane.tower; had != want || !ok {
 		if had.ID != "" {
-			d.mapPane.call("RemovePlace", func() { _, _ = m.RemovePlace(had.ID) })
-			d.mapPane.tower = tuimaps.Place{}
+			mm.mapPane.call("RemovePlace", func() { _, _ = m.RemovePlace(had.ID) })
+			mm.mapPane.tower = tuimaps.Place{}
 		}
 		if ok {
 			var err error
-			d.mapPane.call("AddPlace", func() { _, err = m.AddPlace(want) })
+			mm.mapPane.call("AddPlace", func() { _, err = m.AddPlace(want) })
 			if err != nil {
-				d.problem("Service area: the tower not marked - " + err.Error())
+				mm.problem("Service area: the tower not marked - "+err.Error(), e)
 			} else {
-				d.mapPane.tower = want
+				mm.mapPane.tower = want
 			}
 		}
 	}
-	d.mapPane.roleDrawn = d.surface
-	return d
+	mm.mapPane.roleDrawn = e.Surface
+	return mm
 }
 
 // followRole puts an open map on the UI mode's place and marks when the UI
 // mode has changed since it was drawn: a swap with the map open.
-func (d Dashboard) followRole() Dashboard {
-	if d.mapPane.m == nil || d.mapPane.roleDrawn == d.surface {
-		return d
+func (mm mapModel) followRole(e mapEnv) mapModel {
+	if mm.mapPane.m == nil || mm.mapPane.roleDrawn == e.Surface {
+		return mm
 	}
-	return d.followSelection().setZone().requestFeed()
+	return mm.followSelection(e).setZone(e).requestFeed()
 }
 
 // zoneWords are the words for the service area (D-195), said without the
 // picture: its radius around the station, and no colour - the map draws it
 // red only where it draws colour (AX-12); none for a UI mode without one.
-func (d Dashboard) zoneWords() string {
-	loc, mi := d.mapPlace(), d.cfg.ServiceRadiusMi
-	if !d.mapRole().zone || loc == nil || mi <= 0 {
+func (mm mapModel) zoneWords(e mapEnv) string {
+	loc, mi := mm.mapPlace(e), e.Station.RadiusMi
+	if !mm.mapRole(e).zone || loc == nil || mi <= 0 {
 		return ""
 	}
-	radius := d.distanceLabel(int(math.Round(d.serviceKm())))
+	radius := mm.distanceLabel(int(math.Round(mm.serviceKm(e))), e)
 	return "The circle around " + loc.Label + " is the station's service area: " + radius + "."
 }

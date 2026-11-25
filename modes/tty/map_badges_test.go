@@ -37,7 +37,7 @@ func badgeMap(t *testing.T, cost MapCost) Dashboard {
 // underTheMap is the rows under the map, without colour.
 func underTheMap(d Dashboard) []string {
 	var out []string
-	for _, l := range d.scrubRows(d.mapTextW()) {
+	for _, l := range d.mapModel.scrubRows(d.mapModel.mapTextW(d.mapEnv()), d.mapEnv()) {
 		out = append(out, ttytest.StripANSI(l))
 	}
 	return out
@@ -53,8 +53,8 @@ func TestTheBadgeRowCreditsEachLayerDrawn(t *testing.T) {
 	want := "ALERTS   NWS      FIRE   NIFC    HMS      TEMP   O-METEO      WAVES   NDFD    O-METEO  " // each chip "  NAME  " on its ground, no brackets, side by side (D-134, D-174)
 	found := false
 	for _, r := range rows {
-		r = strings.Replace(r, d.outlineKey(), "", 1)        // the outline digits' key follows the credits (AX-8)
-		if strings.TrimSpace(r) == strings.TrimSpace(want) { // the last chip's padding ends the row
+		r = strings.Replace(r, d.mapModel.outlineKey(d.mapEnv()), "", 1) // the outline digits' key follows the credits (AX-8)
+		if strings.TrimSpace(r) == strings.TrimSpace(want) {             // the last chip's padding ends the row
 			found = true
 		}
 	}
@@ -73,8 +73,8 @@ func TestTheBadgeRowCreditsEachLayerDrawn(t *testing.T) {
 // window cannot hold them on one, and never a badge cut in two.
 func TestTheBadgesWrapOnlyWhenNarrow(t *testing.T) {
 	d := badgeMap(t, MapCost{})
-	one := d.badgeRows(200)
-	two := d.badgeRows(40)
+	one := d.mapModel.badgeRows(200, d.mapEnv())
+	two := d.mapModel.badgeRows(40, d.mapEnv())
 	if len(one) != 1 || len(two) < 2 {
 		t.Fatalf("200 columns: %d rows; 40 columns: %d rows; want one, then more", len(one), len(two))
 	}
@@ -102,7 +102,7 @@ func TestTheCostWarningIsOneLineAndTheEstimateSitsUnderTheScrubber(t *testing.T)
 			est = i
 		}
 	}
-	scrub := d.scrubW()
+	scrub := d.mapModel.scrubW(d.mapEnv())
 	if warn < 0 || est < 0 || est <= warn+radarRows {
 		t.Fatalf("warning at row %d, estimate at %d:\n%s", warn, est, strings.Join(rows, "\n"))
 	}
@@ -122,10 +122,10 @@ func TestTheCostWarningIsOneLineAndTheEstimateSitsUnderTheScrubber(t *testing.T)
 // its legend, so its chip reads MRMS≈ where it is shown.
 func TestTheMRMSChipIsMarkedApproximate(t *testing.T) {
 	d := badgeMap(t, MapCost{})
-	if w := ttytest.StripANSI(d.mapBadgeWords()); !strings.Contains(w, "MRMS≈") {
+	if w := ttytest.StripANSI(d.mapModel.mapBadgeWords(d.mapEnv())); !strings.Contains(w, "MRMS≈") {
 		t.Errorf("the badge reads %q; want MRMS≈", w)
 	}
-	if r := ttytest.StripANSI(d.loopRow(d.scrubW())); !strings.Contains(r, "MRMS≈") {
+	if r := ttytest.StripANSI(d.mapModel.loopRow(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())); !strings.Contains(r, "MRMS≈") {
 		t.Errorf("the loop's row reads %q; want MRMS≈", r)
 	}
 }

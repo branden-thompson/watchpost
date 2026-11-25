@@ -22,44 +22,44 @@ const (
 // came from (D-153). It is never saved (D-154). Entering it takes every
 // weather layer off and the region's bound away (D-21); leaving it asks the
 // weather mode's data again, as R does.
-func (d Dashboard) togglePropagation() (Dashboard, tea.Cmd) {
-	d.mapPane.prop = !d.mapPane.prop
-	d, cmd := d.enterMode()
-	if d.mapMode() == modePropagation && d.propAckDue() {
-		return d.openPropAck(), cmd // before anything of the mode's is fetched (D-81): closing it asks
+func (mm mapModel) togglePropagation(e mapEnv) (mapModel, tea.Cmd, mapWant) {
+	mm.mapPane.prop = !mm.mapPane.prop
+	mm, cmd := mm.enterMode(e)
+	if mm.mapMode(e) == modePropagation && mm.propAckDue() {
+		return mm, cmd, mm.openPropAck() // before anything of the mode's is fetched (D-81): closing it asks
 	}
-	d, update := d.askPropagation()
-	return d, tea.Batch(cmd, update)
+	mm, update := mm.askPropagation(e)
+	return mm, tea.Batch(cmd, update), mapWant{}
 }
 
 // enterMode sets the map up for the mode it is now in: its bound, its layers
 // and its playback, and asks what the mode draws.
-func (d Dashboard) enterMode() (Dashboard, tea.Cmd) {
-	d = d.resetPlayback()
-	d.mapPane.gen++
-	d = d.ensureMainOverlay()
-	d = d.followSelection().setTemp().setProp()
-	d = d.refreshMapCost().showStep().retimeDrawn().requestFeed()
-	d, feed := d.askFeed()
-	d, radar := d.askRadar()
-	switch d.mapMode() {
+func (mm mapModel) enterMode(e mapEnv) (mapModel, tea.Cmd) {
+	mm = mm.resetPlayback()
+	mm.mapPane.gen++
+	mm = mm.ensureMainOverlay(e)
+	mm = mm.followSelection(e).setTemp(e).setProp(e)
+	mm = mm.refreshMapCost(e).showStep(e).retimeDrawn(e).requestFeed()
+	mm, feed := mm.askFeed(e)
+	mm, radar := mm.askRadar(e)
+	switch mm.mapMode(e) {
 	case modePropagation:
-		return d, tea.Batch(feed, radar, d.mapWorkCmd()) // nothing of the weather's is asked for
+		return mm, tea.Batch(feed, radar, mm.mapWorkCmd(e)) // nothing of the weather's is asked for
 	case modeRadar, modeForecast:
-		d = d.stopPropagation() // the Propagation mode's update ends with it (FR-4.2)
+		mm = mm.stopPropagation(e) // the Propagation mode's update ends with it (FR-4.2)
 	}
-	d, temp := d.askTemp()
-	return d, tea.Batch(feed, radar, temp, d.mapWorkCmd())
+	mm, temp := mm.askTemp(e)
+	return mm, tea.Batch(feed, radar, temp, mm.mapWorkCmd(e))
 }
 
 // propagationBadge is the Propagation mode's badge in the radar badge's place.
-func (d Dashboard) propagationBadge() string {
+func (mm mapModel) propagationBadge() string {
 	return mapBadge(render.Tint(propagationLabel, render.Tok(render.ModalTitle)), "", "")
 }
 
 // propChipWords are the P chip's words: whether the Propagation mode is on.
-func (d Dashboard) propChipWords() string {
-	switch d.mapMode() {
+func (mm mapModel) propChipWords(e mapEnv) string {
+	switch mm.mapMode(e) {
 	case modePropagation:
 		return "Propagation On"
 	case modeRadar, modeForecast:
@@ -70,9 +70,9 @@ func (d Dashboard) propChipWords() string {
 // outsideText is the window's words for a place in no region: no weather map
 // is drawn for it, and the key that opens the Propagation mode, as bound,
 // which covers the whole world (D-21).
-func (d Dashboard) outsideText() string {
-	text := d.mapPane.outside + " is outside every region the weather map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no weather map is drawn for it."
-	if keys := d.mapKeys[actMapProp].Keys; len(keys) > 0 {
+func (mm mapModel) outsideText() string {
+	text := mm.mapPane.outside + " is outside every region the weather map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no weather map is drawn for it."
+	if keys := mm.mapKeys[actMapProp].Keys; len(keys) > 0 {
 		text += " Press " + keys[0] + " for the Propagation mode, which covers the whole world."
 	}
 	return text
@@ -80,11 +80,11 @@ func (d Dashboard) outsideText() string {
 
 // outsideStated reports whether the window states the place is outside every
 // region in place of the map: in a weather mode, for a place in no region.
-func (d Dashboard) outsideStated() bool {
-	if d.mapPane.outside == "" {
+func (mm mapModel) outsideStated(e mapEnv) bool {
+	if mm.mapPane.outside == "" {
 		return false
 	}
-	switch d.mapMode() {
+	switch mm.mapMode(e) {
 	case modeRadar, modeForecast:
 		return true
 	case modePropagation:
@@ -103,43 +103,45 @@ const (
 // the weather mode it came from; a weather tint chosen in the Propagation
 // mode returns to that weather mode with the tint drawn. false for any other
 // key or row, which the menu handles as before.
-func (d Dashboard) radioChangesMode(key string) (Dashboard, tea.Cmd, bool) {
-	rows := d.overlayRows()
+func (mm mapModel) radioChangesMode(key string, e mapEnv) (mapModel, tea.Cmd, mapWant, bool) {
+	rows := mm.overlayRows(e)
 	if len(rows) == 0 || (key != "space" && key != "enter") {
-		return d, nil, false
+		return mm, nil, mapWant{}, false
 	}
-	r := rows[d.mapPane.menuAt%len(rows)]
+	r := rows[mm.mapPane.menuAt%len(rows)]
 	if r.kind != menuRadio {
-		return d, nil, false
+		return mm, nil, mapWant{}, false
 	}
-	at := d.mapPane.menuAt
+	at := mm.mapPane.menuAt
 	switch {
 	case r.key == propagationRowKey:
-		nd, cmd := d.togglePropagation()
-		nd.mapPane.menuAt = at // the tints lead the menu in both modes: the cursor stays on its row
-		return nd.followMenuFocus(), cmd, true
-	case d.mapMode() == modePropagation:
-		nd := d.chooseTint(r.key) // chosen while this mode draws none of it: leaving draws and asks for it, once
-		nd, cmd := nd.timeFrom("overlay").togglePropagation()
+		nd, cmd, w := mm.togglePropagation(e)
+		nd.mapPane.menuAt = at    // the tints lead the menu in both modes: the cursor stays on its row
+		w.Then = mapStepMenuFocus // over the window the toggle may have opened
+		return nd, cmd, w, true
+	case mm.mapMode(e) == modePropagation:
+		nd, w := mm.chooseTint(r.key, e) // chosen while this mode draws none of it: leaving draws and asks for it, once
+		nd, cmd, toggled := nd.timeFrom("overlay", e).togglePropagation(e)
 		nd.mapPane.menuAt = at
-		save := nd.uiApplyCmd()
-		nd.setup.uiDirty = false
-		return nd.followMenuFocus(), tea.Batch(cmd, save), true
+		w = w.and(toggled)
+		w.Settings.Save, w.Settings.SaveLast = true, true // saved after the mode's commands, as the menu saves
+		w.Then = mapStepMenuFocus
+		return nd, cmd, w, true
 	}
-	return d, nil, false
+	return mm, nil, mapWant{}, false
 }
 
 // chooseTint draws a weather tint: chosen, the others not; never cleared,
 // as space on a chosen tint would clear it (D-142).
-func (d Dashboard) chooseTint(key string) Dashboard {
-	if key == TemperatureLayer && d.pickFeels() {
+func (mm mapModel) chooseTint(key string, e mapEnv) (mapModel, mapWant) {
+	if key == TemperatureLayer && mm.pickFeels(e) {
 		key = FeelsLayer
 	}
-	d.mapPane.tempAuto = false
-	return d.withChoice(func(c map[string]bool) {
+	mm.mapPane.tempAuto = false
+	return mm.withChoice(func(c map[string]bool) {
 		for _, t := range oneTint {
 			c[t] = false
 		}
 		c[key] = true
-	})
+	}, e)
 }

@@ -46,7 +46,7 @@ func typeFind(t *testing.T, d Dashboard, query string) Dashboard {
 // placeIDs are the places the map marks.
 func placeIDs(d Dashboard) []string {
 	var ids []string
-	for _, p := range d.mapPane.m.Places() {
+	for _, p := range d.mapModel.mapPane.m.Places() {
 		ids = append(ids, p.ID)
 	}
 	return ids
@@ -65,24 +65,24 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 	asked := ""
 	ownHooks(&d).FindPlace = func(_ context.Context, q string) (snapshot.LocationRef, error) { asked = q; return reykjavik, nil }
 	recent := len(d.recentLocations())
-	before, _ := d.mapPane.m.Centre()
-	origin := d.mapPane.propOrigin.at
+	before, _ := d.mapModel.mapPane.m.Centre()
+	origin := d.mapModel.mapPane.propOrigin.at
 	d = typeFind(t, d, "Reykjavik")
 	if asked != "Reykjavik" {
 		t.Errorf("the finder was asked %q", asked)
 	}
-	if c, _ := d.mapPane.m.Centre(); c != before || d.mapPane.propOrigin.at != origin {
-		t.Errorf("the find moved the map to %+v (origin %+v); on the Observer it stays at %+v (D-204)", c, d.mapPane.propOrigin.at, before)
+	if c, _ := d.mapModel.mapPane.m.Centre(); c != before || d.mapModel.mapPane.propOrigin.at != origin {
+		t.Errorf("the find moved the map to %+v (origin %+v); on the Observer it stays at %+v (D-204)", c, d.mapModel.mapPane.propOrigin.at, before)
 	}
 	if !slices.Contains(placeIDs(d), foundPlaceID) {
 		t.Errorf("the found place is not marked: %v", placeIDs(d))
 	}
 	d = workChart(t, d)
-	names, rows := d.propChartRows()
+	names, rows := d.mapModel.propChartRows()
 	if len(names) != 2+len(propanswers.Continents) || names[len(names)-1] != reykjavik.Label || len(rows[len(rows)-1].Bands) == 0 {
 		t.Fatalf("the chart's rows are %v; the continents, then the place found, answered", names)
 	}
-	if k := d.mapPane.propChart.key; k.origin != origin {
+	if k := d.mapModel.mapPane.propChart.key; k.origin != origin {
 		t.Errorf("the found place is answered from %+v; from the origin %+v", k.origin, origin)
 	}
 	words := strings.Join(propWordsFrom(t, d), "\n")
@@ -93,8 +93,8 @@ func TestAFoundPlaceIsAnsweredAndNotKept(t *testing.T) {
 		t.Errorf("the found place was kept: %d commits, %d recent places (were %d)", commits, len(d.recentLocations()), recent)
 	}
 	d = pressMap(t, d, "P") // the Propagation mode left
-	if d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) {
-		t.Errorf("leaving the mode kept the found place: %v, %v", d.mapPane.propFound, placeIDs(d))
+	if d.mapModel.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) {
+		t.Errorf("leaving the mode kept the found place: %v, %v", d.mapModel.mapPane.propFound, placeIDs(d))
 	}
 }
 
@@ -108,10 +108,10 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 		return snapshot.LocationRef{}, errors.New("no match in the offline index - try a city, coordinates or a grid locator")
 	}
 	d = typeFind(t, d, "nowhere at all")
-	if d.modal != modalPropFind || !strings.Contains(strings.Join(d.propFindLines(d.opts()), "\n"), "no match in the offline index") {
-		t.Fatalf("a failed find: window %v, lines %q", d.modal, d.propFindLines(d.opts()))
+	if d.modal != modalPropFind || !strings.Contains(strings.Join(d.mapModel.propFindLines(d.opts()), "\n"), "no match in the offline index") {
+		t.Fatalf("a failed find: window %v, lines %q", d.modal, d.mapModel.propFindLines(d.opts()))
 	}
-	if lines := strings.Join(strings.Fields(strings.Join(d.propFindLines(d.opts()), " ")), " "); !strings.Contains(lines, "press Enter to try") {
+	if lines := strings.Join(strings.Fields(strings.Join(d.mapModel.propFindLines(d.opts()), " ")), " "); !strings.Contains(lines, "press Enter to try") {
 		t.Errorf("a failed find does not say Enter tries again (AX-10): %q", lines)
 	}
 	if m, _ := d.Update(mapKeyMsg(t, "esc")); m.(Dashboard).modal != modalMap {
@@ -123,13 +123,13 @@ func TestFocusReturnsAfterAFind(t *testing.T) {
 		t.Errorf("after a place was found the focus is on window %v; the map", d.modal)
 	}
 	late := snapshot.LocationRef{Label: "An earlier find's answer", Lat: 1, Lon: 1}
-	if m, _ := d.Update(propFoundMsg{seq: d.mapPane.propFindSeq - 1, ref: late}); m.(Dashboard).mapPane.propFound.Label != reykjavik.Label {
-		t.Errorf("an earlier find's answer, arriving late, replaced the place found: %v", m.(Dashboard).mapPane.propFound)
+	if m, _ := d.Update(propFoundMsg{seq: d.mapModel.mapPane.propFindSeq - 1, ref: late}); m.(Dashboard).mapModel.mapPane.propFound.Label != reykjavik.Label {
+		t.Errorf("an earlier find's answer, arriving late, replaced the place found: %v", m.(Dashboard).mapModel.mapPane.propFound)
 	}
 	d = pressMap(t, d, "/")
 	m, _ := d.Update(mapKeyMsg(t, "enter"))
-	if d = m.(Dashboard); d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || d.modal != modalMap {
-		t.Errorf("an empty Enter left the mark: %v, %v, window %v", d.mapPane.propFound, placeIDs(d), d.modal)
+	if d = m.(Dashboard); d.mapModel.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || d.modal != modalMap {
+		t.Errorf("an empty Enter left the mark: %v, %v, window %v", d.mapModel.mapPane.propFound, placeIDs(d), d.modal)
 	}
 }
 
@@ -143,17 +143,17 @@ func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 	d := stationDash(t)
 	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	d = typeFind(t, d, "Reykjavik")
-	if words := workCentre(t, d).propCentreWords(); !strings.Contains(words, "64.") {
+	if words := mapModel.propCentreWords(envOf(workCentre(t, d))); !strings.Contains(words, "64.") {
 		t.Errorf("the centre's answer is not for the place found: %q", words)
 	}
 	centred := "Found Reykjavik, IS: marked at the map's centre, and not kept."
 	if words := strings.Join(propWordsFrom(t, d), "\n"); !strings.Contains(words, centred) {
 		t.Errorf("the words do not say the place found is at the centre:\n%s", words)
 	}
-	if err := d.mapPane.m.Recentre(tuimaps.LonLat{Lon: 139.7, Lat: 35.7}); err != nil {
+	if err := d.mapModel.mapPane.m.Recentre(tuimaps.LonLat{Lon: 139.7, Lat: 35.7}); err != nil {
 		t.Fatal(err)
 	}
-	d = d.renderMap()
+	d.mapModel = d.mapModel.renderMap(d.mapEnv())
 	words := strings.Join(propWordsFrom(t, d), "\n")
 	if !strings.Contains(words, "Found Reykjavik, IS: marked on the map, and not kept.") || strings.Contains(words, centred) {
 		t.Errorf("panned away, the words do not say the place found is marked on the map:\n%s", words)
@@ -167,7 +167,7 @@ func TestTheBroadcasterAnswersAFoundPlaceAsItsTarget(t *testing.T) {
 // town near, its coordinates, said as degrees.
 func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	d := chartDash(t)
-	region := d.mapPane.region.Name
+	region := d.mapModel.mapPane.region.Name
 	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
 	ownHooks(&d).PlaceNear = func(lat, lon float64) (string, string) {
 		if lat > 30 && lat < 40 && lon > 130 && lon < 145 {
@@ -177,30 +177,30 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 	}
 	pan := func(d Dashboard, lat, lon float64) Dashboard {
 		t.Helper()
-		if err := d.mapPane.m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}); err != nil {
+		if err := d.mapModel.mapPane.m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}); err != nil {
 			t.Fatal(err)
 		}
-		return d.renderMap()
+		return withModel(d, d.mapModel.renderMap(d.mapEnv()))
 	}
 	d = typeFind(t, d, "Reykjavik")
 	d = pan(d, reykjavik.Lat, reykjavik.Lon) // the Observer's map stays on a find (D-204); panned onto the place, it is named for it
 	words := strings.Join(propWordsFrom(t, d), "\n")
-	if d.mapPane.propOrigin.name != reykjavik.Label || !strings.Contains(words, "Reykjavik, IS, now: ") {
-		t.Errorf("centred on the place found, the origin is %q:\n%s", d.mapPane.propOrigin.name, words)
+	if d.mapModel.mapPane.propOrigin.name != reykjavik.Label || !strings.Contains(words, "Reykjavik, IS, now: ") {
+		t.Errorf("centred on the place found, the origin is %q:\n%s", d.mapModel.mapPane.propOrigin.name, words)
 	}
 	d = pan(d, 35.7, 139.7)
-	words = strings.Join(d.describeLinesAll(), "\n")
+	words = strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), "\n")
 	if !strings.Contains(words, "Near Tokyo, Japan, now: ") || strings.Contains(words, region) { // said by its country (D-231)
 		t.Errorf("panned to Tokyo, the words do not name it, or name %q:\n%s", region, words)
 	}
-	if title := d.viewName(); title != "near Tokyo, JP" {
+	if title := d.mapModel.viewName(d.mapEnv()); title != "near Tokyo, JP" {
 		t.Errorf("panned to Tokyo, the view is named %q", title)
 	}
 	if strings.Contains(words, "marked at the map's centre") {
 		t.Errorf("panned away, the words still put the place found at the centre:\n%s", words)
 	}
 	d = pan(d, -40, -140)
-	if words = strings.Join(d.describeLinesAll(), "\n"); !strings.Contains(words, "40.0 degrees south 140.0 degrees west, now: ") || strings.Contains(words, region) {
+	if words = strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), "\n"); !strings.Contains(words, "40.0 degrees south 140.0 degrees west, now: ") || strings.Contains(words, region) {
 		t.Errorf("over open sea, the words do not say the centre's coordinates, or name %q:\n%s", region, words)
 	}
 }
@@ -211,7 +211,7 @@ func TestTheCentreIsNamedWhereverItIs(t *testing.T) {
 func TestEscCancelsAFindInFlight(t *testing.T) {
 	d := chartDash(t)
 	ownHooks(&d).FindPlace = func(context.Context, string) (snapshot.LocationRef, error) { return reykjavik, nil }
-	before, _ := d.mapPane.m.Centre()
+	before, _ := d.mapModel.mapPane.m.Centre()
 	d = pressMap(t, d, "/")
 	for _, r := range "Reykjavik" {
 		m, _ := d.Update(mapKeyMsg(t, string(r)))
@@ -221,14 +221,14 @@ func TestEscCancelsAFindInFlight(t *testing.T) {
 	d = m.(Dashboard)
 	m, _ = d.Update(mapKeyMsg(t, "esc"))
 	d = m.(Dashboard)
-	if d.mapPane.propFindBusy {
+	if d.mapModel.mapPane.propFindBusy {
 		t.Error("Esc left the find busy")
 	}
 	m, _ = d.Update(cmd())
 	d = m.(Dashboard)
-	after, _ := d.mapPane.m.Centre()
-	if d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
-		t.Errorf("a find cancelled with Esc still landed: %v, %v, centre %+v (was %+v)", d.mapPane.propFound, placeIDs(d), after, before)
+	after, _ := d.mapModel.mapPane.m.Centre()
+	if d.mapModel.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
+		t.Errorf("a find cancelled with Esc still landed: %v, %v, centre %+v (was %+v)", d.mapModel.mapPane.propFound, placeIDs(d), after, before)
 	}
 }
 
@@ -274,12 +274,12 @@ func TestACancelledFindCancelsItsRequest(t *testing.T) {
 func TestAPlaceAbroadIsSaidByItsCountry(t *testing.T) {
 	d := chartDash(t)
 	ownHooks(&d).PlaceNear = func(float64, float64) (string, string) { return "Tokyo, JP", "JP" }
-	d.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 35.7, Lon: 139.7}, name: "near Tokyo, JP", country: "JP", ok: true}
-	if w := strings.Join(d.propOriginWords(), " "); !strings.Contains(w, "near Tokyo, Japan") || strings.Contains(w, "Tokyo, JP") {
+	d.mapModel.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 35.7, Lon: 139.7}, name: "near Tokyo, JP", country: "JP", ok: true}
+	if w := strings.Join(d.mapModel.propOriginWords(d.mapEnv()), " "); !strings.Contains(w, "near Tokyo, Japan") || strings.Contains(w, "Tokyo, JP") {
 		t.Errorf("the origin abroad is said %q", w)
 	}
-	d.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 33.2, Lon: -117.4}, name: "Oceanside, CA", country: "US", ok: true}
-	if w := strings.Join(d.propOriginWords(), " "); !strings.Contains(w, "Oceanside, CA") {
+	d.mapModel.mapPane.propOrigin = propPlace{at: ionomaps.LatLon{Lat: 33.2, Lon: -117.4}, name: "Oceanside, CA", country: "US", ok: true}
+	if w := strings.Join(d.mapModel.propOriginWords(d.mapEnv()), " "); !strings.Contains(w, "Oceanside, CA") {
 		t.Errorf("a US place lost its state's code: %q", w)
 	}
 }
@@ -296,7 +296,7 @@ func TestLeavingTheModeDropsAFindInFlight(t *testing.T) {
 		stopped <- ctx.Err()
 		return reykjavik, nil // an answer the lookup had in hand as it was stopped
 	}
-	before, _ := d.mapPane.m.Centre()
+	before, _ := d.mapModel.mapPane.m.Centre()
 	d = pressMap(t, d, "/")
 	for _, r := range "Reykjavik" {
 		m, _ := d.Update(mapKeyMsg(t, string(r)))
@@ -309,7 +309,7 @@ func TestLeavingTheModeDropsAFindInFlight(t *testing.T) {
 	}
 	answer := make(chan any, 1)
 	go func() { answer <- find() }()
-	d = d.stopPropagation()
+	d.mapModel = d.mapModel.stopPropagation(d.mapEnv())
 	select {
 	case err := <-stopped:
 		if !errors.Is(err, context.Canceled) {
@@ -320,8 +320,8 @@ func TestLeavingTheModeDropsAFindInFlight(t *testing.T) {
 	}
 	m, _ = d.Update(<-answer)
 	d = m.(Dashboard)
-	after, _ := d.mapPane.m.Centre()
-	if d.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
-		t.Errorf("a find in flight as the mode was left still landed: %v, %v, centre %+v (was %+v)", d.mapPane.propFound, placeIDs(d), after, before)
+	after, _ := d.mapModel.mapPane.m.Centre()
+	if d.mapModel.mapPane.propFound != nil || slices.Contains(placeIDs(d), foundPlaceID) || after != before {
+		t.Errorf("a find in flight as the mode was left still landed: %v, %v, centre %+v (was %+v)", d.mapModel.mapPane.propFound, placeIDs(d), after, before)
 	}
 }

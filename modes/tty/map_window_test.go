@@ -53,7 +53,7 @@ func mapDash(t testing.TB, cfg Config) Dashboard {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	model, _ = model.Update(SnapshotMsg{Snap: placedSnap()})
 	d := model.(Dashboard)
-	t.Cleanup(d.closeMap)
+	t.Cleanup(d.mapModel.closeMap)
 	return d
 }
 
@@ -71,7 +71,7 @@ func pressKey(d Dashboard, key string) (Dashboard, tea.Cmd) {
 func settleMap(t testing.TB, d Dashboard) Dashboard {
 	t.Helper()
 	for range 50 {
-		cmd := d.mapWorkCmd()
+		cmd := d.mapModel.mapWorkCmd(d.mapEnv())
 		if cmd == nil {
 			return d
 		}
@@ -156,16 +156,16 @@ func TestNoSelectionIsAStatedState(t *testing.T) {
 func TestTheMapIsDrawnInUpdate(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	if len(d.mapPane.lines) == 0 {
+	if len(d.mapModel.mapPane.lines) == 0 {
 		t.Fatal("opening the window drew nothing into the pane")
 	}
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	_ = d.View()
 	if len(*calls) != 0 {
 		t.Errorf("View called the library: %v", *calls)
 	}
-	before := strings.Join(d.mapPane.lines, "\n")
+	before := strings.Join(d.mapModel.mapPane.lines, "\n")
 	d = settleMap(t, d)
 	if len(*calls) == 0 {
 		t.Fatal("settling called nothing, so this proves nothing")
@@ -178,14 +178,14 @@ func TestTheMapIsDrawnInUpdate(t *testing.T) {
 			t.Errorf("an unexpected library call: %s", c)
 		}
 	}
-	after := strings.Join(d.mapPane.lines, "\n")
+	after := strings.Join(d.mapModel.mapPane.lines, "\n")
 	if after == before {
 		t.Error("the tiles work landed were never drawn")
 	}
 	if !strings.ContainsFunc(ttytest.StripANSI(d.View().Content), func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) {
 		t.Error("the window prints no braille after the map settled")
 	}
-	if d.mapPane.changed == 0 {
+	if d.mapModel.mapPane.changed == 0 {
 		t.Error("the pane did not store the counter its lines were drawn at")
 	}
 }
@@ -195,7 +195,7 @@ func TestTheMapIsDrawnInUpdate(t *testing.T) {
 func TestTheMapIsCentredOnTheSelection(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	at, _ := d.mapPane.m.Centre()
+	at, _ := d.mapModel.mapPane.m.Centre()
 	if absf(at.Lat-33.2) > 0.01 || absf(at.Lon+117.38) > 0.01 {
 		t.Errorf("the map opened at %+v, want Oceanside, CA", at)
 	}
@@ -213,8 +213,8 @@ func absf(v float64) float64 {
 func TestTheMapReleasesOnClose(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	m := d.mapPane.m
-	d.closeMap()
+	m := d.mapModel.mapPane.m
+	d.mapModel.closeMap()
 	if _, err := m.Render(tuimaps.Size{Cols: 10, Rows: 5}, time.Time{}); err == nil {
 		t.Error("the map still renders after the pane was closed")
 	}

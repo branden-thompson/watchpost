@@ -40,8 +40,8 @@ func modelFields(t *testing.T, d Dashboard) string {
 				continue
 			}
 			fv := reflect.NewAt(f.Type, unsafe.Pointer(v.Field(i).UnsafeAddr())).Elem()
-			if f.Anonymous && f.Type.Kind() == reflect.Struct {
-				walk(fv)
+			if (f.Anonymous || f.Name == "mapModel") && f.Type.Kind() == reflect.Struct {
+				walk(fv) // the map's model, a named field, read as an embedded group is (0.19.6 D-81)
 				continue
 			}
 			if f.Type.Kind() == reflect.Func {

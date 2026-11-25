@@ -39,19 +39,19 @@ func TestStationsNextAsksAgainAtOnce(t *testing.T) {
 	}
 	m, next := d.Update(msgs[0])
 	d = m.(Dashboard)
-	if words := ttytest.StripANSI(d.mapStatusLine()); !strings.Contains(words, "asking GIRO's stations") {
+	if words := ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())); !strings.Contains(words, "asking GIRO's stations") {
 		t.Errorf("NOAA's snapshot, stations next, says %q", words)
 	}
 	if again := propMsgs(next); len(again) != 1 || s.count() != 2 {
 		t.Fatalf("after StationsNext the update was asked %d times in all, its next result %d; want it asked again at once", s.count(), len(again))
 	}
 	s.answer = PropagationResult{Snapshot: stationsSnap(40, ionomaps.Fresh)}
-	m, next = d.Update(propUpdatedMsg{gen: d.mapPane.propGen, res: s.answer})
+	m, next = d.Update(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: s.answer})
 	if propMsgs(next) != nil {
 		t.Error("a fresh snapshot asked again at once; it waits for the refresh tick")
 	}
 	d = m.(Dashboard)
-	words := ttytest.StripANSI(d.mapStatusLine())
+	words := ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv()))
 	if !strings.Contains(words, "40 stations, oldest 11:55 UTC") {
 		t.Errorf("a snapshot fed by 40 stations says %q", words)
 	}
@@ -63,13 +63,13 @@ func TestStationsNextAsksAgainAtOnce(t *testing.T) {
 func TestTheStationsAreCreditedWhenTheyFedIt(t *testing.T) {
 	d := propDash(t, &seam{}, true)
 	snap := stationsSnap(12, ionomaps.Fresh)
-	d.mapPane.propSnap = &snap
-	if got := strings.Join(d.propBadges(false), " "); !strings.Contains(got, "GIRO") {
+	d.mapModel.mapPane.propSnap = &snap
+	if got := strings.Join(d.mapModel.propBadges(false), " "); !strings.Contains(got, "GIRO") {
 		t.Errorf("12 stations fed the snapshot and the badges are %q", got)
 	}
 	none := stationsSnap(0, ionomaps.Fresh)
-	d.mapPane.propSnap = &none
-	if got := strings.Join(d.propBadges(false), " "); strings.Contains(got, "GIRO") {
+	d.mapModel.mapPane.propSnap = &none
+	if got := strings.Join(d.mapModel.propBadges(false), " "); strings.Contains(got, "GIRO") {
 		t.Errorf("no stations fed the snapshot and the badges are %q", got)
 	}
 	if w := snapshotWords(none, 0); !strings.Contains(w, "no station readings this hour: the background alone") {
@@ -115,11 +115,11 @@ func TestEverySnapshotsStateIsSaid(t *testing.T) {
 // it, and the row's words keep its upper limit and add D-RAP's.
 func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	c := &d.mapPane.propChart
+	c := &d.mapModel.mapPane.propChart
 	bands := append([]ionomaps.BandStatus(nil), c.local.Bands...)
 	bands[0] = ionomaps.BandStatus{Band: bands[0].Band, Status: ionomaps.Disturbed, Limit: ionomaps.LimitDRAP, LimitMHz: 2.5}
 	c.local.Bands = bands
-	text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 	var local string
 	for _, l := range strings.Split(text, "\n") {
 		if strings.Contains(l, "Local, ~") && local == "" { // the row, not the typical day's heading
@@ -143,24 +143,24 @@ func TestADisturbedBandIsDrawnAndNamed(t *testing.T) {
 // it.
 func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 	d := pressMap(t, chartDash(t), "B")
-	c := &d.mapPane.propChart
+	c := &d.mapModel.mapPane.propChart
 	unscoredRow := regexp.MustCompile(`(?m)^[ ▸] \? `) // D-198: an unscored nearest station is the row's ? shade
-	if text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n")); unscoredRow.MatchString(text) {
+	if text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n")); unscoredRow.MatchString(text) {
 		t.Errorf("no answer's station is unscored, yet a row says so:\n%s", text)
 	}
 	c.targets[2].Nearest = ionomaps.Nearest{Km: 300, Unscored: true, Known: true}
-	text := ttytest.StripANSI(strings.Join(d.propChartLines(d.opts()), "\n"))
+	text := ttytest.StripANSI(strings.Join(d.mapModel.propChartLines(d.opts(), d.mapEnv()), "\n"))
 	if !regexp.MustCompile(`(?m)^  \? `+regexp.QuoteMeta(propanswers.Continents[2].Name)).MatchString(text) || !strings.Contains(text, "? unscored") {
 		t.Errorf("%s's nearest station is unscored and its row's shade, or the legend, does not say so:\n%s", propanswers.Continents[2].Name, text)
 	}
-	if w := d.propNearestWords(ionomaps.Nearest{}); w != "No station fed this answer" {
+	if w := d.mapModel.propNearestWords(ionomaps.Nearest{}, d.mapEnv()); w != "No station fed this answer" {
 		t.Errorf("no station: %q", w)
 	}
-	if w := d.propNearestWords(ionomaps.Nearest{Km: 300, Unscored: true, Known: true}); !strings.HasPrefix(w, "Nearest station ") || !strings.HasSuffix(w, ", unscored: verify on air") {
+	if w := d.mapModel.propNearestWords(ionomaps.Nearest{Km: 300, Unscored: true, Known: true}, d.mapEnv()); !strings.HasPrefix(w, "Nearest station ") || !strings.HasSuffix(w, ", unscored: verify on air") {
 		t.Errorf("an unscored station 300 km away: %q", w)
 	}
 	box := workCentre(t, stationDash(t))
-	if lines := ttytest.StripANSI(strings.Join(box.propCentreBox(), "\n")); !strings.Contains(lines, "No station fed this answer") {
+	if lines := ttytest.StripANSI(strings.Join(box.mapModel.propCentreBox(box.mapEnv()), "\n")); !strings.Contains(lines, "No station fed this answer") {
 		t.Errorf("the centre box, no station fed, does not say so:\n%s", lines)
 	}
 }
@@ -170,8 +170,8 @@ func TestAnUnscoredNearestStationIsSaid(t *testing.T) {
 // the context's own error text.
 func TestADeadlineIsSaidInWords(t *testing.T) {
 	d := propDash(t, &seam{}, true)
-	d.mapPane.propSnap, d.mapPane.propErr = nil, fmt.Errorf("ionomaps: no field; update again: %w", context.DeadlineExceeded)
-	if w := d.propStatusWords(); !strings.Contains(w, "NOAA did not answer in time") || strings.Contains(w, "deadline") {
+	d.mapModel.mapPane.propSnap, d.mapModel.mapPane.propErr = nil, fmt.Errorf("ionomaps: no field; update again: %w", context.DeadlineExceeded)
+	if w := d.mapModel.propStatusWords(d.mapEnv()); !strings.Contains(w, "NOAA did not answer in time") || strings.Contains(w, "deadline") {
 		t.Errorf("an update out of time is said %q", w)
 	}
 }

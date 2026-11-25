@@ -69,10 +69,10 @@ const mapDescOverflow = "… the rest: Settings, Maps, Description, Instead of t
 
 // descriptionBox is the description in a box (D-63). Longer than two thirds of the map,
 // it ends with a line saying where the whole text is.
-func (d Dashboard) descriptionBox(size tuimaps.Size) []string {
+func (mm mapModel) descriptionBox(size tuimaps.Size, e mapEnv) []string {
 	inner := descriptionBoxInner(size.Cols)
 	var content []string
-	for _, l := range d.describeUpTo(boxAlerts(size)) {
+	for _, l := range mm.describeUpTo(boxAlerts(size), e) {
 		content = append(content, render.WrapText(l, inner-2)...)
 	}
 	for i := range content {
@@ -89,11 +89,11 @@ func (d Dashboard) descriptionBox(size tuimaps.Size) []string {
 }
 
 // withDescriptionBox lays the box over the map's upper left while it is open.
-func (d Dashboard) withDescriptionBox(lines []string, size tuimaps.Size) []string {
-	if !d.mapPane.alertsOn || d.mapPane.menuOn || len(lines) == 0 {
+func (mm mapModel) withDescriptionBox(lines []string, size tuimaps.Size, e mapEnv) []string {
+	if !mm.mapPane.alertsOn || mm.mapPane.menuOn || len(lines) == 0 {
 		return lines // the menu takes the corner while it is open
 	}
-	return spliceBox(lines, d.descriptionBox(size), 0, insetCols)
+	return spliceBox(lines, mm.descriptionBox(size, e), 0, insetCols)
 }
 
 // insetCols is where the map's first cell is in a drawn line: the first
@@ -105,31 +105,30 @@ const controlsInner = 17
 
 // controlsBox is the map's keys as chips (U1-11), the one pressed inverted
 // until its blink ends - the same acknowledgement the Settings pickers give.
-func (d Dashboard) controlsBox() []string {
-	o := d.opts()
-	cap := d.controlCap
+func (mm mapModel) controlsBox(e mapEnv) []string {
+	o := e.Opts
 	return boxed("Controls", []string{
-		"    " + cap(actMapPanUp, "↑") + "     " + cap(actMapZoomIn, "+"),
-		" " + cap(actMapPanLeft, "←") + cap(actMapPanDown, "↓") + cap(actMapPanRight, "→") + "  " + cap(actMapZoomOut, "-"),
-		d.placeRow(),
-		" " + regionCaps(o, slices.Contains(mapRegionActs, d.mapPane.flash) && time.Now().Before(d.mapPane.flashEnd)) + " region", // D-77: the region keys, prominently
+		"    " + mm.controlCap(actMapPanUp, "↑", e) + "     " + mm.controlCap(actMapZoomIn, "+", e),
+		" " + mm.controlCap(actMapPanLeft, "←", e) + mm.controlCap(actMapPanDown, "↓", e) + mm.controlCap(actMapPanRight, "→", e) + "  " + mm.controlCap(actMapZoomOut, "-", e),
+		mm.placeRow(e),
+		" " + regionCaps(o, slices.Contains(mapRegionActs, mm.mapPane.flash) && time.Now().Before(mm.mapPane.flashEnd)) + " region", // D-77: the region keys, prominently
 	}, controlsInner)
 }
 
 // placeRow is the controls box's place line: [ and ] where the UI mode
 // steps through the places; where it does not (D-195), what the red ring is.
-func (d Dashboard) placeRow() string {
-	if !d.mapRole().placeKeys {
+func (mm mapModel) placeRow(e mapEnv) string {
+	if !mm.mapRole(e).placeKeys {
 		return " red: service"
 	}
-	return " " + d.controlCap(actMapPrev, "[") + d.controlCap(actMapNext, "]") + " place"
+	return " " + mm.controlCap(actMapPrev, "[", e) + mm.controlCap(actMapNext, "]", e) + " place"
 }
 
 // controlCap is a key's chip, inverted while it blinks (U1-11); a region
 // key blinks all six chips' - the one pressed among them.
-func (d Dashboard) controlCap(act term.Action, face string) string {
-	o := d.opts()
-	if d.mapPane.flash == act && d.clock().Before(d.mapPane.flashEnd) {
+func (mm mapModel) controlCap(act term.Action, face string, e mapEnv) string {
+	o := e.Opts
+	if mm.mapPane.flash == act && clockOf(e.Now).Before(mm.mapPane.flashEnd) {
 		return o.KeyCapInverted(face)
 	}
 	return o.KeyCap(face)
@@ -148,8 +147,8 @@ func regionCaps(o render.Opts, blink bool) string {
 // withControls lays the controls over the map's lower right, where there is
 // room for them beside the legend: a map under 14 rows or 60 columns draws
 // none (its keys are in Help and on the status line).
-func (d Dashboard) withControls(lines []string, size tuimaps.Size) []string {
-	return spliceAt(lines, size, d.controlsPlace)
+func (mm mapModel) withControls(lines []string, size tuimaps.Size, e mapEnv) []string {
+	return spliceAt(lines, size, func(s tuimaps.Size) ([]string, int, int, bool) { return mm.controlsPlace(s, e) })
 }
 
 // spliceAt lays the box a placement names over the map, while it shows.
@@ -164,23 +163,23 @@ func spliceAt(lines []string, size tuimaps.Size, place func(tuimaps.Size) ([]str
 // controlsPlace is the controls box and where it lies, while it shows. ABOVE
 // THE LAST ROW: the library writes the scale and the credit there, and the
 // credit is the attribution, which is never covered (FR-14, UAT-1 U1-26).
-func (d Dashboard) controlsPlace(size tuimaps.Size) (box []string, row, col int, ok bool) {
-	if d.radarTimelineOn() || size.Rows < 14 || size.Cols < 60 {
+func (mm mapModel) controlsPlace(size tuimaps.Size, e mapEnv) (box []string, row, col int, ok bool) {
+	if mm.radarTimelineOn() || size.Rows < 14 || size.Cols < 60 {
 		return nil, 0, 0, false
 	}
-	box = d.controlsBox()
+	box = mm.controlsBox(e)
 	return box, size.Rows - 1 - len(box), insetCols + size.Cols - (controlsInner + 2), true
 }
 
 // edgeChipText is the chip's words: the region beyond, with the arrow that
 // crosses to it on the side it points (D-81) - "US CARIBBEAN →", "← HAWAII".
-func (d Dashboard) edgeChipText() string {
-	next, ok := geo.Neighbour(d.mapPane.region.Name, d.mapPane.edge)
+func (mm mapModel) edgeChipText() string {
+	next, ok := geo.Neighbour(mm.mapPane.region.Name, mm.mapPane.edge)
 	if !ok {
 		return ""
 	}
 	name := strings.ToUpper(mapRegionLabels[geo.NumberOf(next.Name)-1])
-	switch d.mapPane.edge {
+	switch mm.mapPane.edge {
 	case geo.West:
 		return "← " + name
 	case geo.North:
@@ -193,16 +192,16 @@ func (d Dashboard) edgeChipText() string {
 
 // edgeWords are the edge chip as a sentence, for a window without the
 // picture (AX-5): which edge, and the region the next press crosses to.
-func (d Dashboard) edgeWords() string {
-	if !d.mapPane.edgeShown {
+func (mm mapModel) edgeWords() string {
+	if !mm.mapPane.edgeShown {
 		return ""
 	}
-	next, ok := geo.Neighbour(d.mapPane.region.Name, d.mapPane.edge)
+	next, ok := geo.Neighbour(mm.mapPane.region.Name, mm.mapPane.edge)
 	if !ok {
 		return ""
 	}
 	side := "east"
-	switch d.mapPane.edge {
+	switch mm.mapPane.edge {
 	case geo.West:
 		side = "west"
 	case geo.North:
@@ -216,20 +215,20 @@ func (d Dashboard) edgeWords() string {
 // withEdgeChip lays the chip at the edge it names while it shows: east and
 // west at the middle of that side, north at the top's middle, south above the
 // credit row (FR-14, never covered).
-func (d Dashboard) withEdgeChip(lines []string, size tuimaps.Size) []string {
-	return spliceAt(lines, size, d.edgeChipPlace)
+func (mm mapModel) withEdgeChip(lines []string, size tuimaps.Size) []string {
+	return spliceAt(lines, size, mm.edgeChipPlace)
 }
 
 // edgeChipPlace is the edge chip and where it lies, while it shows.
-func (d Dashboard) edgeChipPlace(size tuimaps.Size) (chip []string, row, col int, ok bool) {
-	text := d.edgeChipText()
-	if !d.mapPane.edgeShown || text == "" || size.Rows < 5 {
+func (mm mapModel) edgeChipPlace(size tuimaps.Size) (chip []string, row, col int, ok bool) {
+	text := mm.edgeChipText()
+	if !mm.mapPane.edgeShown || text == "" || size.Rows < 5 {
 		return nil, 0, 0, false
 	}
 	chip = chipBox(text)
 	w := render.Width(text) + 2
 	row, col = size.Rows/2-1, insetCols+(size.Cols-w-2)/2
-	switch d.mapPane.edge {
+	switch mm.mapPane.edge {
 	case geo.East:
 		col = insetCols + size.Cols - (w + 2)
 	case geo.West:
@@ -249,8 +248,8 @@ const modeChipText = "FORECAST MODE: TEMP ENABLED"
 // withModeChip lays the mode's chip at the map's top centre while it shows
 // (D-103): Forecast mode turned temperature on, so the map is not blank. Any
 // key takes it away, as the edge chip's (D-81).
-func (d Dashboard) withModeChip(lines []string, size tuimaps.Size) []string {
-	if !d.mapPane.modeChip || len(lines) < 3 {
+func (mm mapModel) withModeChip(lines []string, size tuimaps.Size) []string {
+	if !mm.mapPane.modeChip || len(lines) < 3 {
 		return lines
 	}
 	chip := chipBox(modeChipText)
@@ -267,12 +266,12 @@ var openMeteoLayers = []string{TemperatureLayer, FeelsLayer, WindLayer, UVLayer,
 // such overlay drawn from a fallback, "Falling back to ‹source›"; none,
 // "Resets ‹time›" (the listener's clock, with the day where not today); both,
 // "Resets ‹time› // ‹n› Fall-back(s) active". "" when there is nothing to say.
-func (d Dashboard) quotaNoticeText() string {
-	q := d.mapPane.temp.Quota
+func (mm mapModel) quotaNoticeText(e mapEnv) string {
+	q := mm.mapPane.temp.Quota
 	if q == nil {
 		return ""
 	}
-	fallbacks, missing, sources := d.quotaLayers()
+	fallbacks, missing, sources := mm.quotaLayers(e)
 	if fallbacks == 0 && missing == 0 {
 		return ""
 	}
@@ -283,11 +282,11 @@ func (d Dashboard) quotaNoticeText() string {
 	if missing == 0 {
 		return head + "Falling back to recorded data" // the history alone (D-166)
 	}
-	now := d.now()
+	now := e.Now()
 	at := q.Resets.In(now.Location())
-	when := d.clockFmt.Time(at)
+	when := e.Opts.Clock.Time(at)
 	if y, m, dd := at.Date(); y != now.Year() || m != now.Month() || dd != now.Day() {
-		when = d.clockFmt.WeekdayDateTime(at)
+		when = e.Opts.Clock.WeekdayDateTime(at)
 	}
 	if fallbacks == 0 {
 		return head + "Resets " + when
@@ -299,12 +298,13 @@ func (d Dashboard) quotaNoticeText() string {
 // sources they are drawn from (D-183): drawn from another source, a
 // fallback; drawing nothing, missing; drawn from Open-Meteo still - its
 // last answer, held - neither. sources are the fallbacks' own, once each.
-func (d Dashboard) quotaLayers() (fallbacks, missing int, sources []string) {
+func (mm mapModel) quotaLayers(e mapEnv) (fallbacks, missing int, sources []string) {
+	mode := mm.mapMode(e)
 	for _, key := range openMeteoLayers { // six (P10-02)
-		if !d.layerOn(key) || d.rainIsRadar(key) {
+		if !mm.layerOn(key, e) || rainIsRadar(key, mode) {
 			continue
 		}
-		chips := d.mapPane.temp.Chips[key]
+		chips := mm.mapPane.temp.Chips[key]
 		switch {
 		case len(chips) == 0:
 			missing++
@@ -325,18 +325,18 @@ func (d Dashboard) quotaLayers() (fallbacks, missing int, sources []string) {
 // row above the credit row, on its dark-orange ground (D-182) - giving way to
 // a control (D-181): above the controls box while it shows, and above an
 // edge chip it would meet. A map too short to hold it above them draws none.
-func (d Dashboard) withQuotaNotice(lines []string, size tuimaps.Size) []string {
-	text := d.quotaNoticeText()
+func (mm mapModel) withQuotaNotice(lines []string, size tuimaps.Size, e mapEnv) []string {
+	text := mm.quotaNoticeText(e)
 	if text == "" || len(lines) < size.Rows {
 		return lines
 	}
 	box := chipBox(text)
 	w := render.Width(box[0])
 	row, col := size.Rows-1-len(box), insetCols+size.Cols-w
-	if _, top, _, ok := d.controlsPlace(size); ok {
+	if _, top, _, ok := mm.controlsPlace(size, e); ok {
 		row = top - len(box)
 	}
-	if chip, top, left, ok := d.edgeChipPlace(size); ok && top < row+len(box) && top+len(chip) > row && left < col+w && left+render.Width(chip[0]) > col {
+	if chip, top, left, ok := mm.edgeChipPlace(size); ok && top < row+len(box) && top+len(chip) > row && left < col+w && left+render.Width(chip[0]) > col {
 		row = top - len(box)
 	}
 	if row < 0 {
@@ -350,9 +350,9 @@ func (d Dashboard) withQuotaNotice(lines []string, size tuimaps.Size) []string {
 }
 
 // flashMapKey marks a map key pressed, for the controls box to blink.
-func (d Dashboard) flashMapKey(act term.Action) Dashboard {
-	d.mapPane.flash, d.mapPane.flashEnd = act, d.markEnds()
-	return d
+func (mm mapModel) flashMapKey(act term.Action, e mapEnv) mapModel {
+	mm.mapPane.flash, mm.mapPane.flashEnd = act, markEndsAt(e.Now, e.ReduceMotion)
+	return mm
 }
 
 // mapDetailLayer is one of the library's basemap layers the listener can
@@ -421,14 +421,14 @@ func detailLevelLabel(l tuimaps.Detail) string {
 
 // cycleDetailLevel moves the level round the four and sets every switch to
 // its preset (D-79).
-func (d Dashboard) cycleDetailLevel(forward bool) Dashboard {
-	night := d.detailOn(nightDetailKey)
-	d.mapDetailLevel = cycleIn(mapDetailLevels(), itself, d.mapDetailLevel, forward)
-	d.mapDetailChoice = "" // the preset: every switch as the level sets it ...
+func (mm mapModel) cycleDetailLevel(forward bool, e mapEnv) mapModel {
+	night := mm.detailOn(nightDetailKey)
+	mm.mapDetailLevel = cycleIn(mapDetailLevels(), itself, mm.mapDetailLevel, forward)
+	mm.mapDetailChoice = "" // the preset: every switch as the level sets it ...
 	if night {
-		d.mapDetailChoice = layerChoiceKey(map[string]bool{nightDetailKey: true}) // ... but Day / night, which no level sets (D-199)
+		mm.mapDetailChoice = layerChoiceKey(map[string]bool{nightDetailKey: true}) // ... but Day / night, which no level sets (D-199)
 	}
-	return d.applyDetail()
+	return mm.applyDetail(e)
 }
 
 // detailShows is what a layer says beside its switch: when the style first
@@ -442,24 +442,24 @@ func detailShows(l mapDetailLayer) string {
 
 // detailLevelShown is the level's words, or "Custom" once a switch differs
 // from the level's preset (D-79).
-func (d Dashboard) detailLevelShown() string {
+func (mm mapModel) detailLevelShown() string {
 	for _, l := range mapDetailLayers() {
-		if !l.overlay && d.detailOn(l.key) != (l.level <= d.mapDetailLevel) { // Day / night is no level's (D-199)
+		if !l.overlay && mm.detailOn(l.key) != (l.level <= mm.mapDetailLevel) { // Day / night is no level's (D-199)
 			return "Custom"
 		}
 	}
-	return detailLevelLabel(d.mapDetailLevel)
+	return detailLevelLabel(mm.mapDetailLevel)
 }
 
 // detailOn reports whether a detail layer is drawn: the listener's switch,
 // or the level's preset (D-79).
-func (d Dashboard) detailOn(key string) bool {
-	if on, ok := choiceOf(d.mapDetailChoice, key); ok {
+func (mm mapModel) detailOn(key string) bool {
+	if on, ok := choiceOf(mm.mapDetailChoice, key); ok {
 		return on
 	}
 	for _, l := range mapDetailLayers() {
 		if l.key == key {
-			return l.level <= d.mapDetailLevel
+			return l.level <= mm.mapDetailLevel
 		}
 	}
 	return true
@@ -498,39 +498,39 @@ func choicesOf(word string) map[string]bool {
 
 // applyDetail puts every detail layer as chosen on the library's map: on each
 // open, and after a switch.
-func (d Dashboard) applyDetail() Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) applyDetail(e mapEnv) mapModel {
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
 	// THE LIBRARY DRAWS ALL IT HAS; THE SWITCHES THIN IT (D-79). Its own level
 	// would override a switch the listener turned on.
 	all := tuimaps.DetailFull // the record names what is passed, so a test reads the level the library was given
-	d.mapPane.call("SetDetail:"+all.String(), func() { _ = m.SetDetail(all) })
-	d.mapPane.call("Layers:minor-roads:off", func() { m.Layers(tuimaps.MinorRoadLayer, false) }) // city zoom only: not offered (U1-42)
+	mm.mapPane.call("SetDetail:"+all.String(), func() { _ = m.SetDetail(all) })
+	mm.mapPane.call("Layers:minor-roads:off", func() { m.Layers(tuimaps.MinorRoadLayer, false) }) // city zoom only: not offered (U1-42)
 	for _, l := range mapDetailLayers() {
 		if l.overlay {
 			continue // the map's own overlay, handed in by setNight below
 		}
-		on, layer := d.detailOn(l.key), l.layer
+		on, layer := mm.detailOn(l.key), l.layer
 		word := "off"
 		if on {
 			word = "on"
 		}
-		d.mapPane.call("Layers:"+l.key+":"+word, func() { m.Layers(layer, on) })
+		mm.mapPane.call("Layers:"+l.key+":"+word, func() { m.Layers(layer, on) })
 	}
-	return d.setNight() // Day / night is the map's own overlay (D-199)
+	return mm.setNight(e) // Day / night is the map's own overlay (D-199)
 }
 
 // setDetail switches a detail layer and keeps the choice.
-func (d Dashboard) setDetail(key string, on bool) Dashboard {
-	choice := choicesOf(d.mapDetailChoice)
+func (mm mapModel) setDetail(key string, on bool, e mapEnv) mapModel {
+	choice := choicesOf(mm.mapDetailChoice)
 	if choice == nil {
 		choice = map[string]bool{}
 	}
 	choice[key] = on
-	d.mapDetailChoice = layerChoiceKey(choice)
-	return d.applyDetail()
+	mm.mapDetailChoice = layerChoiceKey(choice)
+	return mm.applyDetail(e)
 }
 
 // rowKind is what a row of the Overlays menu is (U2-39, D-141 to D-146).
@@ -569,10 +569,10 @@ var (
 // Hazards and Alert Areas, each its switch over its boxes - and MAP DETAIL -
 // the preset over its switches. A layer the app registered that no group
 // names is a data point, so a new layer plugs in without edits (W1.13).
-func (d Dashboard) overlayRows() []overlayRow {
+func (mm mapModel) overlayRows(e mapEnv) []overlayRow {
 	registered := map[string]string{}
 	var order []string
-	for _, l := range d.cfg.MapLayers {
+	for _, l := range e.Layers {
 		registered[l.Key] = l.Label
 		order = append(order, l.Key)
 	}
@@ -582,17 +582,18 @@ func (d Dashboard) overlayRows() []overlayRow {
 			out = append(out, overlayRow{kind: menuRadio, key: r.key, label: r.label, overlay: true})
 		}
 	}
-	if d.mapHooks.PropagationUpdate != nil {
+	if mm.mapHooks.PropagationUpdate != nil {
 		out = append(out, overlayRow{kind: menuRadio, key: propagationRowKey, label: propagationRowLabel, overlay: true}) // D-158: the mode as a tint, the OVERLAYS group's fourth (D-161, D-162)
 	}
-	if d.mapMode() == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
+	if mm.mapMode(e) == modePropagation { // D-159: the tints and the map's detail; the weather's groups wait, their ticks kept
 		return append(out, detailRows(nightDetailKey)...) // the night is always drawn in this mode: no switch to offer (D-199)
 	}
 	placed := map[string]bool{RadarLayer: true, TemperatureLayer: true, FeelsLayer: true, UVLayer: true, AirLayer: true, AlertLayer: true}
+	mode := mm.mapMode(e)
 	group := func(key, label string, layers []string, fill bool) {
 		var members []overlayRow
 		for _, k := range layers {
-			if _, ok := registered[k]; !ok || d.rainIsRadar(k) {
+			if _, ok := registered[k]; !ok || rainIsRadar(k, mode) {
 				placed[k] = true // Rain & snow is Forecast mode's alone: Radar mode's rain is the radar (D-117)
 				continue
 			}
@@ -661,10 +662,10 @@ const menuWarning = "You may experience performance issues with this many overla
 // past the thresholds; OVERLAYS - the tints as radio rows, each group's
 // switch over its boxes two to a line, a disabled group's boxes dimmed and
 // keeping their ticks; MAP DETAIL - the preset over its switches.
-func (d Dashboard) overlaysBox() []string {
-	o := d.opts()
-	content := d.menuWarningLines()
-	content = append(content, d.menuRowLines()...)
+func (mm mapModel) overlaysBox(e mapEnv) []string {
+	o := e.Opts
+	content := mm.menuWarningLines()
+	content = append(content, mm.menuRowLines(e)...)
 	content = append(content, detailShowsLines()...)
 	content = append(content, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("←→")+" choose "+o.KeyCap("space")+" switch")
 	return boxed(render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), content, overlayMenuW)
@@ -672,8 +673,8 @@ func (d Dashboard) overlaysBox() []string {
 
 // menuWarningLines is the menu's warning and a blank line under it, while
 // the layers on would cost past the thresholds; none otherwise.
-func (d Dashboard) menuWarningLines() []string {
-	h, _ := costWarningParts(d.mapCost)
+func (mm mapModel) menuWarningLines() []string {
+	h, _ := costWarningParts(mm.mapCost)
 	if h == "" {
 		return nil
 	}
@@ -690,10 +691,10 @@ func (d Dashboard) menuWarningLines() []string {
 
 // menuRowLines is the menu's rows under their section headings: OVERLAYS
 // over MAP DETAIL.
-func (d Dashboard) menuRowLines() []string {
+func (mm mapModel) menuRowLines(e mapEnv) []string {
 	head := func(s string) string { return render.Tint(s, render.Tok(render.ModalTitle)) } // as Settings' groups (D-103)
-	rows := d.overlayRows()
-	chips := newArrowChips(d.opts())
+	rows := mm.overlayRows(e)
+	chips := newArrowChips(e.Opts)
 	var content []string
 	heading := ""
 	for i := 0; i < len(rows); i++ {
@@ -711,11 +712,11 @@ func (d Dashboard) menuRowLines() []string {
 		if r.kind == menuGroup && i > 0 && rows[i-1].kind != menuGroup {
 			content = append(content, "")
 		}
-		if l, ok := d.menuRowLine(r, i, chips); ok {
+		if l, ok := mm.menuRowLine(r, i, chips, e); ok {
 			content = append(content, l)
 			continue
 		}
-		l, pair := d.menuCellPair(rows, i)
+		l, pair := mm.menuCellPair(rows, i, e)
 		content = append(content, l)
 		if pair {
 			i++
@@ -731,49 +732,49 @@ func menuLine(left, right string) string {
 
 // menuRowLine is a row that takes a line of its own - a tint, a group's
 // switch, fire, the preset; false for a box drawn two to a line.
-func (d Dashboard) menuRowLine(r overlayRow, i int, chips arrowChips) (string, bool) {
-	o := d.opts()
-	mark := o.ListMark(i == d.mapPane.menuAt)
+func (mm mapModel) menuRowLine(r overlayRow, i int, chips arrowChips, e mapEnv) (string, bool) {
+	o := e.Opts
+	mark := o.ListMark(i == mm.mapPane.menuAt)
 	choice := func(s string) string { // THE APP'S PICKER, [←] value [→], blinking as pressed (D-147)
-		return pickerCellW(s, chips, d.menuFlashFor(i), menuChoiceW)
+		return pickerCellW(s, chips, mm.menuFlashFor(i, e), menuChoiceW)
 	}
 	switch r.kind {
 	case menuRadio:
-		face := " " + mark + radioMark(d.tintChosen(r.key), o.ASCII) + " " + r.label
+		face := " " + mark + radioMark(mm.tintChosen(r.key, e), o.ASCII) + " " + r.label
 		if r.key != TemperatureLayer {
 			return face, true
 		}
 		pick := "Actual"
-		if d.pickFeels() {
+		if mm.pickFeels(e) {
 			pick = "Feels like"
 		}
 		return menuLine(face, choice(pick)), true
 	case menuGroup:
 		state := "Enabled"
-		if !d.rowGroupOn(r.key) {
+		if !mm.rowGroupOn(r.key, e) {
 			state = "Disabled"
 		}
 		return menuLine(" "+mark+r.label, choice(state)), true
 	case menuFire:
-		mode := strings.ToUpper(d.fireMode()[:1]) + d.fireMode()[1:]
-		return d.dimmed(r, menuLine(" "+mark+checkMark(o, d.ticked(r.key))+" "+r.label, choice(mode))), true
+		mode := strings.ToUpper(mm.fireMode()[:1]) + mm.fireMode()[1:]
+		return mm.dimmed(r, menuLine(" "+mark+checkMark(o, mm.ticked(r.key, e))+" "+r.label, choice(mode)), e), true
 	case menuPreset:
-		return menuLine(" "+mark+"Preset:", choice(d.detailLevelShown())), true
+		return menuLine(" "+mark+"Preset:", choice(mm.detailLevelShown())), true
 	}
 	return "", false
 }
 
 // menuCellPair is a box row, two to a line: row i and, when it is the same
 // kind in the same group, row i+1 beside it (pair true).
-func (d Dashboard) menuCellPair(rows []overlayRow, i int) (string, bool) {
-	o := d.opts()
+func (mm mapModel) menuCellPair(rows []overlayRow, i int, e mapEnv) (string, bool) {
+	o := e.Opts
 	cellW := (overlayMenuW - 4) / 2
 	cell := func(r overlayRow, at int) string {
-		on := d.detailOn(r.key)
+		on := mm.detailOn(r.key)
 		if r.overlay {
-			on = d.ticked(r.key)
+			on = mm.ticked(r.key, e)
 		}
-		return d.dimmed(r, render.PadTo(o.ListMark(at == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label, cellW))
+		return mm.dimmed(r, render.PadTo(o.ListMark(at == mm.mapPane.menuAt)+checkMark(o, on)+" "+r.label, cellW), e)
 	}
 	row := " " + cell(rows[i], i)
 	if i+1 < len(rows) && rows[i+1].kind == rows[i].kind && rows[i+1].group == rows[i].group {
@@ -803,43 +804,43 @@ func detailShowsLines() []string {
 }
 
 // dimmed is a box of a disabled group, dimmed: its tick kept (D-143).
-func (d Dashboard) dimmed(r overlayRow, s string) string {
-	if r.group == "" || d.rowGroupOn(r.group) {
+func (mm mapModel) dimmed(r overlayRow, s string, e mapEnv) string {
+	if r.group == "" || mm.rowGroupOn(r.group, e) {
 		return s
 	}
 	return render.Tint(render.Plain(s), render.Tok(render.TableMuted))
 }
 
 // rowGroupOn is a group's switch: the alert layer's own for Alert Areas.
-func (d Dashboard) rowGroupOn(group string) bool {
+func (mm mapModel) rowGroupOn(group string, e mapEnv) bool {
 	if group == AlertLayer {
-		return d.ticked(AlertLayer)
+		return mm.ticked(AlertLayer, e)
 	}
-	return d.groupOn(group)
+	return mm.groupOn(group)
 }
 
 // tintChosen reports whether a radio row is the tint chosen: Temperature's
 // is either of its measures (D-119).
-func (d Dashboard) tintChosen(key string) bool {
+func (mm mapModel) tintChosen(key string, e mapEnv) bool {
 	if key == propagationRowKey {
-		return d.mapMode() == modePropagation
+		return mm.mapMode(e) == modePropagation
 	}
 	if key == TemperatureLayer {
-		return d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)
+		return mm.layerOn(TemperatureLayer, e) || mm.layerOn(FeelsLayer, e)
 	}
-	return d.layerOn(key)
+	return mm.layerOn(key, e)
 }
 
 // pickFeels reports whether Temperature's row reads Feels like: the measure
 // drawn, or the one last picked while none is.
-func (d Dashboard) pickFeels() bool {
+func (mm mapModel) pickFeels(e mapEnv) bool {
 	switch {
-	case d.layerOn(FeelsLayer):
+	case mm.layerOn(FeelsLayer, e):
 		return true
-	case d.layerOn(TemperatureLayer):
+	case mm.layerOn(TemperatureLayer, e):
 		return false
 	}
-	return chosenOn(d.mapLayerChoice, pickFeelsKey)
+	return chosenOn(mm.mapLayerChoice, pickFeelsKey)
 }
 
 // menuChoiceW is the menu's pickers' value width: its longest, "Feels like".
@@ -847,11 +848,11 @@ const menuChoiceW = 10
 
 // menuFlashFor is the blink of a menu row's picker: only the row pressed,
 // only while its window is open - Settings' pickers' rule (D-147).
-func (d Dashboard) menuFlashFor(row int) pickerFlash {
-	if row != d.mapPane.menuFlashAt || d.mapPane.menuFlash == flashNone || !d.clock().Before(d.mapPane.menuFlashEnd) {
+func (mm mapModel) menuFlashFor(row int, e mapEnv) pickerFlash {
+	if row != mm.mapPane.menuFlashAt || mm.mapPane.menuFlash == flashNone || !clockOf(e.Now).Before(mm.mapPane.menuFlashEnd) {
 		return flashNone
 	}
-	return d.mapPane.menuFlash
+	return mm.mapPane.menuFlash
 }
 
 // hasChoice reports whether a row has a picker: ←→ step it.
@@ -863,21 +864,21 @@ func hasChoice(r overlayRow) bool {
 const pickFeelsKey = "pick:feels"
 
 // withOverlays lays the menu over the map's upper left while it is open.
-func (d Dashboard) withOverlays(lines []string) []string {
-	if !d.mapPane.menuOn || len(lines) == 0 {
+func (mm mapModel) withOverlays(lines []string, e mapEnv) []string {
+	if !mm.mapPane.menuOn || len(lines) == 0 {
 		return lines
 	}
-	return spliceBox(lines, d.overlaysBox(), 0, insetCols)
+	return spliceBox(lines, mm.overlaysBox(e), 0, insetCols)
 }
 
 // overlaysText is the menu without a picture to lay it over (D-267): the
 // same rows as the box, the focused one marked, the keys that close it under
 // them, and a blank line.
-func (d Dashboard) overlaysText() []string {
-	o := d.opts()
+func (mm mapModel) overlaysText(e mapEnv) []string {
+	o := e.Opts
 	out := []string{render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), ""}
-	out = append(out, d.menuWarningLines()...)
-	out = append(out, d.menuRowLines()...)
+	out = append(out, mm.menuWarningLines()...)
+	out = append(out, mm.menuRowLines(e)...)
 	out = append(out, detailShowsLines()...)
 	return append(out, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("←→")+" choose "+o.KeyCap("space")+" switch "+o.KeyCap("esc")+" close", "")
 }
@@ -885,135 +886,132 @@ func (d Dashboard) overlaysText() []string {
 // handleOverlaysKey is the menu's keys while it is open: it owns ↑↓, ←→,
 // space, esc and its own key (modal control priority, D-61). ←→ change a
 // row's choice; space switches a row.
-func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
-	rows := d.overlayRows()
+func (mm mapModel) handleOverlaysKey(key string, e mapEnv) (mapModel, mapWant, bool) {
+	rows := mm.overlayRows(e)
 	if len(rows) == 0 {
-		return d, key == "esc"
+		return mm, mapWant{}, key == "esc"
 	}
-	r := rows[d.mapPane.menuAt%len(rows)]
+	var w mapWant
+	r := rows[mm.mapPane.menuAt%len(rows)]
 	switch key {
 	case "up":
-		d.mapPane.menuAt = (d.mapPane.menuAt + len(rows) - 1) % len(rows)
+		mm.mapPane.menuAt = (mm.mapPane.menuAt + len(rows) - 1) % len(rows)
 	case "down":
-		d.mapPane.menuAt = (d.mapPane.menuAt + 1) % len(rows)
+		mm.mapPane.menuAt = (mm.mapPane.menuAt + 1) % len(rows)
 	case "left", "right":
 		if hasChoice(r) { // the chip pressed blinks, as Settings' pickers do (D-147)
-			d.mapPane.menuFlash, d.mapPane.menuFlashAt, d.mapPane.menuFlashEnd = flashLeft, d.mapPane.menuAt, d.markEnds()
+			mm.mapPane.menuFlash, mm.mapPane.menuFlashAt, mm.mapPane.menuFlashEnd = flashLeft, mm.mapPane.menuAt, markEndsAt(e.Now, e.ReduceMotion)
 			if key == "right" {
-				d.mapPane.menuFlash = flashRight
+				mm.mapPane.menuFlash = flashRight
 			}
 		}
-		d = d.chooseOnRow(r, key == "right")
+		mm, w = mm.chooseOnRow(r, key == "right", e)
 	case "space", "enter":
-		d = d.switchRow(r)
+		mm, w = mm.switchRow(r, e)
 	case "esc":
-		d.mapPane.menuOn = false
+		mm.mapPane.menuOn = false
 	default:
-		return d, false
+		return mm, mapWant{}, false
 	}
-	d.mapPane.gen++ // the menu is drawn with the window: a switch or a move redraws it
-	return d, true
+	mm.mapPane.gen++ // the menu is drawn with the window: a switch or a move redraws it
+	return mm, w, true
 }
 
 // withChoice is the layer choices with one set, as their word.
-func (d Dashboard) withChoice(set func(choice map[string]bool)) Dashboard {
-	choice := choicesOf(d.mapLayerChoice)
+func (mm mapModel) withChoice(set func(choice map[string]bool), e mapEnv) (mapModel, mapWant) {
+	choice := choicesOf(mm.mapLayerChoice)
 	if choice == nil {
 		choice = map[string]bool{}
 	}
 	set(choice)
-	d.mapLayerChoice = layerChoiceKey(choice)
-	d.setup.uiDirty = true // written as Settings writes it (uiApplyCmd)
-	return d.refreshMapCost().requestFeed()
+	mm.mapLayerChoice = layerChoiceKey(choice)
+	return mm.refreshMapCost(e).requestFeed().wantDirty() // written as Settings writes it (uiApplyCmd)
 }
 
 // switchRow is space on a row.
-func (d Dashboard) switchRow(r overlayRow) Dashboard {
+func (mm mapModel) switchRow(r overlayRow, e mapEnv) (mapModel, mapWant) {
 	switch r.kind {
 	case menuRadio:
 		key := r.key
-		if key == TemperatureLayer && d.pickFeels() {
+		if key == TemperatureLayer && mm.pickFeels(e) {
 			key = FeelsLayer
 		}
-		chosen := d.tintChosen(r.key)
-		d.mapPane.tempAuto = false // the listener's switch from here on (D-104)
-		return d.withChoice(func(c map[string]bool) {
+		chosen := mm.tintChosen(r.key, e)
+		mm.mapPane.tempAuto = false // the listener's switch from here on (D-104)
+		return mm.withChoice(func(c map[string]bool) {
 			for _, t := range oneTint {
 				c[t] = false // one tint at a time (D-119, D-137, D-139); space on the chosen clears it (D-142)
 			}
 			if !chosen {
 				c[key] = true
 			}
-		})
+		}, e)
 	case menuGroup:
-		on := d.rowGroupOn(r.key)
-		return d.withChoice(func(c map[string]bool) { c[r.key] = !on })
+		on := mm.rowGroupOn(r.key, e)
+		return mm.withChoice(func(c map[string]bool) { c[r.key] = !on }, e)
 	case menuCheck, menuFire:
-		on := d.ticked(r.key)
-		return d.withChoice(func(c map[string]bool) { c[r.key] = !on })
+		on := mm.ticked(r.key, e)
+		return mm.withChoice(func(c map[string]bool) { c[r.key] = !on }, e)
 	case menuPreset:
-		d.setup.uiDirty = true
-		return d.cycleDetailLevel(true)
+		return mm.cycleDetailLevel(true, e).wantDirty()
 	}
-	d.setup.uiDirty = true
-	return d.setDetail(r.key, !d.detailOn(r.key))
+	return mm.setDetail(r.key, !mm.detailOn(r.key), e).wantDirty()
 }
 
 // chooseOnRow is ←→ on a row with a choice; on any other row, nothing - the
 // open menu owns the keys.
-func (d Dashboard) chooseOnRow(r overlayRow, forward bool) Dashboard {
+func (mm mapModel) chooseOnRow(r overlayRow, forward bool, e mapEnv) (mapModel, mapWant) {
 	switch r.kind {
 	case menuRadio:
 		if r.key != TemperatureLayer {
-			return d
+			return mm, mapWant{}
 		}
-		feels, chosen := !d.pickFeels(), d.tintChosen(TemperatureLayer) // Actual and Feels like: two, either way is the other
-		return d.withChoice(func(c map[string]bool) {
+		feels, chosen := !mm.pickFeels(e), mm.tintChosen(TemperatureLayer, e) // Actual and Feels like: two, either way is the other
+		return mm.withChoice(func(c map[string]bool) {
 			c[pickFeelsKey] = feels
 			if chosen {
 				c[TemperatureLayer], c[FeelsLayer] = !feels, feels // the tint drawn follows the measure (D-119)
 			}
-		})
+		}, e)
 	case menuGroup:
-		return d.switchRow(r)
+		return mm.switchRow(r, e)
 	case menuFire:
-		next := cycleIn(fireModes, itself, d.fireMode(), forward)
-		return d.withChoice(func(c map[string]bool) {
+		next := cycleIn(fireModes, itself, mm.fireMode(), forward)
+		return mm.withChoice(func(c map[string]bool) {
 			for _, m := range fireModes[1:] {
 				c["fire:"+m] = m == next
 			}
-		})
+		}, e)
 	case menuPreset:
-		d.setup.uiDirty = true
-		return d.cycleDetailLevel(forward)
+		return mm.cycleDetailLevel(forward, e).wantDirty()
 	}
-	return d
+	return mm, mapWant{}
 }
 
 // mapTitleAt names what is in view (D-64): the app's namer for the view's
 // centre and width, with the selected place while it is in view. With no
 // namer, the selected place.
-func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
-	loc, m := d.mapPlace(), d.mapPane.m
+func (mm mapModel) mapTitleAt(size tuimaps.Size, e mapEnv) string {
+	loc, m := mm.mapPlace(e), mm.mapPane.m
 	if loc == nil {
 		return ""
 	}
 	if m == nil {
 		return loc.Label
 	}
-	v := d.viewBox(size)
+	v := mm.viewBox(size)
 	if !v.Contains(loc.Lat, loc.Lon) {
-		return d.viewName() // D-78: away from the place, never its name
+		return mm.viewName(e) // D-78: away from the place, never its name
 	}
 	var name string
-	if d.mapHooks.MapAreaName != nil {
+	if mm.mapHooks.MapAreaName != nil {
 		centre, _ := m.Centre()
-		name = d.mapHooks.MapAreaName(centre, viewWidthKm(v, centre.Lat))
+		name = mm.mapHooks.MapAreaName(centre, viewWidthKm(v, centre.Lat))
 	}
 	if name == "" || name == loc.Label {
 		return loc.Label
 	}
-	return name + " " + d.opts().Glyphs().Dot + " " + loc.Label
+	return name + " " + e.Opts.Glyphs().Dot + " " + loc.Label
 }
 
 // MapView is the box of the map in view, in degrees (0.18.0 D-66): what
@@ -1030,8 +1028,8 @@ func viewWidthKm(v MapView, centreLat float64) float64 {
 // viewBox is the map's view at a size, from the library's centre and zoom
 // and its published scale (256-dot tiles, a braille cell two dots wide and
 // four high); nothing when no map is built.
-func (d Dashboard) viewBox(size tuimaps.Size) MapView {
-	m := d.mapPane.m
+func (mm mapModel) viewBox(size tuimaps.Size) MapView {
+	m := mm.mapPane.m
 	if m == nil {
 		return MapView{}
 	}

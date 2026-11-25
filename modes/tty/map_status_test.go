@@ -64,12 +64,12 @@ func offlineMap(size tuimaps.Size) (*tuimaps.Map, error) {
 }
 
 func statusLine(d Dashboard) string {
-	lines := d.mapBodyLines()
+	lines := d.mapModel.mapBodyLines(d.mapEnv())
 	last := ttytest.StripANSI(lines[len(lines)-1])
 	if !strings.HasSuffix(strings.TrimRight(last, " "), "Overlays") {
 		return last // not the map's status line: a stated state
 	}
-	return d.mapStatusText() // the words, without the chips
+	return d.mapModel.mapStatusText(d.mapEnv()) // the words, without the chips
 }
 
 // TestTheWindowSaysWhatThePictureIs is W3.3 (FR-3.4) with W1.15's indicator:
@@ -98,8 +98,8 @@ func TestTheWindowSaysWhatThePictureIs(t *testing.T) {
 	if got := statusLine(coarse); !strings.Contains(got, mapCoarseText) {
 		t.Errorf("a view the tiles cannot sharpen, with nothing pending, says %q, want the coarser line", got)
 	}
-	if len(whole.mapBodyLines()) != whole.modalMax() {
-		t.Errorf("the window's body is %d lines, want the window's %d", len(whole.mapBodyLines()), whole.modalMax())
+	if len(whole.mapModel.mapBodyLines(whole.mapEnv())) != whole.modalMax() {
+		t.Errorf("the window's body is %d lines, want the window's %d", len(whole.mapModel.mapBodyLines(whole.mapEnv())), whole.modalMax())
 	}
 }
 

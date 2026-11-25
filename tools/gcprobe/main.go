@@ -30,6 +30,12 @@
 // function: its entry points' inlined calls are matched by callee across the
 // union of the old function and the functions carved from it.
 //
+// A key no rename can carry, because the code it names was carved into new
+// functions or replaced by a field read, is a line of `-excused`, the
+// reviewed list (0.19.6 D-82): the key, the count it may reach, its class
+// ("moved" or "seam") and why. Anything else still fails, and so does a line
+// no key needs any more.
+//
 // A package move is `-moves`, a file of "from<TAB>to" lines applied after the
 // renames (0.19.6 A-52). The names that moved are read from to's source, so
 // the map names two packages and nothing that could drift: a moved function's
@@ -43,7 +49,7 @@
 // usage:
 //
 //	go run ./tools/gcprobe record [-dir <tree>] [-tree <commit>] -escapes <file> -inlining <file>
-//	go run ./tools/gcprobe compare [-dir <tree>] -escapes <file> -inlining <file> [-map <file>] [-moves <file>]
+//	go run ./tools/gcprobe compare [-dir <tree>] -escapes <file> -inlining <file> [-map <file>] [-moves <file>] [-excused <file>]
 //
 // The baselines name the platform and Go they were recorded under; the
 // compiler's decisions are both's, so on another the comparison is refused,
@@ -137,6 +143,7 @@ func probeRun(args []string, stdout, stderr *out) int {
 	inlining := fs.String("inlining", "", "the inlining baseline")
 	mapFile := fs.String("map", "", "compare: a file of old<TAB>new renames applied to the baselines' keys")
 	movesFile := fs.String("moves", "", "compare: a file of from<TAB>to package moves applied to the keys")
+	excusedFile := fs.String("excused", "", "compare: the reviewed list of keys no rename carries (0.19.6 D-82)")
 	tree := fs.String("tree", "", "record: the commit the baselines name; the tree's HEAD when empty")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
@@ -148,7 +155,7 @@ func probeRun(args []string, stdout, stderr *out) int {
 	if args[0] == "record" {
 		return record(*dir, *tree, *escapes, *inlining, stdout, stderr)
 	}
-	return compare(*dir, *escapes, *inlining, *mapFile, *movesFile, stdout, stderr)
+	return compare(*dir, *escapes, *inlining, *mapFile, *movesFile, *excusedFile, stdout, stderr)
 }
 
 // ---- the probe ----------------------------------------------------------------
@@ -683,7 +690,7 @@ func platform() string { return runtime.GOOS + "/" + runtime.GOARCH }
 // ---- the comparison -----------------------------------------------------------
 
 // compare probes the tree and holds it to the baselines.
-func compare(dir, escapes, inlining, mapFile, movesFile string, stdout, stderr *out) int {
+func compare(dir, escapes, inlining, mapFile, movesFile, excusedFile string, stdout, stderr *out) int {
 	he, be, err := readCounts(escapes)
 	if err != nil {
 		stderr.say("gcprobe: %v", err)
@@ -712,6 +719,11 @@ func compare(dir, escapes, inlining, mapFile, movesFile string, stdout, stderr *
 		stderr.say("gcprobe: %v", err)
 		return 2
 	}
+	excused, err := readExcused(excusedFile)
+	if err != nil {
+		stderr.say("gcprobe: %v", err)
+		return 2
+	}
 	if err := stdlibKeyed(dir); err != nil {
 		stdout.say("gcprobe: FAIL %v", err)
 		return 1
@@ -722,40 +734,134 @@ func compare(dir, escapes, inlining, mapFile, movesFile string, stdout, stderr *
 		return 1
 	}
 	now := &probe{escapes: moved(p.escapes, moves, false), inlining: moved(p.inlining, moves, false)}
-	failures := judge(moved(renamed(be, renames), moves, true), moved(renamed(bi, renames), moves, true), now)
+	failures := judge(moved(renamed(be, renames), moves, true), moved(renamed(bi, renames), moves, true), now, excused)
 	for _, f := range failures { // bounded by the verdict (P10-02)
 		stdout.say("gcprobe: FAIL %s", f)
 	}
 	if len(failures) > 0 {
 		return 1
 	}
-	stdout.say("gcprobe: OK - %d escapes in %d keys, none new; %d inlined calls in %d keys, none lost (baselines on %s)", total(p.escapes), len(p.escapes), total(p.inlining), len(p.inlining), he.tree)
+	stdout.say("gcprobe: OK - %d escapes in %d keys, none new; %d inlined calls in %d keys, none lost (baselines on %s; %d keys excused)", total(p.escapes), len(p.escapes), total(p.inlining), len(p.inlining), he.tree, len(excused))
 	return 0
 }
 
 // judge is every way the probe breaks the baselines.
-func judge(baseEsc, baseInl counts, p *probe) []string {
+func judge(baseEsc, baseInl counts, p *probe, excused []excuse) []string {
+	allowed := map[string]map[string]int{"escape": {}, "type": {}, "inlining": {}}
+	for _, e := range excused { // bounded by the list (P10-02)
+		allowed[e.kind][e.key] = e.count
+	}
 	var out []string
 	for _, k := range slices.Sorted(maps.Keys(p.escapes)) { // bounded by the keys (P10-02)
-		if n, was := p.escapes[k], baseEsc[k]; n > was {
+		if n, was := p.escapes[k], baseEsc[k]; n > ceiling(allowed["escape"], k, was) {
 			out = append(out, fmt.Sprintf("escape %s: %d, against %d at baseline: a value now escapes that did not", strings.ReplaceAll(k, "\t", " | "), n, was))
 		}
 	}
 	nowType, wasType := byType(p.escapes), byType(baseEsc)
 	for _, t := range slices.Sorted(maps.Keys(nowType)) { // bounded by the types (P10-02)
-		if nowType[t] > wasType[t] {
+		if nowType[t] > ceiling(allowed["type"], t, wasType[t]) {
 			out = append(out, fmt.Sprintf("type %s escapes %d times across the trees, against %d at baseline", t, nowType[t], wasType[t]))
 		}
 	}
 	for _, k := range slices.Sorted(maps.Keys(baseInl)) { // bounded by the keys (P10-02)
-		if n, was := p.inlining[k], baseInl[k]; n < was {
+		floor, ok := allowed["inlining"][k]
+		if !ok {
+			floor = baseInl[k]
+		}
+		if n, was := p.inlining[k], baseInl[k]; n < floor {
 			out = append(out, fmt.Sprintf("inlining %s: %d, against %d at baseline: a lost inlining stands only by a HUM LEAD ruling (A-26)", strings.ReplaceAll(k, "\t", " | "), n, was))
 		}
 	}
+	out = append(out, stale(excused, baseEsc, baseInl, p, nowType, wasType)...)
 	if now, was := total(p.inlining), total(baseInl); now < was {
 		out = append(out, fmt.Sprintf("the trees inline %d calls, against %d at baseline", now, was))
 	}
 	return out
+}
+
+// ceiling is the most a key may reach: its excused count, else its baseline.
+func ceiling(allowed map[string]int, k string, was int) int {
+	if n, ok := allowed[k]; ok {
+		return n
+	}
+	return was
+}
+
+// stale is every excuse no key needs: its key now within its baseline, so the
+// line would hide whatever came to use it next.
+func stale(excused []excuse, baseEsc, baseInl counts, p *probe, nowType, wasType counts) []string {
+	var out []string
+	for _, e := range excused { // bounded by the list (P10-02)
+		var needed bool
+		switch e.kind {
+		case "escape":
+			needed = p.escapes[e.key] > baseEsc[e.key]
+		case "type":
+			needed = nowType[e.key] > wasType[e.key]
+		case "inlining":
+			needed = p.inlining[e.key] < baseInl[e.key]
+		}
+		if !needed {
+			out = append(out, fmt.Sprintf("excused %s %s needs no excuse: the key is within its baseline, so remove the line (0.19.6 D-82)", e.kind, strings.ReplaceAll(e.key, "\t", " | ")))
+		}
+	}
+	return out
+}
+
+// excuse is one line of the reviewed list (0.19.6 D-82): a key no rename can
+// carry, the count it may reach - an escape's or a type's most, an inlined
+// call's least - and its class.
+type excuse struct {
+	kind, key string
+	count     int
+	class     string
+}
+
+// excuseClasses are the two kinds of key 0.19.6 D-82 lets the list hold: code carved
+// into new functions or under a renamed type, and calls the map's seam made
+// field reads or asks the Dashboard applies.
+var excuseClasses = map[string]bool{"moved": true, "seam": true}
+
+// readExcused reads the reviewed list: "escape|inlining<TAB>pkg<TAB>function
+// <TAB>type-or-callee<TAB>count<TAB>class<TAB>why" or "type<TAB>type<TAB>count
+// <TAB>class<TAB>why"; "" is no file and no excuse.
+func readExcused(path string) ([]excuse, error) {
+	if path == "" {
+		return nil, nil
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var out []excuse
+	seen := map[string]bool{}
+	for _, line := range strings.Split(string(raw), "\n") { // bounded by the file (P10-02)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		f := strings.Split(line, "\t")
+		var e excuse
+		var count string
+		switch {
+		case len(f) == 7 && (f[0] == "escape" || f[0] == "inlining"):
+			e.kind, e.key, count, e.class = f[0], strings.Join(f[1:4], "\t"), f[4], f[5]
+		case len(f) == 5 && f[0] == "type":
+			e.kind, e.key, count, e.class = f[0], f[1], f[2], f[3]
+		default:
+			return nil, fmt.Errorf("%s: %q is not an excuse line", path, line)
+		}
+		n, err := strconv.Atoi(count)
+		if err != nil || !excuseClasses[e.class] || strings.TrimSpace(f[len(f)-1]) == "" {
+			return nil, fmt.Errorf("%s: %q needs a count, a class (moved or seam) and why", path, line)
+		}
+		if err := invariant.Check(!seen[e.kind+"\t"+e.key], path+": "+line+" excuses a key a line above it excuses: the later count would replace the earlier unseen"); err != nil {
+			return nil, err
+		}
+		seen[e.kind+"\t"+e.key] = true
+		e.count = n
+		out = append(out, e)
+	}
+	return out, nil
 }
 
 // byType is the escapes' counts by type alone.

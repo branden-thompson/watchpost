@@ -19,7 +19,7 @@ import (
 func TestEveryRegistryTheMenuIsBuiltFromHasItsRow(t *testing.T) {
 	d := menuMap(t)
 	rows := map[string]int{}
-	for _, r := range d.overlayRows() { // bounded by the menu's rows (P10-02)
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) { // bounded by the menu's rows (P10-02)
 		rows[r.key]++
 	}
 	var want []string

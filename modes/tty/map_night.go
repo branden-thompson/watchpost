@@ -33,64 +33,64 @@ func mapNight(at time.Time) tuimaps.Overlay { return tuimaps.NightOverlay(mapNig
 // D-199): in the Propagation mode always once it has a snapshot, for the hour
 // shown; in the weather modes while Day / night is on - Forecast mode's for
 // the middle of its step, Radar mode's for the clock.
-func (d Dashboard) nightWanted() (time.Time, bool) {
+func (mm mapModel) nightWanted(e mapEnv) (time.Time, bool) {
 	switch {
-	case d.inPropagation():
-		return d.propNightMoment(), d.mapPane.propSnap != nil
-	case !d.detailOn(nightDetailKey):
+	case mm.inPropagation(e):
+		return mm.propNightMoment(e), mm.mapPane.propSnap != nil
+	case !mm.detailOn(nightDetailKey):
 		return time.Time{}, false
-	case d.mapMode() == modeForecast:
-		steps := d.forecastSteps()
+	case mm.mapMode(e) == modeForecast:
+		steps := mm.forecastSteps(e)
 		if len(steps) == 0 {
-			return d.now().UTC().Truncate(nightStep), true
+			return e.Now().UTC().Truncate(nightStep), true
 		}
-		sp := steps[min(d.mapPane.fcStep, len(steps)-1)].Span
+		sp := steps[min(mm.mapPane.fcStep, len(steps)-1)].Span
 		return sp.From.Add(sp.Until.Sub(sp.From) / 2).UTC().Truncate(nightStep), true
 	}
-	return d.now().UTC().Truncate(nightStep), true
+	return e.Now().UTC().Truncate(nightStep), true
 }
 
 // setNight hands the library the night as wanted, or takes it off.
-func (d Dashboard) setNight() Dashboard {
-	if d.mapPane.m == nil {
-		return d
+func (mm mapModel) setNight(e mapEnv) mapModel {
+	if mm.mapPane.m == nil {
+		return mm
 	}
 	var want []tuimaps.Overlay
-	at, on := d.nightWanted()
+	at, on := mm.nightWanted(e)
 	if on {
 		want = []tuimaps.Overlay{mapNight(at)}
 	}
-	d.mapPane.nightGiven, _ = d.reconcile(d.mapPane.nightGiven, want, func(o tuimaps.Overlay, err error) {
-		d.problem("Day / night: " + o.ID + " not drawn - " + err.Error()) // ours to fix, never the listener's (D-124)
+	mm.mapPane.nightGiven, _ = mm.reconcile(mm.mapPane.nightGiven, want, func(o tuimaps.Overlay, err error) {
+		mm.problem("Day / night: "+o.ID+" not drawn - "+err.Error(), e) // ours to fix, never the listener's (D-124)
 	})
-	d.mapPane.nightAt = at
-	return d
+	mm.mapPane.nightAt = at
+	return mm
 }
 
 // followNight hands the night in again when the moment it is for has moved a
 // step, or takes it off or on, while the map is shown.
-func (d Dashboard) followNight() Dashboard {
-	if d.modal != modalMap || d.mapPane.m == nil {
-		return d
+func (mm mapModel) followNight(e mapEnv) mapModel {
+	if e.Window != mapModalMap || mm.mapPane.m == nil {
+		return mm
 	}
-	at, on := d.nightWanted()
-	if on == (len(d.mapPane.nightGiven) > 0) && (!on || at.Equal(d.mapPane.nightAt)) {
-		return d
+	at, on := mm.nightWanted(e)
+	if on == (len(mm.mapPane.nightGiven) > 0) && (!on || at.Equal(mm.mapPane.nightAt)) {
+		return mm
 	}
-	return d.setNight().renderMap()
+	return mm.setNight(e).renderMap(e)
 }
 
 // nightWords say the night on the map (FR-3.1, D-199): its shade and dotted
 // edge - the edge alone in the Propagation mode, whose field the shade does
 // not darken (AX-13) - and the moment they are for, by the window's clock
 // as every other time in the words (AX-8); none where it is not drawn.
-func (d Dashboard) nightWords() string {
-	if len(d.mapPane.nightGiven) == 0 {
+func (mm mapModel) nightWords(e mapEnv) string {
+	if len(mm.mapPane.nightGiven) == 0 {
 		return ""
 	}
-	at := d.mapPane.nightAt.In(d.now().Location())
-	when := d.clockFmt.Time(at) + " " + at.Format("MST")
-	if d.mapMode() == modePropagation {
+	at := mm.mapPane.nightAt.In(e.Now().Location())
+	when := e.Opts.Clock.Time(at) + " " + at.Format("MST")
+	if mm.mapMode(e) == modePropagation {
 		return "The night side's edge is dotted, as at " + when + "."
 	}
 	return "The night side is shaded and its edge dotted, as at " + when + "."

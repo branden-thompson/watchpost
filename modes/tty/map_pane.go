@@ -168,7 +168,7 @@ type mapPane struct {
 	// viewAsked is the newest move whose settle tick has asked for its view:
 	// below viewGen, a move is still waiting to ask (the instrument's "still").
 	viewAsked uint64
-	clock     mapClock // the timing instrument's clock (timing.go)
+	clock     mapClock // the timing instrument's clock (map_timing.go)
 	// radarRegion is the region of the loop being fetched, and radarStop
 	// cancels it: leaving the region leaves its answer nowhere to draw (D-130).
 	radarRegion                       string
@@ -302,45 +302,44 @@ func (p mapPane) call(name string, f func()) {
 	f()
 }
 
-// toggleMap opens the map window, or closes it when it is open.
-func (d Dashboard) toggleMap() Dashboard {
-	if d.modal == modalMap {
-		return d.close()
+// opened is the map in the window the Dashboard has just opened for it
+// (0.19.6 design MS-1's S1): built, zoomed and drawn, and its data asked;
+// built is false where nothing was, and the window says why.
+func (mm mapModel) opened(e mapEnv) (mapModel, tea.Cmd, bool) {
+	mm = mm.timeFrom("open", e)
+	loc := mm.mapPlace(e)
+	if loc == nil || mm.mapsOff {
+		return mm, nil, false // FR-1.3, FR-1.6: the window says so; nothing is built for it
 	}
-	d = d.open(modalMap).timeFrom("open")
-	loc := d.mapPlace()
-	if loc == nil || d.mapsOff {
-		return d // FR-1.3, FR-1.6: the window says so; nothing is built for it
-	}
-	if d.mapPane.m == nil {
-		if d.mapHooks.NewMap == nil {
-			d.mapPane.failed = "The map is not available in this build."
-			return d
+	if mm.mapPane.m == nil {
+		if mm.mapHooks.NewMap == nil {
+			mm.mapPane.failed = "The map is not available in this build."
+			return mm, nil, false
 		}
-		m, err := d.mapHooks.NewMap(d.mapBodySize())
+		m, err := mm.mapHooks.NewMap(mm.mapBodySize(e))
 		if err != nil {
-			d.mapPane.failed = mapFailedText // D-124: a path, and the detail to the diagnostics
-			d.problem("Map: not started - " + err.Error())
-			return d
+			mm.mapPane.failed = mapFailedText // D-124: a path, and the detail to the diagnostics
+			mm.problem("Map: not started - "+err.Error(), e)
+			return mm, nil, false
 		}
-		d.mapPane.m, d.mapPane.failed, d.mapPane.workers = m, "", newMapWorkers()
+		mm.mapPane.m, mm.mapPane.failed, mm.mapPane.workers = m, "", newMapWorkers()
 	}
-	d.mapPane.alertsOn, d.mapPane.menuOn = false, false // D-87: the Description box waits for A
-	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
-	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
-	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
-	d = d.resetPlayback()                                       // Forecast mode opens on Now, stopped (D-94)
-	d.mapPane.modeChip = false
-	d.mapPane.prop = false // every open is a weather mode: the Propagation mode is never kept (D-154)
-	d = d.stopPropagation().setProp()
-	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
-	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().setZone().requestFeed()
-	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
-	d = d.renderMap()
-	d, feed := d.askFeed()
-	d, radar := d.askRadar()
-	d, temp := d.askTemp()
-	return d.withCmd(tea.Batch(d.mapWorkCmd(), feed, radar, temp))
+	mm.mapPane.alertsOn, mm.mapPane.menuOn = false, false // D-87: the Description box waits for A
+	m, scale, km := mm.mapPane.m, mm.mapScale.zoom(), float64(mm.mapNearbyKm)
+	mm.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
+	mm.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
+	mm = mm.resetPlayback()                                      // Forecast mode opens on Now, stopped (D-94)
+	mm.mapPane.modeChip = false
+	mm.mapPane.prop = false // every open is a weather mode: the Propagation mode is never kept (D-154)
+	mm = mm.stopPropagation(e).setProp(e)
+	mm = mm.ensureMainOverlay(e) // D-103: a map opened in Forecast mode is never blank
+	mm = mm.applyDetail(e).applyPlayback().showStep(e).refreshMapCost(e).followSelection(e).setZone(e).requestFeed()
+	mm.mapPane.viewAsked = mm.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
+	mm = mm.renderMap(e)
+	mm, feed := mm.askFeed(e)
+	mm, radar := mm.askRadar(e)
+	mm, temp := mm.askTemp(e)
+	return mm, tea.Batch(mm.mapWorkCmd(e), feed, radar, temp), true
 }
 
 // boundMap holds the map inside its region (W4, W9.1: the library's bound,
@@ -349,29 +348,29 @@ func (d Dashboard) toggleMap() Dashboard {
 // region either way; it depends on the window's size, so every resize sets
 // it again. It is worked out in the library's published scale - 256-dot
 // tiles, a braille cell two dots wide and four high.
-func (d Dashboard) boundMap() Dashboard {
-	m, r := d.mapPane.m, d.mapPane.region
+func (mm mapModel) boundMap(e mapEnv) mapModel {
+	m, r := mm.mapPane.m, mm.mapPane.region
 	if m == nil {
-		return d
+		return mm
 	}
 	var b tuimaps.Bound // the Propagation mode's: none, the whole world (D-21)
 	name := "the whole world"
-	switch d.mapMode() {
+	switch mm.mapMode(e) {
 	case modeRadar, modeForecast:
 		if r.Name == "" {
-			return d
+			return mm
 		}
-		b, name = tuimaps.Bound{MinZoom: regionFitZoom(r, d.mapBodySize()), W: r.W, S: r.S, E: r.E, N: r.N}, r.Name
+		b, name = tuimaps.Bound{MinZoom: regionFitZoom(r, mm.mapBodySize(e)), W: r.W, S: r.S, E: r.E, N: r.N}, r.Name
 	case modePropagation:
 	}
 	var err error
-	d.mapPane.call("SetBound", func() {
+	mm.mapPane.call("SetBound", func() {
 		err = m.SetBound(b)
 	})
 	if err != nil {
-		d.problem("Map bound: " + name + " refused - " + err.Error()) // ours to fix, never the listener's (D-124)
+		mm.problem("Map bound: "+name+" refused - "+err.Error(), e) // ours to fix, never the listener's (D-124)
 	}
-	return d.holdWorld()
+	return mm.holdWorld(e)
 }
 
 // worldLatitude is as far north and south as the map draws.
@@ -386,18 +385,18 @@ func worldZoom(size tuimaps.Size) float64 {
 // holdWorld keeps the Propagation mode's view at worldZoom or nearer. Its map
 // has no bound, so that a view may cross any meridian, and the library would
 // otherwise zoom out past the world; the weather modes are held by theirs.
-func (d Dashboard) holdWorld() Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) holdWorld(e mapEnv) mapModel {
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
-	if d.mapMode() == modePropagation {
-		least := worldZoom(d.mapBodySize())
+	if mm.mapMode(e) == modePropagation {
+		least := worldZoom(mm.mapBodySize(e))
 		if _, z := m.Centre(); z < least {
-			d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
+			mm.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
 		}
 	}
-	return d
+	return mm
 }
 
 // regionFitZoom is the least zoom a region is held at: the zoom at which it
@@ -420,26 +419,26 @@ func mercatorY(lat float64) float64 {
 
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
-func (d Dashboard) mapBodySize() tuimaps.Size {
-	cols := d.mapCols()                                                   // border to border (U1-27)
-	avail := d.modalMax() - d.mapChromeRows(d.noteRowCount(d.mapTextW())) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
-	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
+func (mm mapModel) mapBodySize(e mapEnv) tuimaps.Size {
+	cols := mm.mapCols(e)                                                       // border to border (U1-27)
+	avail := e.rows() - mm.mapChromeRows(mm.noteRowCount(mm.mapTextW(e), e), e) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
+	return tuimaps.Size{Cols: cols, Rows: max(min(avail, e.rows()), 1)}
 }
 
 // mapFits reports whether the map can be drawn at the floor (FR-1.4).
-func (d Dashboard) mapFits() bool {
-	s := d.mapBodySize()
+func (mm mapModel) mapFits(e mapEnv) bool {
+	s := mm.mapBodySize(e)
 	return s.Cols >= mapMinBody.Cols && s.Rows >= mapMinBody.Rows
 }
 
 // descBlock is the description as the window lays it above the map: wrapped
 // to the body's width, and a blank line under it. Empty when its mode is off.
-func (d Dashboard) descBlock(width int) []string {
-	if d.mapDesc == mapDescOff && !d.cfg.ASCII {
+func (mm mapModel) descBlock(width int, e mapEnv) []string {
+	if mm.mapDesc == mapDescOff && !e.Opts.ASCII {
 		return nil
 	}
 	var out []string
-	for _, l := range d.describeLinesAll() {
+	for _, l := range mm.describeLinesAll(e) {
 		out = append(out, render.WrapText(l, width)...)
 	}
 	if len(out) > 0 {
@@ -449,84 +448,84 @@ func (d Dashboard) descBlock(width int) []string {
 }
 
 // renderMap draws the map into the pane. It is called from Update only.
-func (d Dashboard) renderMap() Dashboard {
-	d = d.followRole() // a swap of UI modes with the map open: its place and marks follow (D-195)
-	m := d.mapPane.m
-	if m == nil || d.outsideStated() {
-		return d // FR-2.5: nothing wider is drawn in its place
+func (mm mapModel) renderMap(e mapEnv) mapModel {
+	mm = mm.followRole(e) // a swap of UI modes with the map open: its place and marks follow (D-195)
+	m := mm.mapPane.m
+	if m == nil || mm.outsideStated(e) {
+		return mm // FR-2.5: nothing wider is drawn in its place
 	}
 	var frame tuimaps.Frame
 	var err error
-	miles := d.units == render.UnitF
-	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
-	depth := d.mapDepthHint()
-	d.mapPane.call("ColourDepth", func() { m.ColourDepth(depth) }) // the Setting's depth, or the terminal's (D-207); the same hint again changes nothing
-	d = d.applyMotion()                                            // Reduce motion (D-360), likewise
-	d = d.reportPlace()                                            // first: the description's length decides the map's size
-	if !d.mapFits() {
-		d.mapPane.lines = nil
-		d.mapPane.gen++
-		d.timeBelowFloor() // the workload's render check: a map not drawn is never a quiet pass (W14)
-		return d           // FR-1.4: nothing under the floor is drawn; the notice and the description say it
+	miles := e.Opts.Units == render.UnitF
+	mm.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
+	depth := mm.mapDepthHint(e)
+	mm.mapPane.call("ColourDepth", func() { m.ColourDepth(depth) }) // the Setting's depth, or the terminal's (D-207); the same hint again changes nothing
+	mm = mm.applyMotion(e)                                          // Reduce motion (D-360), likewise
+	mm = mm.reportPlace(e)                                          // first: the description's length decides the map's size
+	if !mm.mapFits(e) {
+		mm.mapPane.lines = nil
+		mm.mapPane.gen++
+		mm.timeBelowFloor() // the workload's render check: a map not drawn is never a quiet pass (W14)
+		return mm           // FR-1.4: nothing under the floor is drawn; the notice and the description say it
 	}
-	d.mapPane.call("Render", func() { frame, err = m.Render(d.mapBodySize(), d.now()) })
+	mm.mapPane.call("Render", func() { frame, err = m.Render(mm.mapBodySize(e), e.Now()) })
 	if err != nil {
-		d.mapPane.failed = mapFailedText
-		d.problem("Map: not drawn - " + err.Error())
-		return d
+		mm.mapPane.failed = mapFailedText
+		mm.problem("Map: not drawn - "+err.Error(), e)
+		return mm
 	}
-	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
-	if d.mapPane.views != nil {
+	mm.mapPane.lines, mm.mapPane.failed = insetLines(frame.Lines), ""
+	if mm.mapPane.views != nil {
 		c, z := m.Centre()
-		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize(), region: d.mapPane.region, mode: d.mapMode()})
+		*mm.mapPane.views = append(*mm.mapPane.views, mapView{centre: c, zoom: z, size: mm.mapBodySize(e), region: mm.mapPane.region, mode: mm.mapMode(e)})
 	}
-	d.mapPane.status = frame.Status
-	d.mapPane.call("Legend", func() { d.mapPane.legend = m.Legend() })
-	d.mapPane.call("Pending", func() { d.mapPane.pending = m.Pending() > 0 })
+	mm.mapPane.status = frame.Status
+	mm.mapPane.call("Legend", func() { mm.mapPane.legend = m.Legend() })
+	mm.mapPane.call("Pending", func() { mm.mapPane.pending = m.Pending() > 0 })
 	var warnings []tuimaps.Warning
-	d.mapPane.call("Warnings", func() { warnings = m.Warnings() })
+	mm.mapPane.call("Warnings", func() { warnings = m.Warnings() })
 	for _, w := range warnings { // the library's, drained each frame (P10-02)
 		if w.Kind == tuimaps.TileFailed {
-			d.mapPane.offline = true // held until the picture is whole again
+			mm.mapPane.offline = true // held until the picture is whole again
 			continue
 		}
 		if w.Kind == tuimaps.SetRefused {
 			continue // setFeed said each layer's refusals once already (U2-29)
 		}
-		d.problem(warningText(w)) // nothing the listener can act on: the diagnostics' (D-124)
+		mm.problem(warningText(w), e) // nothing the listener can act on: the diagnostics' (D-124)
 	}
 	if frame.Status == tuimaps.Complete {
-		d.mapPane.offline = false
+		mm.mapPane.offline = false
 	}
-	d.mapPane.title = d.mapTitleAt(d.mapBodySize())
-	if d.inPropagation() {
-		d.mapPane.propOrigin = d.propOriginNow() // read here, in Update, as the title is; the frame only prints it (D-41, D-193)
+	mm.mapPane.title = mm.mapTitleAt(mm.mapBodySize(e), e)
+	if mm.inPropagation(e) {
+		mm.mapPane.propOrigin = mm.propOriginNow(e) // read here, in Update, as the title is; the frame only prints it (D-41, D-193)
 	}
-	d.mapPane.radarLine = d.radarStatus()                 // read from the library here, in Update; the frame only prints it (D-41)
-	d.mapPane.radarTimeline = d.radarTimeline(d.scrubW()) // beside the controls (D-103)
-	d.mapPane.fcTimeline = d.forecastTimeline(d.scrubW())
-	d.mapPane.radarBadgeTime = d.radarBadgeTimeNow()
-	d.recordFrame(frame.Status) // D-198: nothing unless the recorder is on
-	d.mapPane.gen++
-	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
-	d = d.timeDraw()
-	return d
+	mm.mapPane.radarLine = mm.radarStatus(e)                     // read from the library here, in Update; the frame only prints it (D-41)
+	mm.mapPane.radarTimeline = mm.radarTimeline(mm.scrubW(e), e) // beside the controls (D-103)
+	mm.mapPane.fcTimeline = mm.forecastTimeline(mm.scrubW(e), e)
+	mm.mapPane.radarBadgeTime = mm.radarBadgeTimeNow(e)
+	mm.recordFrame(frame.Status, e) // D-198: nothing unless the recorder is on
+	mm.mapPane.gen++
+	mm.mapPane.changed, mm.mapPane.ticks = frame.Changed, frame.FrameTicks
+	mm = mm.timeDraw(e)
+	return mm
 }
 
 // mapWorkCmd is the next Work command, or nil when the window is closed,
 // nothing is pending, or mapWorkLoops are in Work already - each of them asks
 // again while work waits, so the work is theirs (PF-3).
-func (d Dashboard) mapWorkCmd() tea.Cmd {
-	m, w := d.mapPane.m, d.mapPane.workers
-	if m == nil || d.modal != modalMap || w.loopsFull() {
+func (mm mapModel) mapWorkCmd(e mapEnv) tea.Cmd {
+	m, w := mm.mapPane.m, mm.mapPane.workers
+	if m == nil || e.Window != mapModalMap || w.loopsFull() {
 		return nil
 	}
 	pending := 0
-	d.mapPane.call("Pending", func() { pending = m.Pending() })
+	mm.mapPane.call("Pending", func() { pending = m.Pending() })
 	if pending == 0 {
 		return nil
 	}
-	pane := d.mapPane
+	pane := mm.mapPane
 	return w.cmd(context.Background(), mapWorkedMsg{}, func(ctx context.Context) tea.Msg {
 		if !w.startLoop() { // commands made before any ran: the bound is checked again as each starts
 			return mapWorkedMsg{skipped: true}
@@ -540,14 +539,14 @@ func (d Dashboard) mapWorkCmd() tea.Cmd {
 
 // applyMapWorked draws what a Work command landed, and asks for the next. A
 // loop that was not started asks for nothing: the loops in Work do (PF-3).
-func (d Dashboard) applyMapWorked(v mapWorkedMsg) (Dashboard, tea.Cmd) {
+func (mm mapModel) applyMapWorked(v mapWorkedMsg, e mapEnv) (mapModel, tea.Cmd) {
 	if v.skipped {
-		return d, nil
+		return mm, nil
 	}
-	if v.did && d.modal == modalMap {
-		d = d.renderMap()
+	if v.did && e.Window == mapModalMap {
+		mm = mm.renderMap(e)
 	}
-	return d, d.mapWorkCmd()
+	return mm, mm.mapWorkCmd(e)
 }
 
 // insetLines indents each drawn line by one cell, as every window's body is.
@@ -557,64 +556,64 @@ func insetLines(lines []string) []string {
 
 // mapCols is the map window's width inside its two borders: the map runs
 // border to border (UAT-1 U1-27), where every other window insets its body.
-func (d Dashboard) mapCols() int { return max(d.mapWindowCols()-2, 1) }
+func (mm mapModel) mapCols(e mapEnv) int { return max(e.cols()-2, 1) }
 
 // mapTextW is how wide the window's words wrap: one cell inside the map's
 // width, for the space every line of words starts with, so none is cut at
 // the border.
-func (d Dashboard) mapTextW() int { return max(d.mapCols()-1, 1) }
+func (mm mapModel) mapTextW(e mapEnv) int { return max(mm.mapCols(e)-1, 1) }
 
 // mapTitle names the place the map is on.
-func (d Dashboard) mapTitle() string {
-	if d.mapPane.title != "" && d.modal == modalMap && d.mapPane.m != nil {
-		return "Map " + d.opts().Glyphs().Dot + " " + d.mapPane.title // D-64: what is in view
+func (mm mapModel) mapTitle(e mapEnv) string {
+	if mm.mapPane.title != "" && e.Window == mapModalMap && mm.mapPane.m != nil {
+		return "Map " + e.Opts.Glyphs().Dot + " " + mm.mapPane.title // D-64: what is in view
 	}
-	if loc := d.mapPlace(); loc != nil {
-		return "Map " + d.opts().Glyphs().Dot + " " + loc.Label
+	if loc := mm.mapPlace(e); loc != nil {
+		return "Map " + e.Opts.Glyphs().Dot + " " + loc.Label
 	}
 	return "Map"
 }
 
 // mapBodyLines is what the window shows: the map, or a stated reason why not.
-func (d Dashboard) mapBodyLines() []string {
+func (mm mapModel) mapBodyLines(e mapEnv) []string {
 	switch {
-	case d.mapPlace() == nil:
+	case mm.mapPlace(e) == nil:
 		return []string{noSelectionText}
-	case d.mapsOff:
+	case mm.mapsOff:
 		return []string{mapsOffText}
-	case d.outsideStated():
-		return []string{d.outsideText()}
-	case d.mapPane.failed != "":
-		return []string{d.mapPane.failed}
+	case mm.outsideStated(e):
+		return []string{mm.outsideText()}
+	case mm.mapPane.failed != "":
+		return []string{mm.mapPane.failed}
 	}
-	width := d.mapTextW()
-	picture := d.mapPicture()
+	width := mm.mapTextW(e)
+	picture := mm.mapPicture(e)
 	var out []string // D-69: the map says nothing of what it sends; Settings does, beside the maps row
 	switch {
-	case d.cfg.ASCII:
+	case e.Opts.ASCII:
 		out = []string{asciiMapText, ""} // FR-1.7, FR-1.8: the description in place of the picture
-	case d.mapDesc != mapDescInstead && !d.mapFits():
-		out = append(render.WrapText(belowFloorText(d.mapBodySize()), width), "") // FR-1.4: the notice carries the description
+	case mm.mapDesc != mapDescInstead && !mm.mapFits(e):
+		out = append(render.WrapText(belowFloorText(mm.mapBodySize(e)), width), "") // FR-1.4: the notice carries the description
 	}
 	if !picture {
-		text := d.textInstead(out, width)
-		if len(text) > d.modalMax() {
-			text = d.textInstead(out, width-modalRailCols) // it will scroll: wrapped clear of the rail, so the window need not wrap it again into stubs (D-211)
+		text := mm.textInstead(out, width, e)
+		if len(text) > e.rows() {
+			text = mm.textInstead(out, width-modalRailCols, e) // it will scroll: wrapped clear of the rail, so the window need not wrap it again into stubs (D-211)
 		}
 		return text
 	}
-	size := d.mapBodySize()
-	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withPropCentre(d.withDescriptionBox(d.mapPane.lines, size), size)), size), size), size), size)...) // the notice under every control (D-181)
-	if !d.radarTimelineOn() {
-		for _, l := range d.noteLines(width) {
+	size := mm.mapBodySize(e)
+	out = append(out, mm.withModeChip(mm.withEdgeChip(mm.withControls(mm.withQuotaNotice(mm.withOverlays(mm.withPropCentre(mm.withDescriptionBox(mm.mapPane.lines, size, e), size, e), e), size, e), size, e), size), size)...) // the notice under every control (D-181)
+	if !mm.radarTimelineOn() {
+		for _, l := range mm.noteLines(width, e) {
 			out = append(out, " "+l)
 		}
-		for _, l := range strings.Split(d.mapStatusLine(), "\n") {
+		for _, l := range strings.Split(mm.mapStatusLine(e), "\n") {
 			out = append(out, " "+l)
 		}
 		return out
 	}
-	return append(out, d.scrubRows(width)...) // D-103: the rows under the map, in either mode
+	return append(out, mm.scrubRows(width, e)...) // D-103: the rows under the map, in either mode
 }
 
 // modalRailCols are the columns a scrolling window's rail takes from its
@@ -625,30 +624,30 @@ const modalRailCols = 3
 // leading lines: the description, or the open menu; what the picture's rows
 // say - the region beyond an edge, the status, the loop's line (AX-5); and
 // the notes, wrapped to a width.
-func (d Dashboard) textInstead(lead []string, width int) []string {
+func (mm mapModel) textInstead(lead []string, width int, e mapEnv) []string {
 	out := slices.Clone(lead)
-	block := d.descBlock(width)
-	if d.mapPane.menuOn {
-		block = d.overlaysText() // D-267: the open menu owns the keys, so it is drawn where the picture would be
+	block := mm.descBlock(width, e)
+	if mm.mapPane.menuOn {
+		block = mm.overlaysText(e) // D-267: the open menu owns the keys, so it is drawn where the picture would be
 	}
 	for _, l := range block {
 		out = append(out, " "+l)
 	}
-	for _, said := range []string{d.edgeWords(), d.mapStatusText()} {
+	for _, said := range []string{mm.edgeWords(), mm.mapStatusText(e)} {
 		for _, l := range render.WrapText(said, width-1) {
 			out = append(out, " "+l)
 		}
 	}
-	switch d.mapMode() {
+	switch mm.mapMode(e) {
 	case modeRadar, modeForecast:
-		if d.radarTimelineOn() {
-			for _, l := range render.WrapText(d.loopWords(), width-1) {
+		if mm.radarTimelineOn() {
+			for _, l := range render.WrapText(mm.loopWords(e), width-1) {
 				out = append(out, " "+l)
 			}
 		}
 	case modePropagation: // its own words carry its hours
 	}
-	for _, l := range d.noteLines(width) {
+	for _, l := range mm.noteLines(width, e) {
 		out = append(out, " "+l)
 	}
 	return out
@@ -656,104 +655,103 @@ func (d Dashboard) textInstead(lead []string, width int) []string {
 
 // mapPicture reports whether the window draws the picture: not under
 // --ascii, not with the description in its place, not below the floor.
-func (d Dashboard) mapPicture() bool {
-	return !d.cfg.ASCII && d.mapDesc != mapDescInstead && d.mapFits()
+func (mm mapModel) mapPicture(e mapEnv) bool {
+	return !e.Opts.ASCII && mm.mapDesc != mapDescInstead && mm.mapFits(e)
 }
 
 // followMenuFocus scrolls the window so the menu's focused row is in view
 // while the menu is drawn as text (D-267): the text can be longer than the
 // window, and a row the cursor is on is never off screen.
-func (d Dashboard) followMenuFocus() Dashboard {
-	if !d.mapPane.menuOn || d.mapPicture() {
-		return d
+func (mm mapModel) followMenuFocus(e mapEnv) (mapModel, mapWant) {
+	if !mm.mapPane.menuOn || mm.mapPicture(e) {
+		return mm, mapWant{}
 	}
-	lines, mark := d.modalLines(), d.opts().Glyphs().Pointer+" "
+	lines, mark := mm.windowLines(e), e.Opts.Glyphs().Pointer+" "
 	at := slices.IndexFunc(lines, func(l string) bool { return strings.Contains(render.Plain(l), mark) })
 	if at < 0 {
-		return d
+		return mm, mapWant{}
 	}
-	rows := d.modalMax()
+	rows, scroll := e.rows(), e.Scroll
 	switch {
-	case at < d.modalScroll:
-		d.modalScroll = at
-	case at >= d.modalScroll+rows:
-		d.modalScroll = at - rows + 1
+	case at < scroll:
+		scroll = at
+	case at >= scroll+rows:
+		scroll = at - rows + 1
 	}
-	d.modalScroll = min(d.modalScroll, max(len(lines)-rows, 0))
-	return d
+	return mm, mapWant{Scroll: min(scroll, max(len(lines)-rows, 0)), ScrollSet: true}
 }
 
 // reportPlace keeps the library's answers for the selected place, which the
 // description reads. It needs no Work and no frame.
-func (d Dashboard) reportPlace() Dashboard {
-	m, loc := d.mapPane.m, d.mapPlace()
-	d.mapPane.report, d.mapPane.motion = tuimaps.PlaceReport{}, nil
+func (mm mapModel) reportPlace(e mapEnv) mapModel {
+	m, loc := mm.mapPane.m, mm.mapPlace(e)
+	mm.mapPane.report, mm.mapPane.motion = tuimaps.PlaceReport{}, nil
 	if m == nil || loc == nil {
-		return d
+		return mm
 	}
 	var rep tuimaps.Report
-	d.mapPane.call("Report", func() {
+	mm.mapPane.call("Report", func() {
 		rep, _ = m.Report([]tuimaps.Place{{ID: "selected", Name: loc.Label, At: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}}})
 	})
 	if len(rep.Places) > 0 {
-		d.mapPane.report = rep.Places[0]
+		mm.mapPane.report = rep.Places[0]
 	}
-	d.mapPane.motion = rep.Motion
-	return d
+	mm.mapPane.motion = rep.Motion
+	return mm
 }
 
 // noteLines are the rows under the map before its status: the badges
 // (D-133), then the notes that come and go, each only while it applies
 // (D-132), then the cost warning; wrapped to the map's width.
-func (d Dashboard) noteLines(width int) []string {
-	if d.mapMode() == modePropagation { // its badges and words are in its block (D-157); its one note, the legend's MHz (D-160)
-		if !d.propNoteShown() {
+func (mm mapModel) noteLines(width int, e mapEnv) []string {
+	if mm.mapMode(e) == modePropagation { // its badges and words are in its block (D-157); its one note, the legend's MHz (D-160)
+		if !mm.propNoteShown(e) {
 			return nil
 		}
-		return []string{d.propLegendRows(width)[1]}
+		return []string{mm.propLegendRows(width)[1]}
 	}
-	out := d.badgeRows(width)
-	if d.notesYield(width) {
-		out = append(out, render.WrapText(notesYieldLine(len(d.mapNotesNow())), width)...) // D-159: the map keeps its floor
+	out := mm.badgeRows(width, e)
+	if mm.notesYield(width, e) {
+		out = append(out, render.WrapText(notesYieldLine(len(mm.mapNotesNow(e))), width)...) // D-159: the map keeps its floor
 	} else {
-		for _, n := range d.mapNotesNow() {
+		for _, n := range mm.mapNotesNow(e) {
 			out = append(out, render.WrapText(n, width)...)
 		}
 	}
-	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
+	out = append(out, mapCostLine(mm.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
 	return out
 }
 
 // propNoteShown reports whether the Propagation mode's note line, its
 // legend's MHz, is shown: not where no picture is meant (not mapPicture: its
 // fit counts this line).
-func (d Dashboard) propNoteShown() bool {
-	return !d.cfg.ASCII && d.mapDesc != mapDescInstead
+func (mm mapModel) propNoteShown(e mapEnv) bool {
+	return !e.Opts.ASCII && mm.mapDesc != mapDescInstead
 }
 
 // noteRowCount is how many rows noteLines gives at a width, counted without
 // drawing the Propagation mode's legend: the map's size asks it many times a
 // frame.
-func (d Dashboard) noteRowCount(width int) int {
-	if d.mapMode() == modePropagation {
-		if !d.propNoteShown() {
+func (mm mapModel) noteRowCount(width int, e mapEnv) int {
+	if mm.mapMode(e) == modePropagation {
+		if !mm.propNoteShown(e) {
 			return 0
 		}
 		return 1
 	}
-	return len(d.noteLines(width))
+	return len(mm.noteLines(width, e))
 }
 
 // mapNotesNow is the map's notes as they stand: the feed's, the radar's
 // missing data, what a temperature source lacks. The one list the window
 // and the Status window's MAP STATUS both read (D-159), so they cannot
 // disagree.
-func (d Dashboard) mapNotesNow() []string {
-	out := append([]string(nil), d.mapPane.notes...)
-	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
-		out = append(out, d.mapPane.radarNote) // D-84's missing data; a source that did not answer, with its Setting
+func (mm mapModel) mapNotesNow(e mapEnv) []string {
+	out := append([]string(nil), mm.mapPane.notes...)
+	if mm.mapPane.radarSource != "" && mm.mapPane.radarNote != "" && mm.layerOn(RadarLayer, e) {
+		out = append(out, mm.mapPane.radarNote) // D-84's missing data; a source that did not answer, with its Setting
 	}
-	return append(out, d.tempNotes()...) // W10: what a source lacks
+	return append(out, mm.tempNotes(e)...) // W10: what a source lacks
 }
 
 // notesYieldLine is the notes collapsed to one line (D-159).
@@ -766,13 +764,13 @@ func notesYieldLine(n int) string {
 
 // mapChromeRows are the rows under the map for notes of n lines: the status
 // and chips, the notes, and the radar timeline while it is held.
-func (d Dashboard) mapChromeRows(noteRows int) int {
+func (mm mapModel) mapChromeRows(noteRows int, e mapEnv) int {
 	rows := mapStatusRows + noteRows
-	if !d.radarTimelineOn() {
+	if !mm.radarTimelineOn() {
 		return rows
 	}
 	rows += radarRows + radarExtraRows
-	if d.mapMode() == modePropagation {
+	if mm.mapMode(e) == modePropagation {
 		rows += propBlockRows - scrubBoxRows // its block's blank row before the place (D-163)
 	}
 	return rows
@@ -782,42 +780,42 @@ func (d Dashboard) mapChromeRows(noteRows int) int {
 // only where even the window's ceiling (D-194) cannot hold the map at its
 // floor with every note line shown, and one line would. Growing the window
 // comes first.
-func (d Dashboard) notesYield(width int) bool {
-	notes := d.mapNotesNow()
+func (mm mapModel) notesYield(width int, e mapEnv) bool {
+	notes := mm.mapNotesNow(e)
 	if len(notes) < 2 {
 		return false
 	}
-	full := len(d.badgeRows(width)) + len(mapCostLine(d.mapCost, width))
+	full := len(mm.badgeRows(width, e)) + len(mapCostLine(mm.mapCost, width))
 	for _, n := range notes {
 		full += len(render.WrapText(n, width))
 	}
-	return mapMinBody.Rows+d.mapChromeRows(full) > d.mapCeiling()
+	return mapMinBody.Rows+mm.mapChromeRows(full, e) > e.ceiling()
 }
 
 // mapStatusLine says what the picture is while it is not whole, and names
 // the window's boxes on a line of their own.
-func (d Dashboard) mapStatusLine() string {
+func (mm mapModel) mapStatusLine(e mapEnv) string {
 	// D-89's order: the radar's line, the estimate after a slash, then what
 	// the picture's status says - W8.8's loop and its age always first.
-	lead := d.mapPane.radarLine
-	switch d.mapMode() {
+	lead := mm.mapPane.radarLine
+	switch mm.mapMode(e) {
 	case modeForecast:
-		if d.mapHooks.MapRadar != nil {
-			lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
+		if mm.mapHooks.MapRadar != nil {
+			lead = mm.forecastStatus(e) // D-94: Forecast mode's line in the radar's place
 		}
 	case modePropagation:
-		lead = d.propStatusWords()
+		lead = mm.propStatusWords(e)
 	case modeRadar:
 	}
-	if est := costEstimate(d.mapCost); est != "" {
+	if est := costEstimate(mm.mapCost); est != "" {
 		lead = strings.TrimPrefix(lead+" / "+est, " / ")
 	}
-	status := d.mapStatusText()
+	status := mm.mapStatusText(e)
 	if lead != "" {
 		status = strings.TrimSuffix(lead+" · "+status, " · ")
 	}
-	chips := d.mapChips()
-	width := d.mapTextW()
+	chips := mm.mapChips(e)
+	width := mm.mapTextW(e)
 	// TWO LINES, ALWAYS: the status, then the chips (UAT-1 U1-2 - three chips
 	// beside the status would cut it even at 133 columns). Both are reserved whether
 	// or not the status says anything, so the map's size never depends on the
@@ -828,26 +826,26 @@ func (d Dashboard) mapStatusLine() string {
 // mapChips are the window's keys as chips, each naming its key as bound and
 // saying its state: the Description box, the mode, Overlays (D-63, D-65,
 // D-94; no legend chip, D-103; AX-6, D-365).
-func (d Dashboard) mapChips() []string {
+func (mm mapModel) mapChips(e mapEnv) []string {
 	type chip struct {
 		act  term.Action
 		name string
 	}
 	var controls []chip
-	switch d.mapMode() {
+	switch mm.mapMode(e) {
 	case modeRadar, modeForecast:
 		description := "Description Off"
-		if d.mapPane.alertsOn {
+		if mm.mapPane.alertsOn {
 			description = "Description On"
 		}
-		controls = []chip{{actMapAlerts, description}, {actMapRadar, d.radarChipWords()}}
+		controls = []chip{{actMapAlerts, description}, {actMapRadar, mm.radarChipWords(e)}}
 	case modePropagation: // the mode's own controls in the weather's place (D-155, D-156)
-		controls = []chip{{actMapLayer, propLayerName(d.mapPane.propLayer)}, {actMapRefresh, "Refresh Now"}}
+		controls = []chip{{actMapLayer, propLayerName(mm.mapPane.propLayer)}, {actMapRefresh, "Refresh Now"}}
 	}
 	var chips []string
-	for _, c := range append(controls, chip{actMapProp, d.propChipWords()}, chip{actMapOverlays, "Overlays"}) { // the menu open says itself, the cursor on its row (D-362)
-		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
-			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
+	for _, c := range append(controls, chip{actMapProp, mm.propChipWords(e)}, chip{actMapOverlays, "Overlays"}) { // the menu open says itself, the cursor on its row (D-362)
+		if keys := mm.mapKeys[c.act].Keys; len(keys) > 0 {
+			chips = append(chips, e.Opts.KeyCap(keys[0])+" "+c.name)
 		}
 	}
 	return chips
@@ -866,11 +864,11 @@ type mapReleaseMsg struct{ gen uint64 }
 
 // applyMapRelease lets the map go when it is still closed and no later close
 // has scheduled a release of its own (D-221).
-func (d Dashboard) applyMapRelease(v mapReleaseMsg) Dashboard {
-	if v.gen != d.mapCloses || d.mapShown() || d.mapPane.m == nil {
-		return d
+func (mm mapModel) applyMapRelease(v mapReleaseMsg, e mapEnv) mapModel {
+	if v.gen != mm.mapCloses || e.Shown || mm.mapPane.m == nil {
+		return mm
 	}
-	return d.releaseMap()
+	return mm.releaseMap()
 }
 
 // releaseMap closes the library's map and lets go of everything the window
@@ -878,26 +876,26 @@ func (d Dashboard) applyMapRelease(v mapReleaseMsg) Dashboard {
 // so the next open builds a new one. The generations go on from where they
 // were, so an answer to an ask made before the release is never taken for a
 // new one.
-func (d Dashboard) releaseMap() Dashboard {
-	d.closeMap()
-	p := d.mapPane
+func (mm mapModel) releaseMap() mapModel {
+	mm.closeMap()
+	p := mm.mapPane
 	for _, stop := range []context.CancelFunc{p.lanes[laneAlerts].stop, p.lanes[laneLayers].stop, p.radarStop} { // the asks in flight (P10-02)
 		if stop != nil {
 			stop()
 		}
 	}
-	d.mapPane = mapPane{calls: p.calls, where: p.where, views: p.views, clock: p.clock, changed: p.changed, ticks: p.ticks,
+	mm.mapPane = mapPane{calls: p.calls, where: p.where, views: p.views, clock: p.clock, changed: p.changed, ticks: p.ticks,
 		gen: p.gen + 1, viewGen: p.viewGen, viewAsked: p.viewAsked, feedGen: p.feedGen, lanes: keptSeqs(p.lanes), fcGen: p.fcGen,
 		propGen: p.propGen, propTickSeq: p.propTickSeq}
-	return d
+	return mm
 }
 
 // closeMap lets the library's map go. The app calls it when the station
 // stops; a closed pane builds a new map on the next open.
-func (d Dashboard) closeMap() {
-	d.mapPane.workers.shut() // cancelled and joined first: nothing is inside the map when it closes (W2.6)
-	if m := d.mapPane.m; m != nil {
-		d.mapPane.call("Close", func() { m.Close() })
+func (mm mapModel) closeMap() {
+	mm.mapPane.workers.shut() // cancelled and joined first: nothing is inside the map when it closes (W2.6)
+	if m := mm.mapPane.m; m != nil {
+		mm.mapPane.call("Close", func() { m.Close() })
 	}
 }
 
@@ -989,240 +987,261 @@ func scopeKeysFrom(defaults, overrides term.KeyMap) (term.KeyMap, error) {
 	return keys, err
 }
 
-// handleMapKey is the open map window's keyboard (D-61): a key the map binds
+// onMapKey is the open map window's keyboard (D-61): a key the map binds
 // is the map's; any other key goes on to the Observer's handling.
-func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
-	act, bound := d.mapKeys.Lookup(key.String())
-	if d.mapPane.modeChip { // any key takes the mode's chip away (D-103), as the edge chip's
-		d.mapPane.modeChip = false
-		d.mapPane.gen++
+func (mm mapModel) onMapKey(key tea.KeyPressMsg, e mapEnv) (mapModel, tea.Cmd, mapWant, bool) {
+	act, bound := mm.mapKeys.Lookup(key.String())
+	if mm.mapPane.modeChip { // any key takes the mode's chip away (D-103), as the edge chip's
+		mm.mapPane.modeChip = false
+		mm.mapPane.gen++
 	}
-	if d.mapPane.menuOn && act != actMapOverlays { // D-65: the open menu owns its keys
-		if nd, cmd, ok := d.overlaysMenuKey(key.String()); ok {
-			return nd, cmd, true
+	if mm.mapPane.menuOn && act != actMapOverlays { // D-65: the open menu owns its keys
+		if nd, cmd, w, ok := mm.overlaysMenuKey(key.String(), e); ok {
+			return nd, cmd, w, true
 		}
 	}
 	if !bound {
-		return d, nil, false
+		return mm, nil, mapWant{}, false
 	}
-	d = d.timeFrom(string(act))
-	if nd, ok := d.mapWindowKey(act); ok {
-		return nd.followMenuFocus(), nil, true // D-267: the menu opened, or its scroll moved, without a picture
+	mm = mm.timeFrom(string(act), e)
+	if nd, w, ok := mm.mapWindowKey(act, e); ok {
+		nd, focus := nd.followMenuFocus(e.lent(w)) // D-267: the menu opened, or its scroll moved, without a picture
+		return nd, nil, w.and(focus), true
 	}
-	if d.mapPane.m == nil {
-		return d, nil, false
+	if mm.mapPane.m == nil {
+		return mm, nil, mapWant{}, false
 	}
 	switch act {
 	case actMapRadar: // D-94: Radar mode on and off
-		nd, cmd := d.flashMapKey(act).switchMode()
-		return nd, cmd, true
+		nd, cmd, w := mm.flashMapKey(act, e).switchMode(e)
+		return nd, cmd, w, true
 	case actMapProp: // D-153: the Propagation mode, and back
-		nd, cmd := d.flashMapKey(act).togglePropagation()
-		return nd, cmd, true
+		nd, cmd, w := mm.flashMapKey(act, e).togglePropagation(e)
+		return nd, cmd, w, true
 	case actMapLayer: // D-155: MUF(3000) or foF2
-		return d.flashMapKey(act).flipPropLayer(), d.mapWorkCmd(), true
+		return mm.flashMapKey(act, e).flipPropLayer(e), mm.mapWorkCmd(e), mapWant{}, true
 	case actMapRefresh: // D-156: an update now
-		nd, cmd := d.flashMapKey(act).refreshProp()
-		return nd, cmd, true
+		nd, cmd := mm.flashMapKey(act, e).refreshProp(e)
+		return nd, cmd, mapWant{}, true
 	case actMapChart: // D-176: the reference chart
-		return d.flashMapKey(act).openPropChart(), nil, true
+		mm = mm.flashMapKey(act, e)
+		return mm, nil, mm.openPropChart(e), true
 	case actMapFreq: // D-178: your frequency
-		return d.flashMapKey(act).openPropFreq(), nil, true
+		nd, w := mm.flashMapKey(act, e).openPropFreq(e)
+		return nd, nil, w, true
 	case actMapFind: // FR-1.10: find a place
-		return d.flashMapKey(act).openPropFind(), nil, true
+		nd, w := mm.flashMapKey(act, e).openPropFind(e)
+		return nd, nil, w, true
 	case actMapHighLow: // D-97: the days' high or low
-		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
+		return mm.flashMapKey(act, e).flipHighLow(e), mm.mapWorkCmd(e), mapWant{}, true
 	}
-	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
-	switch d.mapMode() {
+	mm = mm.flashMapKey(act, e) // U1-11: the controls' chip blinks
+	switch mm.mapMode(e) {
 	case modeForecast: // the host steps (D-94)
-		if nd, cmd, ok := d.handleForecastPlayback(act); ok {
-			return nd, tea.Batch(cmd, nd.mapWorkCmd()), true
+		if nd, cmd, ok := mm.handleForecastPlayback(act, e); ok {
+			return nd, tea.Batch(cmd, nd.mapWorkCmd(e)), mapWant{}, true
 		}
 	case modeRadar:
-		if nd, ok := d.handlePlayback(act); ok {
-			return nd, nd.mapWorkCmd(), true
+		if nd, ok := mm.handlePlayback(act, e); ok {
+			return nd, nd.mapWorkCmd(e), mapWant{}, true
 		}
 	case modePropagation: // the hours ahead (FR-1.13)
-		if nd, ok := d.stepPropAhead(act); ok {
-			nd, settle := nd.viewMoved() // an hour step settles as a pan does: the reach is asked once the hour stands (D-227)
-			return nd, tea.Batch(nd.mapWorkCmd(), settle), true
+		if nd, ok := mm.stepPropAhead(act, e); ok {
+			nd, settle := nd.viewMoved(e) // an hour step settles as a pan does: the reach is asked once the hour stands (D-227)
+			return nd, tea.Batch(nd.mapWorkCmd(e), settle), mapWant{}, true
 		}
 	}
-	return d.moveMapView(act)
+	return mm.moveMapView(act, e)
 }
 
 // overlaysMenuKey is a key while the Overlays menu is open; false when the
 // menu does not take it.
-func (d Dashboard) overlaysMenuKey(key string) (Dashboard, tea.Cmd, bool) {
-	if nd, cmd, ok := d.radioChangesMode(key); ok {
-		return nd, cmd, true
+func (mm mapModel) overlaysMenuKey(key string, e mapEnv) (mapModel, tea.Cmd, mapWant, bool) {
+	if nd, cmd, w, ok := mm.radioChangesMode(key, e); ok {
+		return nd, cmd, w, true
 	}
-	nd, ok := d.handleOverlaysKey(key)
+	nd, w, ok := mm.handleOverlaysKey(key, e)
 	if !ok {
-		return d, nil, false
+		return mm, nil, mapWant{}, false
 	}
 	// AN ARROW MOVES THE CURSOR AND NOTHING ELSE (UAT-2 U2-13, U2-14): only a
 	// switch touches the map, so a cursor move asks for no radar or
 	// temperature and hands no grid in again.
-	if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
-		return nd.followMenuFocus(), nil, true
+	if nd.mapLayerChoice == mm.mapLayerChoice && nd.mapDetailChoice == mm.mapDetailChoice && nd.mapDetailLevel == mm.mapDetailLevel {
+		nd, focus := nd.followMenuFocus(e)
+		return nd, nil, w.and(focus), true
 	}
-	return nd.menuApplied(d)
+	nd, cmd, applied, _ := nd.menuApplied(mm, e)
+	return nd, cmd, w.and(applied), true
 }
 
 // menuApplied puts a switch made in the menu on the map, d the window before
 // it: the temperature drawn or taken off at once, UV and air quality asked
 // only while on, the choice saved, the feed asked again.
-func (d Dashboard) menuApplied(before Dashboard) (Dashboard, tea.Cmd, bool) {
-	d = d.timeFrom("overlay")
-	d = d.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
+func (mm mapModel) menuApplied(before mapModel, e mapEnv) (mapModel, tea.Cmd, mapWant, bool) {
+	mm = mm.timeFrom("overlay", e)
+	mm = mm.setTemp(e) // temperature switched: drawn at once from what is held (D-99), or taken off
 	var temp tea.Cmd
-	if (d.layerOn(UVLayer) && !before.layerOn(UVLayer)) || (d.layerOn(AirLayer) && !before.layerOn(AirLayer)) {
-		d, temp = d.askTemp() // UV and air quality are asked only while on (D-137, D-139)
+	if (mm.layerOn(UVLayer, e) && !before.layerOn(UVLayer, e)) || (mm.layerOn(AirLayer, e) && !before.layerOn(AirLayer, e)) {
+		mm, temp = mm.askTemp(e) // UV and air quality are asked only while on (D-137, D-139)
 	}
-	d = d.renderMap()
-	save := d.uiApplyCmd()
-	d.setup.uiDirty = false
-	d, feed := d.askFeed()
-	return d.followMenuFocus(), tea.Batch(save, d.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
+	mm = mm.renderMap(e)
+	mm, feed := mm.askFeed(e)
+	focused, w := mm.followMenuFocus(e)
+	w.Settings.Save, w.Settings.Led = true, [3]tea.Cmd{mm.mapWorkCmd(e), feed, temp} // the choice saved, first in the batch; radar is R's, not the menu's (D-94)
+	return focused, nil, w, true
 }
 
 // mapWindowKey is a key that works on the window itself, with a map or
 // without: the alerts, the Overlays menu and the body's scroll.
-func (d Dashboard) mapWindowKey(act term.Action) (Dashboard, bool) {
+func (mm mapModel) mapWindowKey(act term.Action, e mapEnv) (mapModel, mapWant, bool) {
+	var w mapWant
 	switch act {
 	case actMapAlerts: // D-63
-		d.mapPane.alertsOn = !d.mapPane.alertsOn
-		d.mapPane.gen++
+		mm.mapPane.alertsOn = !mm.mapPane.alertsOn
+		mm.mapPane.gen++
 	case actMapOverlays: // D-65
-		d.mapPane.menuOn, d.mapPane.menuAt = !d.mapPane.menuOn, 0
-		d.mapPane.gen++
+		mm.mapPane.menuOn, mm.mapPane.menuAt = !mm.mapPane.menuOn, 0
+		mm.mapPane.gen++
 	case actMapScrollUp: // D-61: PgUp and PgDn scroll the window's body, the description first
-		d.modalScroll = max(d.modalScroll-max(d.modalMax()-1, 1), 0)
+		w.Scroll, w.ScrollSet = max(e.Scroll-max(e.rows()-1, 1), 0), true
 	case actMapScrollDown:
-		d.modalScroll = min(d.modalScroll+max(d.modalMax()-1, 1), max(len(d.modalLines())-d.modalMax(), 0))
+		w.Scroll, w.ScrollSet = min(e.Scroll+max(e.rows()-1, 1), max(len(mm.windowLines(e))-e.rows(), 0)), true
 	default:
-		return d, false
+		return mm, w, false
 	}
-	return d, true
+	return mm, w, true
 }
 
 // moveMapView is a key that moves the view: a pan, a zoom, the next place or
 // a region.
-func (d Dashboard) moveMapView(act term.Action) (Dashboard, tea.Cmd, bool) {
-	size, m := d.mapBodySize(), d.mapPane.m
+func (mm mapModel) moveMapView(act term.Action, e mapEnv) (mapModel, tea.Cmd, mapWant, bool) {
+	size, m := mm.mapBodySize(e), mm.mapPane.m
 	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
 	// ANY KEY TAKES THE EDGE'S CHIP AWAY (D-81); a press the same way again
 	// is the one that crosses.
-	armed := d.mapPane.edgeShown
-	d.mapPane.edgeShown = false
+	armed := mm.mapPane.edgeShown
+	mm.mapPane.edgeShown = false
 	switch act {
 	case actMapPanUp:
-		d = d.panOrCross(0, -stepY, geo.North, armed)
+		mm = mm.panOrCross(0, -stepY, geo.North, armed, e)
 	case actMapPanDown:
-		d = d.panOrCross(0, stepY, geo.South, armed)
+		mm = mm.panOrCross(0, stepY, geo.South, armed, e)
 	case actMapPanLeft:
-		d = d.panOrCross(-stepX, 0, geo.West, armed)
+		mm = mm.panOrCross(-stepX, 0, geo.West, armed, e)
 	case actMapPanRight:
-		d = d.panOrCross(stepX, 0, geo.East, armed)
+		mm = mm.panOrCross(stepX, 0, geo.East, armed, e)
 	case actMapZoomIn:
-		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
+		mm.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
 	case actMapZoomOut:
-		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
+		mm.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
 	case actMapPrev, actMapNext:
 		nav := term.Action("nav-down")
 		if act == actMapPrev {
 			nav = "nav-up"
 		}
-		if d.mapRole().placeKeys { // D-195: the Broadcaster's map stays on its station
-			d = d.handleNav(nav).followSelection().requestFeed() // the notes speak of the place
+		if mm.mapRole(e).placeKeys { // D-195: the Broadcaster's map stays on its station
+			return mm, nil, mapWant{Nav: nav, Then: mapStepPlaceMoved}, true // the Dashboard moves the selection; the map follows it
 		}
 	default:
 		if n := slices.Index(mapRegionActs, act); n >= 0 {
 			if r, ok := geo.RegionNumbered(n + 1); ok {
-				d = d.showRegion(r)
+				mm = mm.showRegion(r, e)
 			}
 		}
 	}
-	d = d.holdWorld()
-	d, settle := d.viewMoved() // marked moved before it is drawn: its view is not in until its settle tick asks (W14's instrument)
-	d = d.renderMap()
-	return d, tea.Batch(d.mapWorkCmd(), settle), true // the alerts are the settle tick's to ask: never on every key (D-66, W14's P-2)
+	mm, cmd := mm.afterMove(e)
+	return mm, cmd, mapWant{}, true
+}
+
+// placeMoved is the map after the Dashboard moved the selection from it
+// (0.19.6 design MS-1's S5): it follows the place, the notes speak of it,
+// and the view is drawn as after any move.
+func (mm mapModel) placeMoved(e mapEnv) (mapModel, tea.Cmd) {
+	return mm.followSelection(e).requestFeed().afterMove(e)
+}
+
+// afterMove is every move's end: the world held, the view marked moved and
+// drawn, and the map's work and the settle tick asked.
+func (mm mapModel) afterMove(e mapEnv) (mapModel, tea.Cmd) {
+	mm = mm.holdWorld(e)
+	mm, settle := mm.viewMoved(e) // marked moved before it is drawn: its view is not in until its settle tick asks (W14's instrument)
+	mm = mm.renderMap(e)
+	return mm, tea.Batch(mm.mapWorkCmd(e), settle) // the alerts are the settle tick's to ask: never on every key (D-66, W14's P-2)
 }
 
 // panOrCross pans by cells. Where the region's edge holds the map still, the
 // first press shows a chip naming the region beyond (D-81), and a second
 // press the same way while it shows moves on to it (D-77). An edge with
 // nothing beyond it stays an edge.
-func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction, armed bool) Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) panOrCross(dx, dy int, dir geo.Direction, armed bool, e mapEnv) mapModel {
+	m := mm.mapPane.m
 	before, _ := m.Centre()
-	d.mapPane.call("PanCells", func() { _ = m.PanCells(dx, dy) })
+	mm.mapPane.call("PanCells", func() { _ = m.PanCells(dx, dy) })
 	after, _ := m.Centre()
-	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 || d.mapMode() == modePropagation {
-		return d // moved, or at the world's edge in the Propagation mode: no region lies beyond
+	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 || mm.mapMode(e) == modePropagation {
+		return mm // moved, or at the world's edge in the Propagation mode: no region lies beyond
 	}
-	next, ok := geo.Neighbour(d.mapPane.region.Name, dir)
+	next, ok := geo.Neighbour(mm.mapPane.region.Name, dir)
 	if !ok {
-		return d
+		return mm
 	}
-	if armed && d.mapPane.edge == dir {
-		return d.showRegion(next)
+	if armed && mm.mapPane.edge == dir {
+		return mm.showRegion(next, e)
 	}
-	d.mapPane.edge, d.mapPane.edgeShown = dir, true
-	return d
+	mm.mapPane.edge, mm.mapPane.edgeShown = dir, true
+	return mm
 }
 
 // showRegion binds the map to a region and shows the whole of it (D-77): the
 // listener's way to every region the station's APIs cover, one at a time
 // (D-28). The selected place is unchanged.
-func (d Dashboard) showRegion(r geo.Region) Dashboard {
-	m := d.mapPane.m
-	d.mapPane.outside, d.mapPane.region = "", r
-	d = d.boundMap()
+func (mm mapModel) showRegion(r geo.Region, e mapEnv) mapModel {
+	m := mm.mapPane.m
+	mm.mapPane.outside, mm.mapPane.region = "", r
+	mm = mm.boundMap(e)
 	lat, lon := r.Centre()
-	least := regionFitZoom(r, d.mapBodySize())
-	d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
-	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}) })
-	return d
+	least := regionFitZoom(r, mm.mapBodySize(e))
+	mm.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
+	mm.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}) })
+	return mm
 }
 
 // followSelection puts the map on the selected location (FR-1.2), held
 // inside the region that location is in (FR-2.1). A location in no region
 // draws nothing wider in its place: the window says so (FR-2.5).
-func (d Dashboard) followSelection() Dashboard {
-	loc, m := d.mapPlace(), d.mapPane.m
+func (mm mapModel) followSelection(e mapEnv) mapModel {
+	loc, m := mm.mapPlace(e), mm.mapPane.m
 	if loc == nil || m == nil {
-		return d
+		return mm
 	}
 	region, ok := geo.RegionOf(loc.Lat, loc.Lon)
-	d.mapPane.outside = ""
+	mm.mapPane.outside = ""
 	if !ok {
-		d.mapPane.outside = loc.Label
+		mm.mapPane.outside = loc.Label
 	}
 	if ok {
-		d.mapPane.region = region
+		mm.mapPane.region = region
 	}
-	if d.outsideStated() {
-		return d
+	if mm.outsideStated(e) {
+		return mm
 	}
-	d = d.boundMap() // the region's, or in the Propagation mode none
-	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
-	return d
+	mm = mm.boundMap(e) // the region's, or in the Propagation mode none
+	mm.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
+	return mm
 }
 
 // requestFeed marks newer data wanted: on opening, on new data, when the
 // view or the place changes. askFeed asks for it.
-func (d Dashboard) requestFeed() Dashboard {
-	d.mapPane.feedGen++
-	return d
+func (mm mapModel) requestFeed() mapModel {
+	mm.mapPane.feedGen++
+	return mm
 }
 
 // feedKey is the place and view an ask made now would be for.
-func (d Dashboard) feedKey() feedKey {
-	k := feedKey{view: d.mapPane.viewGen}
-	if loc := d.mapPlace(); loc != nil {
+func (mm mapModel) feedKey(e mapEnv) feedKey {
+	k := feedKey{view: mm.mapPane.viewGen}
+	if loc := mm.mapPlace(e); loc != nil {
 		k.place = snapshot.Key(refOf(*loc))
 	}
 	return k
@@ -1240,17 +1259,17 @@ func keptSeqs(lanes [feedLanes]feedLane) [feedLanes]feedLane {
 
 // askFeed asks the app for the map's feed, each lane apart (D-268): the
 // alerts and the other layers, so a slow layer never holds the alerts back.
-func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
-	if d.mapHooks.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.mapPlace() == nil {
-		return d, nil
+func (mm mapModel) askFeed(e mapEnv) (mapModel, tea.Cmd) {
+	if mm.mapHooks.MapFeed == nil || mm.mapPane.m == nil || e.Window != mapModalMap || mm.mapPlace(e) == nil {
+		return mm, nil
 	}
 	cmds := make([]tea.Cmd, 0, feedLanes)
 	for lane := range feedLanes { // the two lanes (P10-02)
 		var cmd tea.Cmd
-		d, cmd = d.askLane(lane)
+		mm, cmd = mm.askLane(lane, e)
 		cmds = append(cmds, cmd)
 	}
-	return d, tea.Batch(cmds...)
+	return mm, tea.Batch(cmds...)
 }
 
 // askLane asks for one lane - ONE ASK IN FLIGHT (D-157). While one runs for
@@ -1259,11 +1278,11 @@ func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
 // cancelled, and the new one asked at once. Asking anew on every snapshot
 // would drop the answer being waited for, so a feed slower than the
 // snapshots would never be drawn (W14's C-1).
-func (d Dashboard) askLane(lane int) (Dashboard, tea.Cmd) {
-	key, l := d.feedKey(), &d.mapPane.lanes[lane]
+func (mm mapModel) askLane(lane int, e mapEnv) (mapModel, tea.Cmd) {
+	key, l := mm.feedKey(e), &mm.mapPane.lanes[lane]
 	if l.busy && key == l.asked {
 		l.again = true
-		return d, nil
+		return mm, nil
 	}
 	if l.stop != nil {
 		l.stop() // stale: its place or view has gone
@@ -1271,18 +1290,18 @@ func (d Dashboard) askLane(lane int) (Dashboard, tea.Cmd) {
 	l.seq++
 	l.ctx, l.stop = context.WithCancel(context.Background())
 	l.busy, l.again, l.asked = true, false, key
-	return d, d.mapFeedCmd(lane)
+	return mm, mm.mapFeedCmd(lane, e)
 }
 
 // mapFeedCmd is a lane's ask in flight's command, off the UI goroutine (the
 // zones the alerts name may be fetched), cancelled with it.
-func (d Dashboard) mapFeedCmd(lane int) tea.Cmd {
-	feed, loc := d.mapHooks.MapFeed, d.mapPlace()
-	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
+func (mm mapModel) mapFeedCmd(lane int, e mapEnv) tea.Cmd {
+	feed, loc := mm.mapHooks.MapFeed, mm.mapPlace(e)
+	if feed == nil || mm.mapPane.m == nil || e.Window != mapModalMap || loc == nil {
 		return nil
 	}
-	l := d.mapPane.lanes[lane]
-	gen, seq, ask, place, workers := d.mapPane.feedGen, l.seq, d.mapAsk(), *loc, d.mapPane.workers
+	l := mm.mapPane.lanes[lane]
+	gen, seq, ask, place, workers := mm.mapPane.feedGen, l.seq, mm.mapAsk(e), *loc, mm.mapPane.workers
 	asked := l.ctx
 	if asked == nil {
 		asked = context.Background()
@@ -1296,12 +1315,12 @@ func (d Dashboard) mapFeedCmd(lane int) tea.Cmd {
 // alertsLanded reports whether the alerts' lane has drawn an answer for the
 // place and view as they are now: until it has, the description says the
 // alerts are loading, never that none is there (D-266).
-func (d Dashboard) alertsLanded() bool {
-	if d.mapHooks.MapFeed == nil {
+func (mm mapModel) alertsLanded(e mapEnv) bool {
+	if mm.mapHooks.MapFeed == nil {
 		return true // no feed to wait for: the window draws no alerts at all
 	}
-	l := d.mapPane.lanes[laneAlerts]
-	return l.landed && l.landedFor == d.feedKey()
+	l := mm.mapPane.lanes[laneAlerts]
+	return l.landed && l.landedFor == mm.feedKey(e)
 }
 
 // partOf is a lane's answer kept to its own part (D-268): the alert areas
@@ -1355,47 +1374,47 @@ func mergedFeed(lanes [feedLanes]feedLane) MapFeed {
 
 // applyMapFeed sets the feed's overlays, takes off the ones it no longer
 // has, keeps its notes, and draws.
-func (d Dashboard) applyMapFeed(v mapFeedMsg) (Dashboard, tea.Cmd) {
-	m := d.mapPane.m
-	if m == nil || v.lane < 0 || v.lane >= feedLanes || v.seq != d.mapPane.lanes[v.lane].seq {
-		return d, nil // a cancelled ask's answer: the ask in flight is newer
+func (mm mapModel) applyMapFeed(v mapFeedMsg, e mapEnv) (mapModel, tea.Cmd) {
+	m := mm.mapPane.m
+	if m == nil || v.lane < 0 || v.lane >= feedLanes || v.seq != mm.mapPane.lanes[v.lane].seq {
+		return mm, nil // a cancelled ask's answer: the ask in flight is newer
 	}
-	l := &d.mapPane.lanes[v.lane]
+	l := &mm.mapPane.lanes[v.lane]
 	l.busy = false
 	if l.stop != nil {
 		l.stop() // its context let go
 		l.stop, l.ctx = nil, nil
 	}
-	if d.feedKey() != l.asked { // the view moved since it was asked: its settle tick asks for the new one
-		return d.feedAgainCmd(v.lane, nil)
+	if mm.feedKey(e) != l.asked { // the view moved since it was asked: its settle tick asks for the new one
+		return mm.feedAgainCmd(v.lane, nil, e)
 	}
-	v.feed = d.feedForLayers(partOf(v.feed, v.lane)) // its own part; a layer switched off draws nothing (W1.11)
+	v.feed = mm.feedForLayers(partOf(v.feed, v.lane), e) // its own part; a layer switched off draws nothing (W1.11)
 	l.applied, l.landed, l.landedFor, l.feed = v.gen, true, l.asked, &v.feed
 	if v.lane == laneAlerts {
-		d = d.timed("answered:feed")
+		mm = mm.timed("answered:feed", e)
 	} else {
-		d = d.timed("answered:layers")
+		mm = mm.timed("answered:layers", e)
 	}
-	d = d.refreshMapCost()
-	merged := mergedFeed(d.mapPane.lanes)
-	d.mapPane.feed = &merged
-	d = d.setFeed(merged)
-	return d.feedAgainCmd(v.lane, d.mapWorkCmd())
+	mm = mm.refreshMapCost(e)
+	merged := mergedFeed(mm.mapPane.lanes)
+	mm.mapPane.feed = &merged
+	mm = mm.setFeed(merged, e)
+	return mm.feedAgainCmd(v.lane, mm.mapWorkCmd(e), e)
 }
 
 // feedAgainCmd is after a lane's answer: the one fresh ask new data wanted
 // while it ran, if any (D-157), beside cmd.
-func (d Dashboard) feedAgainCmd(lane int, cmd tea.Cmd) (Dashboard, tea.Cmd) {
-	if !d.mapPane.lanes[lane].again {
-		return d, cmd
+func (mm mapModel) feedAgainCmd(lane int, cmd tea.Cmd, e mapEnv) (mapModel, tea.Cmd) {
+	if !mm.mapPane.lanes[lane].again {
+		return mm, cmd
 	}
-	d, again := d.askLane(lane)
-	return d, tea.Batch(cmd, again)
+	mm, again := mm.askLane(lane, e)
+	return mm, tea.Batch(cmd, again)
 }
 
 // setFeed sets the feed's overlays, each with its span in the mode (D-98),
 // takes off the ones it no longer has, keeps its notes, and draws.
-func (d Dashboard) setFeed(feed MapFeed) Dashboard {
+func (mm mapModel) setFeed(feed MapFeed, e mapEnv) mapModel {
 	notes := append([]string(nil), feed.Notes...)
 	refused := map[string]int{} // a layer's refusals, said once (U2-29)
 	firstErr := map[string]string{}
@@ -1403,14 +1422,14 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 	want := make([]tuimaps.Overlay, 0, len(feed.Overlays))
 	for _, o := range feed.Overlays {
 		if t, ok := feed.Times[o.ID]; ok {
-			o.During = d.spanFor(t)
+			o.During = mm.spanFor(t, e)
 		}
 		want = append(want, o)
 	}
 	// One loop with radar's and temperature's (D-257): an unchanged overlay
 	// is not handed in again (U1-28), and a refused one keeps the area drawn
 	// before it (U2-14).
-	given, _ := d.reconcile(d.mapPane.given, want, func(o tuimaps.Overlay, err error) {
+	given, _ := mm.reconcile(mm.mapPane.given, want, func(o tuimaps.Overlay, err error) {
 		key, _, _ := strings.Cut(o.ID, "/")
 		if refused[key] == 0 {
 			order, firstErr[key] = append(order, key), err.Error()
@@ -1418,29 +1437,29 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 		refused[key]++
 	})
 	for _, key := range order { // ours to fix, never the listener's: the diagnostics', once a layer (U2-29, D-124)
-		d.problem(d.layerLabel(key) + ": " + strconv.Itoa(refused[key]) + " not drawn - " + firstErr[key])
+		mm.problem(mm.layerLabel(key, e)+": "+strconv.Itoa(refused[key])+" not drawn - "+firstErr[key], e)
 	}
-	d.mapPane.undrawn = d.sayUndrawn(feed.Undrawn)
-	d.mapPane.given, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.inView = given, notes, feed.InMissing, feed.InView
-	d.mapPane.drawnSev = map[string]bool{}
+	mm.mapPane.undrawn = mm.sayUndrawn(feed.Undrawn, e)
+	mm.mapPane.given, mm.mapPane.notes, mm.mapPane.inMissing, mm.mapPane.inView = given, notes, feed.InMissing, feed.InView
+	mm.mapPane.drawnSev = map[string]bool{}
 	for _, o := range feed.Overlays {
 		for _, f := range o.Features {
 			if w := strings.ToLower(f.Severity.Word()); w != "" {
-				d.mapPane.drawnSev[w] = true
+				mm.mapPane.drawnSev[w] = true
 			}
 		}
 	}
-	return d.renderMap()
+	return mm.renderMap(e)
 }
 
 // sayUndrawn hands the diagnostics each undrawn area's words once - not again
 // while the feed still carries them, however many alerts share them - and
 // returns the words now carried (D-124, D-240).
-func (d Dashboard) sayUndrawn(words []string) map[string]bool {
+func (mm mapModel) sayUndrawn(words []string, e mapEnv) map[string]bool {
 	now := make(map[string]bool, len(words))
 	for _, w := range words { // the feed's undrawn areas (P10-02)
-		if !now[w] && !d.mapPane.undrawn[w] {
-			d.problem(w)
+		if !now[w] && !mm.mapPane.undrawn[w] {
+			mm.problem(w, e)
 		}
 		now[w] = true
 	}
@@ -1467,18 +1486,18 @@ const mapFailedText = "The map could not be drawn. Close it with esc and press g
 
 // problem hands the diagnostics something that went wrong that the listener
 // cannot act on (D-124): never said to them.
-func (d Dashboard) problem(p string) {
-	if d.mapHooks.MapProblem != nil {
-		d.mapHooks.MapProblem(p)
+func (mm mapModel) problem(p string, e mapEnv) {
+	if mm.mapHooks.MapProblem != nil {
+		mm.mapHooks.MapProblem(p)
 	}
-	if d.mapHooks.MapFrame != nil { // the recorder keeps it between the frames it fell between
-		d.mapHooks.MapFrame(MapFrame{At: d.now(), Problem: p})
+	if mm.mapHooks.MapFrame != nil { // the recorder keeps it between the frames it fell between
+		mm.mapHooks.MapFrame(MapFrame{At: e.Now(), Problem: p})
 	}
 }
 
 // layerLabel is a layer's name as the Overlays menu says it, or its key.
-func (d Dashboard) layerLabel(key string) string {
-	for _, l := range d.cfg.MapLayers {
+func (mm mapModel) layerLabel(key string, e mapEnv) string {
+	for _, l := range e.Layers {
 		if l.Key == key {
 			return l.Label
 		}
@@ -1559,15 +1578,15 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 
 // mapStatusText is what the status line says of the picture while it is not
 // whole: loading, offline or coarser; nothing when it is whole (FR-3.4).
-func (d Dashboard) mapStatusText() string {
+func (mm mapModel) mapStatusText(e mapEnv) string {
 	switch {
-	case d.mapPane.offline:
+	case mm.mapPane.offline:
 		return mapOfflineText
-	case d.mapPane.status == tuimaps.Complete:
+	case mm.mapPane.status == tuimaps.Complete:
 		return ""
-	case d.mapPane.pending:
+	case mm.mapPane.pending:
 		return mapLoadingText
-	case !d.alertsLanded():
+	case !mm.alertsLanded(e):
 		return mapAlertsLoadingText // the alerts are not in yet (D-266)
 	}
 	return mapCoarseText
@@ -1582,10 +1601,10 @@ type mapViewSettledMsg struct{ gen uint64 }
 
 // viewMoved marks the view moved and schedules its settle tick; only the
 // newest move's tick asks anything.
-func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
-	d.mapPane.viewGen++
-	gen := d.mapPane.viewGen
-	return d, d.after(mapSettleDelay, mapViewSettledMsg{gen: gen})
+func (mm mapModel) viewMoved(e mapEnv) (mapModel, tea.Cmd) {
+	mm.mapPane.viewGen++
+	gen := mm.mapPane.viewGen
+	return mm, tickAfter(e.Ticks, mapSettleDelay, mapViewSettledMsg{gen: gen})
 }
 
 // applyViewSettled asks the feed again once the view has stood still: the map
@@ -1593,21 +1612,21 @@ func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
 // that lands while a window is over the map waits for the map to be in
 // front again, so the view's asks - the alerts and the Propagation mode's
 // answers (P-1) - are never left waiting for another move.
-func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (Dashboard, tea.Cmd) {
-	if v.gen != d.mapPane.viewGen {
-		return d, nil
+func (mm mapModel) applyViewSettled(v mapViewSettledMsg, e mapEnv) (mapModel, tea.Cmd) {
+	if v.gen != mm.mapPane.viewGen {
+		return mm, nil
 	}
-	if d.modal != modalMap && d.mapShown() {
-		return d, d.after(mapSettleDelay, v)
+	if e.Window != mapModalMap && e.Shown {
+		return mm, tickAfter(e.Ticks, mapSettleDelay, v)
 	}
-	if d.modal != modalMap {
-		return d, nil // the map closed: its open asks for its view
+	if e.Window != mapModalMap {
+		return mm, nil // the map closed: its open asks for its view
 	}
-	d.mapPane.viewAsked = v.gen
-	d, feed := d.requestFeed().askFeed()
-	d, radar := d.askRadar()
-	d, temp := d.askTemp()
-	return d, tea.Batch(feed, radar, temp) // the view's alerts, its radar (W8) and its temperature (W10)
+	mm.mapPane.viewAsked = v.gen
+	mm, feed := mm.requestFeed().askFeed(e)
+	mm, radar := mm.askRadar(e)
+	mm, temp := mm.askTemp(e)
+	return mm, tea.Batch(feed, radar, temp) // the view's alerts, its radar (W8) and its temperature (W10)
 }
 
 // SameOverlay reports whether an overlay is the one already handed in, so it

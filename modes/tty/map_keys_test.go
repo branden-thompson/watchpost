@@ -33,16 +33,16 @@ func pressCode(d Dashboard, code rune, text string) Dashboard {
 func TestTheMapWindowOwnsItsKeys(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
-	at, zoom := d.mapPane.m.Centre()
+	at, zoom := d.mapModel.mapPane.m.Centre()
 	selected := d.selected
 
 	d = pressCode(d, tea.KeyRight, "")
-	moved, _ := d.mapPane.m.Centre()
+	moved, _ := d.mapModel.mapPane.m.Centre()
 	if moved.Lon <= at.Lon {
 		t.Errorf("→ did not pan east: %v then %v", at, moved)
 	}
 	d = pressCode(d, tea.KeyUp, "")
-	up, _ := d.mapPane.m.Centre()
+	up, _ := d.mapModel.mapPane.m.Centre()
 	if up.Lat <= moved.Lat {
 		t.Errorf("↑ did not pan north: %v then %v", moved, up)
 	}
@@ -50,21 +50,21 @@ func TestTheMapWindowOwnsItsKeys(t *testing.T) {
 		t.Error("↑ moved the selection while the map owns the keys")
 	}
 	d = pressCode(d, '+', "+")
-	if _, z := d.mapPane.m.Centre(); z <= zoom {
+	if _, z := d.mapModel.mapPane.m.Centre(); z <= zoom {
 		t.Errorf("+ did not zoom in: %v then %v", zoom, z)
 	}
 	d = pressCode(d, '-', "-")
 	d = pressCode(d, '-', "-")
-	if _, z := d.mapPane.m.Centre(); z >= zoom {
+	if _, z := d.mapModel.mapPane.m.Centre(); z >= zoom {
 		t.Errorf("- did not zoom out: %v then %v", zoom, z)
 	}
 	if d.modal != modalMap {
 		t.Fatalf("a map key closed the window: %s", modalName(d.modal))
 	}
 	d = settleMap(t, d) // tiles the new zoom needs land first, or both frames are the blank one
-	before := strings.Join(d.mapPane.lines, "\n")
+	before := strings.Join(d.mapModel.mapPane.lines, "\n")
 	d = settleMap(t, pressCode(d, tea.KeyLeft, ""))
-	if strings.Join(d.mapPane.lines, "\n") == before {
+	if strings.Join(d.mapModel.mapPane.lines, "\n") == before {
 		t.Error("a pan was not drawn")
 	}
 }
@@ -77,7 +77,7 @@ func TestTheMapFollowsTheSelection(t *testing.T) {
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
 	d = pressCode(d, ']', "]")
-	at, _ := d.mapPane.m.Centre()
+	at, _ := d.mapModel.mapPane.m.Centre()
 	if absf(at.Lat-35.2) > 0.01 || absf(at.Lon+111.65) > 0.01 {
 		t.Errorf("] left the map at %+v, want Flagstaff, AZ", at)
 	}
@@ -85,7 +85,7 @@ func TestTheMapFollowsTheSelection(t *testing.T) {
 		t.Error("the title did not follow the selection")
 	}
 	d = pressCode(d, '[', "[")
-	at, _ = d.mapPane.m.Centre()
+	at, _ = d.mapModel.mapPane.m.Centre()
 	if absf(at.Lat-33.2) > 0.01 {
 		t.Errorf("[ left the map at %+v, want Oceanside, CA", at)
 	}
@@ -98,7 +98,7 @@ func TestTheMapFollowsTheSelection(t *testing.T) {
 func TestTheMapKeysAreActionsHelpShows(t *testing.T) {
 	d := mapDash(t, Config{KeyOverrides: term.KeyMap{actMapZoomIn: {Keys: []string{"z"}, Help: "Zoom In"}}})
 	seen := map[string]term.Action{}
-	for act, bind := range d.mapKeys {
+	for act, bind := range d.mapModel.mapKeys {
 		for _, k := range bind.Keys {
 			if other, dup := seen[k]; dup {
 				t.Errorf("%q is bound to both %s and %s in the map window", k, other, act)
@@ -107,8 +107,8 @@ func TestTheMapKeysAreActionsHelpShows(t *testing.T) {
 		}
 	}
 	for _, act := range mapActions {
-		_, inMap := d.mapKeys[act]
-		_, inChart := d.chartKeyMap()[act] // the Bands chart's own scope, listed in the MAP group (D-256)
+		_, inMap := d.mapModel.mapKeys[act]
+		_, inChart := d.mapModel.chartKeyMap()[act] // the Bands chart's own scope, listed in the MAP group (D-256)
 		if !inMap && !inChart {
 			t.Errorf("the map's action %s has no binding", act)
 		}
@@ -118,9 +118,9 @@ func TestTheMapKeysAreActionsHelpShows(t *testing.T) {
 		t.Errorf("Help has no MAP group listing the map's keys:\n%s", help)
 	}
 	d, _ = pressKey(d, "g")
-	_, zoom := d.mapPane.m.Centre()
+	_, zoom := d.mapModel.mapPane.m.Centre()
 	d = pressCode(d, 'z', "z")
-	if _, z := d.mapPane.m.Centre(); z <= zoom {
+	if _, z := d.mapModel.mapPane.m.Centre(); z <= zoom {
 		t.Error("the [keys] override did not rebind zoom in")
 	}
 }

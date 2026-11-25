@@ -30,7 +30,7 @@ func TestTheMapsTabHasNoAlertScope(t *testing.T) {
 
 func TestTheAskCarriesTheView(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
-	v := d.mapAsk().View
+	v := d.mapModel.mapAsk(d.mapEnv()).View
 	if !(v.W < v.E && v.S < v.N) {
 		t.Fatalf("the ask's view is %+v", v)
 	}
@@ -51,16 +51,16 @@ func TestTheFeedIsAskedOnceThePanningStops(t *testing.T) {
 	d = m.(Dashboard)
 	m, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
-	if cmd == nil || d.mapPane.viewGen < 2 {
-		t.Fatalf("panning scheduled nothing (view generation %d)", d.mapPane.viewGen)
+	if cmd == nil || d.mapModel.mapPane.viewGen < 2 {
+		t.Fatalf("panning scheduled nothing (view generation %d)", d.mapModel.mapPane.viewGen)
 	}
-	m, _ = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen - 1}) // the first pan's settling: superseded
-	if c := m.(Dashboard).mapFeedCmd(laneAlerts); c != nil && m.(Dashboard).mapPane.feedGen != d.mapPane.feedGen {
+	m, _ = d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen - 1}) // the first pan's settling: superseded
+	if md := m.(Dashboard); md.mapModel.mapFeedCmd(laneAlerts, md.mapEnv()) != nil && md.mapModel.mapPane.feedGen != d.mapModel.mapPane.feedGen {
 		t.Error("a superseded settling asked the feed")
 	}
-	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	d = m.(Dashboard)
-	if d.mapPane.feedGen == 0 || cmd == nil {
+	if d.mapModel.mapPane.feedGen == 0 || cmd == nil {
 		t.Fatal("the settled view did not ask the feed")
 	}
 	d = feedAndSettle(t, d)
@@ -68,9 +68,9 @@ func TestTheFeedIsAskedOnceThePanningStops(t *testing.T) {
 		t.Error("the feed was not asked once the panning stopped")
 	}
 	closed, _ := pressKey(d, "g")
-	gen := closed.mapPane.feedGen
-	m, _ = closed.Update(mapViewSettledMsg{gen: closed.mapPane.viewGen})
-	if m.(Dashboard).mapPane.feedGen != gen {
+	gen := closed.mapModel.mapPane.feedGen
+	m, _ = closed.Update(mapViewSettledMsg{gen: closed.mapModel.mapPane.viewGen})
+	if m.(Dashboard).mapModel.mapPane.feedGen != gen {
 		t.Error("a settling that lands after the map closed asked the feed")
 	}
 }

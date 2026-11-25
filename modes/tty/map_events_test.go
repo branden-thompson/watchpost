@@ -32,10 +32,10 @@ func openSettledMap(t *testing.T) Dashboard {
 // library's as they stand.
 func assertFresh(t *testing.T, d Dashboard, after string) {
 	t.Helper()
-	m := d.mapPane.m
-	if d.mapPane.changed != m.Changed() || d.mapPane.ticks != m.FrameTicks() {
+	m := d.mapModel.mapPane.m
+	if d.mapModel.mapPane.changed != m.Changed() || d.mapModel.mapPane.ticks != m.FrameTicks() {
 		t.Errorf("after %s the stored frame is at %d/%d and the library at %d/%d", after,
-			d.mapPane.changed, d.mapPane.ticks, m.Changed(), m.FrameTicks())
+			d.mapModel.mapPane.changed, d.mapModel.mapPane.ticks, m.Changed(), m.FrameTicks())
 	}
 }
 
@@ -51,7 +51,7 @@ func TestEveryEventThatChangesTheFrameDrawsIt(t *testing.T) {
 		{"data: the feed lands", func(t *testing.T, d Dashboard) Dashboard {
 			m, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 			d = m.(Dashboard)
-			m, _ = d.Update(d.mapFeedCmd(laneAlerts)())
+			m, _ = d.Update(d.mapModel.mapFeedCmd(laneAlerts, d.mapEnv())())
 			return m.(Dashboard)
 		}},
 		{"Work landing a tile", func(t *testing.T, d Dashboard) Dashboard {
@@ -70,24 +70,24 @@ func TestEveryEventThatChangesTheFrameDrawsIt(t *testing.T) {
 		{"zoom", func(t *testing.T, d Dashboard) Dashboard { return pressCode(d, '+', "+") }},
 		{"units", func(t *testing.T, d Dashboard) Dashboard { return pressCode(d, 'c', "c") }},
 		{"the library's tick", func(t *testing.T, d Dashboard) Dashboard {
-			if d.mapPane.tickAt.IsZero() {
+			if d.mapModel.mapPane.tickAt.IsZero() {
 				t.Fatal("no tick is outstanding: this row measures nothing")
 			}
-			m, _ := d.Update(mapTickMsg{at: d.mapPane.tickAt})
+			m, _ := d.Update(mapTickMsg{at: d.mapModel.mapPane.tickAt})
 			return m.(Dashboard)
 		}},
 		{"a map Setting, on the next open", func(t *testing.T, d Dashboard) Dashboard {
 			d, _ = pressKey(d, "g")
-			d.mapScale = mapScaleCounty
+			d.mapModel.mapScale = mapScaleCounty
 			d, _ = pressKey(d, "g")
 			return d
 		}},
 	} {
 		t.Run(row.name, func(t *testing.T) {
 			d := openSettledMap(t)
-			gen := d.mapPane.gen
+			gen := d.mapModel.mapPane.gen
 			d = row.event(t, d)
-			if d.mapPane.gen == gen {
+			if d.mapModel.mapPane.gen == gen {
 				t.Errorf("%s did not draw the map", row.name)
 			}
 			assertFresh(t, d, row.name)

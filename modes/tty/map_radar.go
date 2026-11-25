@@ -61,90 +61,90 @@ const radarRefresh = 2 * time.Minute
 // the last, a six-second loop would never be drawn at all. BUT A REGION LEFT
 // IS CANCELLED (D-130): its answer could not be drawn, and waiting for it
 // would make `1` two cold loops, about fifteen seconds (UAT-2 U2-35).
-func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
-	radar := d.mapHooks.MapRadar
-	if radar == nil || d.mapPane.m == nil || d.modal != modalMap {
-		return d, nil
+func (mm mapModel) askRadar(e mapEnv) (mapModel, tea.Cmd) {
+	radar := mm.mapHooks.MapRadar
+	if radar == nil || mm.mapPane.m == nil || e.Window != mapModalMap {
+		return mm, nil
 	}
-	region := d.mapPane.region.Name
-	if d.mapPane.radarBusy {
-		d.mapPane.radarAgain = true
-		if d.mapPane.radarRegion != region && d.mapPane.radarStop != nil {
-			d.mapPane.radarStop()
+	region := mm.mapPane.region.Name
+	if mm.mapPane.radarBusy {
+		mm.mapPane.radarAgain = true
+		if mm.mapPane.radarRegion != region && mm.mapPane.radarStop != nil {
+			mm.mapPane.radarStop()
 		}
-		return d, nil
+		return mm, nil
 	}
-	d.mapPane.radarBusy, d.mapPane.radarAt, d.mapPane.radarRegion = true, d.now(), region
-	if !d.layerOn(RadarLayer) {
-		return d, func() tea.Msg { return mapRadarMsg{region: region} } // off: an empty answer takes the loops away, and the app is not asked
+	mm.mapPane.radarBusy, mm.mapPane.radarAt, mm.mapPane.radarRegion = true, e.Now(), region
+	if !mm.layerOn(RadarLayer, e) {
+		return mm, func() tea.Msg { return mapRadarMsg{region: region} } // off: an empty answer takes the loops away, and the app is not asked
 	}
 	stopped, stop := context.WithCancel(context.Background())
-	d.mapPane.radarStop = stop
-	ask, workers := d.mapAsk(), d.mapPane.workers
-	return d, workers.cmd(stopped, nil, func(ctx context.Context) tea.Msg {
+	mm.mapPane.radarStop = stop
+	ask, workers := mm.mapAsk(e), mm.mapPane.workers
+	return mm, workers.cmd(stopped, nil, func(ctx context.Context) tea.Msg {
 		return mapRadarMsg{radar: radar(ctx, ask), region: region}
 	})
 }
 
 // refreshRadar asks again on new data only once the loop has stood for
 // radarRefresh.
-func (d Dashboard) refreshRadar() (Dashboard, tea.Cmd) {
-	if d.now().Sub(d.mapPane.radarAt) < radarRefresh {
-		return d, nil
+func (mm mapModel) refreshRadar(e mapEnv) (mapModel, tea.Cmd) {
+	if e.Now().Sub(mm.mapPane.radarAt) < radarRefresh {
+		return mm, nil
 	}
-	return d.askRadar()
+	return mm.askRadar(e)
 }
 
 // applyMapRadar sets the radar's loops and takes off the boxes it no longer
 // has. A loop handed in is drawn once the library has prepared it - the
 // work's answer draws it - so the map is not redrawn in between, where the
 // radar would blink out (D-85). A want kept while this ran is asked now.
-func (d Dashboard) applyMapRadar(v mapRadarMsg) (Dashboard, tea.Cmd) {
-	d.mapPane.radarBusy = false
-	if d.mapPane.radarStop != nil {
-		d.mapPane.radarStop() // its context let go
-		d.mapPane.radarStop = nil
+func (mm mapModel) applyMapRadar(v mapRadarMsg, e mapEnv) (mapModel, tea.Cmd) {
+	mm.mapPane.radarBusy = false
+	if mm.mapPane.radarStop != nil {
+		mm.mapPane.radarStop() // its context let go
+		mm.mapPane.radarStop = nil
 	}
-	m := d.mapPane.m
-	if m == nil || d.modal != modalMap {
-		return d, nil
+	m := mm.mapPane.m
+	if m == nil || e.Window != mapModalMap {
+		return mm, nil
 	}
-	if v.region != d.mapPane.region.Name { // a region left (D-130): nothing of it is drawn; the kept ask goes now
-		d.mapPane.radarAgain = false
-		d, again := d.askRadar()
+	if v.region != mm.mapPane.region.Name { // a region left (D-130): nothing of it is drawn; the kept ask goes now
+		mm.mapPane.radarAgain = false
+		d, again := mm.askRadar(e)
 		return d, again
 	}
-	d = d.timed("answered:radar")
-	if !d.layerOn(RadarLayer) {
+	mm = mm.timed("answered:radar", e)
+	if !mm.layerOn(RadarLayer, e) {
 		v.radar = MapRadar{}
 	}
-	given, set, refused := d.replaceLoops(d.mapPane.radarGiven, v.radar.Overlays) // a refusal SAID, never swallowed: unsaid, it reads as "loading" for ever (UAT-2 U2-5)
-	switch {                                                                      // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
+	given, set, refused := mm.replaceLoops(mm.mapPane.radarGiven, v.radar.Overlays) // a refusal SAID, never swallowed: unsaid, it reads as "loading" for ever (UAT-2 U2-5)
+	switch {                                                                        // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
 	case refused != nil && len(given) == 0:
 		v.radar.Source, v.radar.Note = "", ""
-		d.problem("Radar: not drawn - " + refused.Error())
+		mm.problem("Radar: not drawn - "+refused.Error(), e)
 	case refused != nil:
-		d.problem("Radar: not updated, the last loop kept - " + refused.Error())
+		mm.problem("Radar: not updated, the last loop kept - "+refused.Error(), e)
 	}
 	for _, p := range v.radar.Problems {
-		d.problem(p)
+		mm.problem(p, e)
 	}
-	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote, d.mapPane.radarAhead = given, v.radar.Source, v.radar.Note, v.radar.Ahead
-	d = d.showStep().retime() // the newest frame is Radar mode's now: the alerts' spans move with it (D-98)
+	mm.mapPane.radarGiven, mm.mapPane.radarSource, mm.mapPane.radarNote, mm.mapPane.radarAhead = given, v.radar.Source, v.radar.Note, v.radar.Ahead
+	mm = mm.showStep(e).retime(e) // the newest frame is Radar mode's now: the alerts' spans move with it (D-98)
 	if !set || m.Pending() == 0 {
-		d = d.renderMap() // nothing left to prepare: draw now; else the work's answer draws it, whole, and the picture on screen stands until then
+		mm = mm.renderMap(e) // nothing left to prepare: draw now; else the work's answer draws it, whole, and the picture on screen stands until then
 	}
-	cmds := []tea.Cmd{d.mapWorkCmd()}
-	if d.mapPane.radarAgain {
-		d.mapPane.radarAgain = false
+	cmds := []tea.Cmd{mm.mapWorkCmd(e)}
+	if mm.mapPane.radarAgain {
+		mm.mapPane.radarAgain = false
 		var again tea.Cmd
-		d, again = d.askRadar()
+		mm, again = mm.askRadar(e)
 		cmds = append(cmds, again)
 	}
 	if wait, region := v.radar.AheadIn, v.region; wait > 0 { // the hours ahead still owed (D-204)
-		cmds = append(cmds, d.after(wait, mapRadarAgainMsg{region: region}))
+		cmds = append(cmds, tickAfter(e.Ticks, wait, mapRadarAgainMsg{region: region}))
 	}
-	return d, tea.Batch(cmds...)
+	return mm, tea.Batch(cmds...)
 }
 
 // replaceLoops hands in an answer's loops in place of the ones held, all or
@@ -153,8 +153,8 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (Dashboard, tea.Cmd) {
 // loop for up to four. Where a new box's loop is still refused, the new
 // loops go and the held ones come back: a zoom never leaves the map without
 // the radar it had. refused is the first refusal.
-func (d Dashboard) replaceLoops(had map[string]tuimaps.Overlay, want []tuimaps.Overlay) (given map[string]tuimaps.Overlay, set bool, refused error) {
-	m := d.mapPane.m
+func (mm mapModel) replaceLoops(had map[string]tuimaps.Overlay, want []tuimaps.Overlay) (given map[string]tuimaps.Overlay, set bool, refused error) {
+	m := mm.mapPane.m
 	wanted := map[string]bool{}
 	for _, o := range want {
 		wanted[o.ID] = true
@@ -169,10 +169,10 @@ func (d Dashboard) replaceLoops(had map[string]tuimaps.Overlay, want []tuimaps.O
 	}
 	sort.Strings(gone)
 	for _, id := range gone {
-		d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+		mm.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 	}
 	newRefused := false
-	given, set = d.reconcile(kept, want, func(o tuimaps.Overlay, err error) {
+	given, set = mm.reconcile(kept, want, func(o tuimaps.Overlay, err error) {
 		if refused == nil {
 			refused = err
 		}
@@ -184,13 +184,13 @@ func (d Dashboard) replaceLoops(had map[string]tuimaps.Overlay, want []tuimaps.O
 	}
 	for id := range given { // the swap is undone: the new boxes go, the old come back
 		if _, held := had[id]; !held {
-			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+			mm.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 			delete(given, id)
 		}
 	}
 	for _, id := range gone {
 		var err error
-		d.mapPane.call("Set", func() { _, err = m.Set(had[id]) })
+		mm.mapPane.call("Set", func() { _, err = m.Set(had[id]) })
 		if err == nil {
 			given[id] = had[id]
 		}
@@ -204,28 +204,28 @@ type mapRadarAgainMsg struct{ region string }
 
 // applyRadarAgain asks the radar again for the hours ahead, while the map is
 // open on the region they were owed for and the radar is on.
-func (d Dashboard) applyRadarAgain(v mapRadarAgainMsg) (Dashboard, tea.Cmd) {
-	if d.modal != modalMap || d.mapPane.m == nil || v.region != d.mapPane.region.Name || !d.layerOn(RadarLayer) {
-		return d, nil
+func (mm mapModel) applyRadarAgain(v mapRadarAgainMsg, e mapEnv) (mapModel, tea.Cmd) {
+	if e.Window != mapModalMap || mm.mapPane.m == nil || v.region != mm.mapPane.region.Name || !mm.layerOn(RadarLayer, e) {
+		return mm, nil
 	}
-	return d.askRadar()
+	return mm.askRadar(e)
 }
 
 // radarChipText is the chip's words: the source in use, or nothing.
-func (d Dashboard) radarChipText() string {
-	if d.mapPane.radarSource == "" || !d.layerOn(RadarLayer) {
+func (mm mapModel) radarChipText(e mapEnv) string {
+	if mm.mapPane.radarSource == "" || !mm.layerOn(RadarLayer, e) {
 		return ""
 	}
-	return " " + d.radarFace() + " "
+	return " " + mm.radarFace(e.Opts.ASCII) + " "
 }
 
 // radarFace is the radar's source as its chips say it: MRMS≈, its colours
 // read from its legend and so approximate (D-132), or IEM.
-func (d Dashboard) radarFace() string {
-	if d.mapPane.radarSource != "MRMS" {
-		return d.mapPane.radarSource
+func (mm mapModel) radarFace(ascii bool) string {
+	if mm.mapPane.radarSource != "MRMS" {
+		return mm.mapPane.radarSource
 	}
-	if d.cfg.ASCII {
+	if ascii {
 		return "MRMS~"
 	}
 	return "MRMS≈"
@@ -235,25 +235,25 @@ func (d Dashboard) radarFace() string {
 // source's chip in the badge's colours; the frame's time in the listener's
 // clock, STALE before it when the newest frame is old. It takes the
 // library's top-row stamp over (go-tuiMaps D-87).
-func (d Dashboard) radarBadge() string {
-	if d.radarChipText() == "" {
+func (mm mapModel) radarBadge(e mapEnv) string {
+	if mm.radarChipText(e) == "" {
 		return ""
 	}
-	if d.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
-		chip := chipFace(d.aheadName()) // its ground and label alone, no brackets (D-174)
-		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
+	if mm.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
+		chip := chipFace(mm.aheadName()) // its ground and label alone, no brackets (D-174)
+		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, mm.mapPane.radarBadgeTime)
 	}
-	chip := chipFace(d.radarFace())
-	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
+	chip := chipFace(mm.radarFace(e.Opts.ASCII))
+	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, mm.mapPane.radarBadgeTime)
 }
 
 // aheadName is the hours ahead's source as its chip says it: HRRR, or
 // O-METEO where they are Open-Meteo's (D-115), as temperature's chip says it.
-func (d Dashboard) aheadName() string {
-	if d.mapPane.radarAhead == "Open-Meteo" {
+func (mm mapModel) aheadName() string {
+	if mm.mapPane.radarAhead == "Open-Meteo" {
 		return "O-METEO"
 	}
-	return d.mapPane.radarAhead
+	return mm.mapPane.radarAhead
 }
 
 // newestObserved is the loop's newest observed frame, "right now" - never
@@ -268,24 +268,24 @@ func newestObserved(st tuimaps.LoopState) time.Time {
 
 // atForecast reports whether the loop's moment shown is one of its hours
 // ahead (D-113).
-func (d Dashboard) atForecast() bool {
-	return d.mapPane.m != nil && d.mapPane.radarAhead != "" && d.mapPane.m.Loop().Forecast
+func (mm mapModel) atForecast() bool {
+	return mm.mapPane.m != nil && mm.mapPane.radarAhead != "" && mm.mapPane.m.Loop().Forecast
 }
 
 // mapBadgeWords are the badge's words for the mode (D-92, D-94): radar's, or
 // Forecast mode's in its place. The library draws no stamp while the badge
 // says the moment (go-tuiMaps D-87).
-func (d Dashboard) mapBadgeWords() string {
-	switch d.mapMode() {
+func (mm mapModel) mapBadgeWords(e mapEnv) string {
+	switch mm.mapMode(e) {
 	case modePropagation:
-		return d.propagationBadge()
+		return mm.propagationBadge()
 	case modeForecast:
-		if d.mapHooks.MapRadar != nil {
-			return d.forecastBadge()
+		if mm.mapHooks.MapRadar != nil {
+			return mm.forecastBadge(e)
 		}
 	case modeRadar:
 	}
-	return d.radarBadge()
+	return mm.radarBadge(e)
 }
 
 // The playback keys (D-61): space plays and stops, "," and "." step a frame
@@ -299,39 +299,39 @@ const (
 
 // handlePlayback drives the library's loop: the host keeps no playback state
 // of its own (go-tuiMaps L-1.13).
-func (d Dashboard) handlePlayback(act term.Action) (Dashboard, bool) {
-	m := d.mapPane.m
+func (mm mapModel) handlePlayback(act term.Action, e mapEnv) (mapModel, bool) {
+	m := mm.mapPane.m
 	switch act {
 	case actMapPlay:
 		if m.Loop().Playing {
-			d.mapPane.call("Stop", func() { _ = m.Stop() })
+			mm.mapPane.call("Stop", func() { _ = m.Stop() })
 		} else {
-			d.mapPane.call("Play", func() { _ = m.Play() })
+			mm.mapPane.call("Play", func() { _ = m.Play() })
 		}
 	case actMapBack:
-		d.mapPane.call("Step", func() { _ = m.Step(-1) })
+		mm.mapPane.call("Step", func() { _ = m.Step(-1) })
 	case actMapOn:
-		d.mapPane.call("Step", func() { _ = m.Step(1) })
+		mm.mapPane.call("Step", func() { _ = m.Step(1) })
 	case actMapNewest:
-		d.mapPane.call("Reset", func() { _ = m.Reset() })
+		mm.mapPane.call("Reset", func() { _ = m.Reset() })
 	default:
-		return d, false
+		return mm, false
 	}
-	return d.renderMap(), true
+	return mm.renderMap(e), true
 }
 
 // applyPlayback turns the library's playback on at the speed chosen (D-361):
 // the map opens stopped on the newest frame, and space plays (W8.9a).
-func (d Dashboard) applyPlayback() Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) applyPlayback() mapModel {
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
-	d.mapPane.call("SetPlayback", func() { _ = m.SetPlayback(tuimaps.PlaybackOn) })
-	d.mapPane.call("ShowStamp:false", func() { m.ShowStamp(false) }) // the badge and the timeline say the moment and its age (D-92)
-	step := d.mapPlayback
-	d.mapPane.call("SetPlaybackStep", func() { _ = m.SetPlaybackStep(step) })
-	return d
+	mm.mapPane.call("SetPlayback", func() { _ = m.SetPlayback(tuimaps.PlaybackOn) })
+	mm.mapPane.call("ShowStamp:false", func() { m.ShowStamp(false) }) // the badge and the timeline say the moment and its age (D-92)
+	step := mm.mapPlayback
+	mm.mapPane.call("SetPlaybackStep", func() { _ = m.SetPlaybackStep(step) })
+	return mm
 }
 
 // radarStale is how old the newest frame may be before it is marked stale:
@@ -341,24 +341,24 @@ const radarStale = 10 * time.Minute
 // radarStatus is the loop's line: the source, the moment shown and how old
 // the newest frame is - stale marked, never hidden (FR-5.4) - where it is in
 // the loop, and whether it plays.
-func (d Dashboard) radarStatus() string {
-	m := d.mapPane.m
-	if m == nil || d.mapPane.radarSource == "" || !d.layerOn(RadarLayer) {
+func (mm mapModel) radarStatus(e mapEnv) string {
+	m := mm.mapPane.m
+	if m == nil || mm.mapPane.radarSource == "" || !mm.layerOn(RadarLayer, e) {
 		switch {
-		case !d.layerOn(RadarLayer) || d.mapHooks.MapRadar == nil:
+		case !mm.layerOn(RadarLayer, e) || mm.mapHooks.MapRadar == nil:
 			return ""
-		case d.mapPane.radarNote != "":
-			return d.mapPane.radarNote
-		case d.mapPane.radarBusy:
+		case mm.mapPane.radarNote != "":
+			return mm.mapPane.radarNote
+		case mm.mapPane.radarBusy:
 			return "Radar loading…" // preloaded: shown when the whole loop is in (D-85)
 		}
 		return ""
 	}
 	st := m.Loop()
 	if st.Count == 0 {
-		return "Radar " + d.radarChip() + " loading…"
+		return "Radar " + mm.radarChip(e.Opts.ASCII) + " loading…"
 	}
-	age := d.now().Sub(newestObserved(st))
+	age := e.Now().Sub(newestObserved(st))
 	ago := strconv.Itoa(int(age.Minutes())) + " min ago"
 	if age > radarStale {
 		ago += ", stale"
@@ -367,8 +367,8 @@ func (d Dashboard) radarStatus() string {
 	if st.Playing {
 		state = "playing"
 	}
-	shown := d.clockFmt.Time(st.At.In(d.now().Location()))
-	parts := []string{"Radar " + d.radarChip() + " " + shown, "frame " + strconv.Itoa(st.Index+1) + " of " + strconv.Itoa(st.Count),
+	shown := e.Opts.Clock.Time(st.At.In(e.Now().Location()))
+	parts := []string{"Radar " + mm.radarChip(e.Opts.ASCII) + " " + shown, "frame " + strconv.Itoa(st.Index+1) + " of " + strconv.Itoa(st.Count),
 		state, "newest " + ago}
 	if st.Forecast {
 		parts = append(parts, "forecast")
@@ -388,13 +388,13 @@ const radarExtraRows = 6
 // radarLegendRow is the radar's colours under the map (D-89), lightest to
 // heaviest, from the library's legend: a swatch a class, painted in the
 // class's own colour, or its words where colour is off.
-func (d Dashboard) radarLegendRow(width int) string {
-	return d.rainRow("RADAR LEGEND │ ", "radar", width)
+func (mm mapModel) radarLegendRow(width int) string {
+	return mm.rainRow("RADAR LEGEND │ ", "radar", width)
 }
 
 // rainRow is radar's colours as a row under a head of its own.
-func (d Dashboard) rainRow(head, preset string, width int) string {
-	classes := d.legendClasses(preset)
+func (mm mapModel) rainRow(head, preset string, width int) string {
+	classes := mm.legendClasses(preset)
 	lighter, heavier := "LIGHTER ", " HEAVIER"
 	room := width - render.Width(head+lighter+heavier)
 	if len(classes) == 0 || room < len(classes)*3 {
@@ -414,23 +414,23 @@ func (d Dashboard) rainRow(head, preset string, width int) string {
 
 // radarChip is the source in the badge's colours (D-83), for the status line
 // (D-89).
-func (d Dashboard) radarChip() string {
-	return chipFace(d.radarFace())
+func (mm mapModel) radarChip(ascii bool) string {
+	return chipFace(mm.radarFace(ascii))
 }
 
 // radarBadgeTimeNow is the badge's time row: the moment shown in the
 // listener's clock, STALE before it past radarStale (FR-5.4: never hidden).
-func (d Dashboard) radarBadgeTimeNow() string {
-	m := d.mapPane.m
-	if m == nil || d.radarChipText() == "" {
+func (mm mapModel) radarBadgeTimeNow(e mapEnv) string {
+	m := mm.mapPane.m
+	if m == nil || mm.radarChipText(e) == "" {
 		return ""
 	}
 	st := m.Loop()
 	if st.Count == 0 {
 		return ""
 	}
-	when := d.clockFmt.Time(st.At.In(d.now().Location()))
-	if d.now().Sub(newestObserved(st)) > radarStale {
+	when := e.Opts.Clock.Time(st.At.In(e.Now().Location()))
+	if e.Now().Sub(newestObserved(st)) > radarStale {
 		when = "STALE " + when
 	}
 	return when
@@ -439,11 +439,11 @@ func (d Dashboard) radarBadgeTimeNow() string {
 // radarTimelineOn reports whether the timeline's rows are held: in both
 // modes (D-94) - Radar mode's loop, or Forecast mode's steps - so the map's
 // size never depends on the mode.
-func (d Dashboard) radarTimelineOn() bool { return d.mapHooks.MapRadar != nil }
+func (mm mapModel) radarTimelineOn() bool { return mm.mapHooks.MapRadar != nil }
 
 // radarChipWords are the R chip's words: the mode the key switches (D-94).
-func (d Dashboard) radarChipWords() string {
-	switch d.mapMode() {
+func (mm mapModel) radarChipWords(e mapEnv) string {
+	switch mm.mapMode(e) {
 	case modeRadar:
 		return "Radar On"
 	case modeForecast, modePropagation:
@@ -456,30 +456,30 @@ func (d Dashboard) radarChipWords() string {
 // keys at its ends, a tick at now; beneath, the end times, OBSERVED before
 // now and FORECAST after it. Read from the library's loop in Update; the
 // window keeps no playback state of its own (go-tuiMaps L-1.13).
-func (d Dashboard) radarTimeline(width int) []string {
-	if d.mapPane.m == nil || !d.radarTimelineOn() {
+func (mm mapModel) radarTimeline(width int, e mapEnv) []string {
+	if mm.mapPane.m == nil || !mm.radarTimelineOn() {
 		return nil
 	}
-	s, ok := d.radarScrubber()
+	s, ok := mm.radarScrubber(e)
 	if !ok {
 		return []string{"", "", ""}
 	}
-	return d.draw(s, width)
+	return mm.draw(s, width, e)
 }
 
 // radarScrubber is the loop's scrubber: where the frame shown is, where NOW
 // is, and the words under them, all by time along the loop; false with no
 // loop to draw.
-func (d Dashboard) radarScrubber() (scrubber, bool) {
-	m := d.mapPane.m
-	if m == nil || d.mapPane.radarSource == "" {
+func (mm mapModel) radarScrubber(e mapEnv) (scrubber, bool) {
+	m := mm.mapPane.m
+	if m == nil || mm.mapPane.radarSource == "" {
 		return scrubber{}, false
 	}
 	st := m.Loop()
 	if st.Count == 0 {
 		return scrubber{}, false
 	}
-	s := scrubber{above: d.clockAt(st.At)}
+	s := scrubber{above: mm.clockAt(st.At, e)}
 	// ONE AXIS, TIME (UAT-2 U2-33): the cursor and NOW are both placed by
 	// time. The frames are five minutes apart observed and fifteen ahead, so a
 	// cursor placed by frame number draws the newest observed frame in the
@@ -491,12 +491,12 @@ func (d Dashboard) radarScrubber() (scrubber, bool) {
 	if span := st.Newest.Sub(st.Oldest); span > 0 && st.Now.Before(st.Newest) {
 		now = float64(st.Now.Sub(st.Oldest)) / float64(span)
 	}
-	s.below = []scrubLabel{{d.clockAt(st.Oldest), 0, alignLeft}}
+	s.below = []scrubLabel{{mm.clockAt(st.Oldest, e), 0, alignLeft}}
 	if now < 1 {
 		s.ticks = []float64{now}
-		s.below = append(s.below, scrubLabel{d.clockAt(st.Newest), 1, alignRight}, scrubLabel{"NOW", now, alignCentre})
+		s.below = append(s.below, scrubLabel{mm.clockAt(st.Newest, e), 1, alignRight}, scrubLabel{"NOW", now, alignCentre})
 	} else {
-		s.below = append(s.below, scrubLabel{"NOW · " + d.clockAt(st.Newest), 1, alignRight}) // no forecast: the loop ends at now
+		s.below = append(s.below, scrubLabel{"NOW · " + mm.clockAt(st.Newest, e), 1, alignRight}) // no forecast: the loop ends at now
 	}
 	s.below = append(s.below, scrubLabel{"OBSERVED", now / 2, alignCentre})
 	if now < 1 {
@@ -506,11 +506,13 @@ func (d Dashboard) radarScrubber() (scrubber, bool) {
 }
 
 // clockAt is a moment in the listener's clock and zone.
-func (d Dashboard) clockAt(t time.Time) string { return d.clockFmt.Time(t.In(d.now().Location())) }
+func (mm mapModel) clockAt(t time.Time, e mapEnv) string {
+	return e.Opts.Clock.Time(t.In(e.Now().Location()))
+}
 
 // firstKey is an action's first bound key, as the listener's [keys] set it.
-func (d Dashboard) firstKey(act term.Action) string {
-	if keys := d.mapKeys[act].Keys; len(keys) > 0 {
+func (mm mapModel) firstKey(act term.Action) string {
+	if keys := mm.mapKeys[act].Keys; len(keys) > 0 {
 		return keys[0]
 	}
 	return ""

@@ -309,7 +309,12 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
    The 387 methods re-homed, in file groups; S8 to S10 cut at the save, its batch
    position carried in `Want`; `mapEnv`'s and `applyMapWant`'s switches held by a round-trip test and
    vetted mutants. Assertions that call a method gaining a parameter change under D-14, rows of the
-   changed-line table (A-31).
+   changed-line table (A-31). The seam's types unexported and `map`-prefixed (D-79), the model's
+   receiver `mm` (D-80). `mapModel` a named field of `Dashboard` from this commit, 2b's first step
+   brought forward, so the compiler emits no wrapper for the map's methods on the `Dashboard`; the root's
+   memo guard calls its engine twice here, as B8 had it (D-81). `gcprobe` holds what no rename can
+   carry by a reviewed list, `06_docs/perf/excused-B4.tsv`, and no method falls over the inline budget
+   (D-82).
 4. **The audit and the re-measure.** The 41 hook writes made after construction audited for the shared
    pointer; 2b's class C4 re-measured by B0.12's tool and classified against D-22, the residual put to
    the HUM LEAD singly before B5 (A-33).
@@ -362,8 +367,9 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 ## B8: the map's 2b and the controls, three commits
 
 1. **The straddling tests re-wired in place** onto the API that survives (D-22, as ruled before B5).
-   The root's memo guard calls the unchanged engine twice: on `Dashboard` with the model excused, then
-   on the model, putting each perturbed model back into a copy (A-31); D-23's rows hold.
+   The root's memo guard already calls the unchanged engine twice, on `Dashboard` with the model
+   excused and then on the model, each perturbed model put back into a copy (A-31; B4.3, D-81); D-23's
+   rows hold.
 2. **The straddle count re-measured**, and the result reported.
 3. **The move:** `modes/tty/mapview` and `modes/tty/internal/controls` (D-25); `app`'s 14 files
    re-qualified from `tty.` to `mapview.`.

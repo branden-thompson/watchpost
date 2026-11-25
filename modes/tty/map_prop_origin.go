@@ -42,20 +42,20 @@ type propPlace struct {
 // map's centre and its name (propCentreName), or the transmitter and its label, or
 // the selected place, its name saying it stands in for a transmitter; not
 // ok with nothing to answer from.
-func (d Dashboard) propOriginNow() propPlace {
-	if d.propRole().origin == propFromStation {
-		station := d.stationPlace()
+func (mm mapModel) propOriginNow(e mapEnv) propPlace {
+	if mm.propRole(e).origin == propFromStation {
+		station := mm.stationPlace(e)
 		switch {
 		case station == nil:
 			return propPlace{}
-		case d.noTransmitter():
+		case mm.noTransmitter(e):
 			return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: station.Label + " " + frame.NoTransmitter, ok: true}
 		}
-		return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: d.cfg.Transmitter.Label, country: d.cfg.Transmitter.Country, ok: true}
+		return propPlace{at: ionomaps.LatLon{Lat: station.Lat, Lon: station.Lon}, name: e.Station.Transmitter.Label, country: e.Station.Transmitter.Country, ok: true}
 	}
-	loc := d.selectedLocation()
-	if c, ok := d.propCentreAt(); ok {
-		name, country := d.propCentreNamed(c)
+	loc := e.Pick.location()
+	if c, ok := mm.propCentreAt(); ok {
+		name, country := mm.propCentreNamed(c)
 		return propPlace{at: c, name: name, country: country, ok: true}
 	}
 	if loc == nil {
@@ -67,19 +67,19 @@ func (d Dashboard) propOriginNow() propPlace {
 // propCentreName names the centre answered, anywhere on the globe (D-193,
 // BUILD red team AX-1): the place found while the centre rests on it, else
 // the town nearest it, else its coordinates.
-func (d Dashboard) propCentreName(c ionomaps.LatLon) string {
-	name, _ := d.propCentreNamed(c)
+func (mm mapModel) propCentreName(c ionomaps.LatLon) string {
+	name, _ := mm.propCentreNamed(c)
 	return name
 }
 
 // propCentreNamed is propCentreName with the named place's country, when
 // known (D-231).
-func (d Dashboard) propCentreNamed(c ionomaps.LatLon) (name, country string) {
-	if f := d.mapPane.propFound; f != nil && propStepped(f.Lat, f.Lon) == c {
+func (mm mapModel) propCentreNamed(c ionomaps.LatLon) (name, country string) {
+	if f := mm.mapPane.propFound; f != nil && propStepped(f.Lat, f.Lon) == c {
 		return f.Label, f.Country
 	}
-	if d.mapHooks.PlaceNear != nil {
-		if town, cc := d.mapHooks.PlaceNear(c.Lat, c.Lon); town != "" {
+	if mm.mapHooks.PlaceNear != nil {
+		if town, cc := mm.mapHooks.PlaceNear(c.Lat, c.Lon); town != "" {
 			return "near " + town, cc
 		}
 	}
@@ -101,7 +101,7 @@ func latLonText(c ionomaps.LatLon) string {
 // propTarget is the station's answer for the map's centre (D-193): the
 // usable bands from the station and the limits, and how the frequency held
 // (D-178) fares on the path - and which way to move it.
-func (d Dashboard) propTarget(bands []ionomaps.BandStatus) []string {
+func (mm mapModel) propTarget(bands []ionomaps.BandStatus) []string {
 	reach := "nothing usable at 100 W"
 	switch u := propanswers.Usable(bands); len(u) {
 	case 0:
@@ -114,8 +114,8 @@ func (d Dashboard) propTarget(bands []ionomaps.BandStatus) []string {
 	if best := propanswers.BestWords(propanswers.LimitsOf(bands), true); best != "" {
 		out = append(out, best) // D-197
 	}
-	if f := d.mapPane.propFreqMHz; f > 0 {
-		out = append(out, propanswers.FreqVerdict(f, d.mapPane.propFreqLabel, propanswers.LimitsOf(bands)))
+	if f := mm.mapPane.propFreqMHz; f > 0 {
+		out = append(out, propanswers.FreqVerdict(f, mm.mapPane.propFreqLabel, propanswers.LimitsOf(bands)))
 	}
 	return out
 }

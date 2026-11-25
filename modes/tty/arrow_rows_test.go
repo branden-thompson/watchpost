@@ -16,7 +16,7 @@ import (
 // cleared so only what the rows say is compared.
 func unflashedSettings(d Dashboard) string {
 	d.setup.flash = flashNone
-	d.volFlash, d.mapPane.flash, d.mapPane.menuFlash = "", "", flashNone
+	d.volFlash, d.mapModel.mapPane.flash, d.mapModel.mapPane.menuFlash = "", "", flashNone
 	return ttytest.StripANSI(d.View().Content)
 }
 

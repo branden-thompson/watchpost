@@ -144,8 +144,8 @@ func TestTheWindowShownTakesItsKeysFirst(t *testing.T) {
 	d := mapDash(t, Config{})
 	d, _ = pressKey(d, "g")
 	m, _ := d.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
-	if d = m.(Dashboard); d.modal != modalMap || !d.mapPane.alertsOn {
-		t.Errorf("A on the map opened window %d (alerts box %v); want the map's Description box", d.modal, d.mapPane.alertsOn)
+	if d = m.(Dashboard); d.modal != modalMap || !d.mapModel.mapPane.alertsOn {
+		t.Errorf("A on the map opened window %d (alerts box %v); want the map's Description box", d.modal, d.mapModel.mapPane.alertsOn)
 	}
 }
 

@@ -2,7 +2,7 @@ package app
 
 // timing.go — the timing instrument's keeper (0.18.0 W14, D-154): M5's time to
 // picture, W8.12's radar arms and M6's two halves, as the dashboard measures
-// them (modes/tty/timing.go), kept for /debug/counters.
+// them (modes/tty/timing.go, map_timing.go), kept for /debug/counters.
 //
 // THERE ONLY UNDER WATCHPOST_DEBUG_TIMING=1, the switch M1's launch timer
 // already answers to: without it there is no keeper, the dashboard is handed

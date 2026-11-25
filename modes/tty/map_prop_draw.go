@@ -54,18 +54,18 @@ func fieldGrid(f ionomaps.Field) tuimaps.Grid {
 // propOverlays are the Propagation mode's overlays: the hour on screen, its
 // layer alone (D-112), and the night with its edge for the moment shown;
 // none outside the mode or before a snapshot.
-func (d Dashboard) propOverlays() []tuimaps.Overlay {
-	shown := d.propOnScreen()
-	if !d.inPropagation() || !propHasField(shown) {
+func (mm mapModel) propOverlays(e mapEnv) []tuimaps.Overlay {
+	shown := mm.propOnScreen()
+	if !mm.inPropagation(e) || !propHasField(shown) {
 		return nil
 	}
 	h := shown.Now
 	field := tuimaps.MUFGrid("propagation/muf", fieldGrid(h.MUF3000), h.At)
-	if d.mapPane.propLayer == propFoF2 {
+	if mm.mapPane.propLayer == propFoF2 {
 		field = tuimaps.FoF2Grid("propagation/fof2", fieldGrid(h.FoF2), h.At)
 	}
 	out := []tuimaps.Overlay{field}
-	if reach, ok := d.propReachShown(); ok {
+	if reach, ok := mm.propReachShown(e); ok {
 		out = append(out, propReachOverlay(reach, h.At)) // after the field: its edge alone over it (L-2.6)
 	}
 	return out // the night is the map's, drawn in every mode that wants it (D-199)
@@ -75,59 +75,59 @@ func (d Dashboard) propOverlays() []tuimaps.Overlay {
 // time, to the step - the sun as it stood when the field was made, however
 // old the field (W3.1) - an hour ahead's being its start, the moment its
 // field and its words are for; the clock before any field.
-func (d Dashboard) propNightMoment() time.Time {
-	shown, ok := d.propShown()
+func (mm mapModel) propNightMoment(e mapEnv) time.Time {
+	shown, ok := mm.propShown()
 	if !ok {
-		return d.now().UTC().Truncate(nightStep)
+		return e.Now().UTC().Truncate(nightStep)
 	}
 	return shown.Now.At.UTC().Truncate(nightStep)
 }
 
 // setProp hands the library the Propagation mode's overlays as they stand,
 // and takes off the ones no longer wanted.
-func (d Dashboard) setProp() Dashboard {
-	if d.mapPane.m == nil {
-		return d
+func (mm mapModel) setProp(e mapEnv) mapModel {
+	if mm.mapPane.m == nil {
+		return mm
 	}
-	given, _ := d.reconcile(d.mapPane.propGiven, d.propOverlays(), func(o tuimaps.Overlay, err error) {
-		d.problem("Propagation: " + o.ID + " not drawn - " + err.Error()) // ours to fix, never the listener's (D-124)
+	given, _ := mm.reconcile(mm.mapPane.propGiven, mm.propOverlays(e), func(o tuimaps.Overlay, err error) {
+		mm.problem("Propagation: "+o.ID+" not drawn - "+err.Error(), e) // ours to fix, never the listener's (D-124)
 	})
-	d.mapPane.propGiven = given
-	d.mapPane.gen++
-	return d.setNight() // the night with the mode: always in it, by the detail switch out of it (D-199)
+	mm.mapPane.propGiven = given
+	mm.mapPane.gen++
+	return mm.setNight(e) // the night with the mode: always in it, by the detail switch out of it (D-199)
 }
 
 // flipPropLayer is L: MUF(3000) or foF2, in the Propagation mode alone.
-func (d Dashboard) flipPropLayer() Dashboard {
-	if d.mapMode() == modePropagation {
-		d.mapPane.propLayer = 1 - d.mapPane.propLayer
-		return d.setProp().renderMap()
+func (mm mapModel) flipPropLayer(e mapEnv) mapModel {
+	if mm.mapMode(e) == modePropagation {
+		mm.mapPane.propLayer = 1 - mm.mapPane.propLayer
+		return mm.setProp(e).renderMap(e)
 	}
-	return d
+	return mm
 }
 
 // refreshProp is U: an update now, in the Propagation mode alone (as every
 // ask is), under the library's throttle (D-120): an early ask is answered
 // from the last field with its reason.
-func (d Dashboard) refreshProp() (Dashboard, tea.Cmd) {
-	if d.mapPane.propChart.err != nil { // an answer that failed is asked again with the update (AX-9)
-		d.mapPane.propChart, d.mapPane.propChartAsked = propChart{}, propChartKey{}
+func (mm mapModel) refreshProp(e mapEnv) (mapModel, tea.Cmd) {
+	if mm.mapPane.propChart.err != nil { // an answer that failed is asked again with the update (AX-9)
+		mm.mapPane.propChart, mm.mapPane.propChartAsked = propChart{}, propChartKey{}
 	}
-	if d.mapPane.propReach.err != nil {
-		d.mapPane.propReach, d.mapPane.propReachAsked = propReach{}, propReachKey{}
+	if mm.mapPane.propReach.err != nil {
+		mm.mapPane.propReach, mm.mapPane.propReachAsked = propReach{}, propReachKey{}
 	}
-	if d.mapPane.propCentre.err != nil {
-		d.mapPane.propCentre, d.mapPane.propCentreAsked = propCentre{}, propCentreKey{}
+	if mm.mapPane.propCentre.err != nil {
+		mm.mapPane.propCentre, mm.mapPane.propCentreAsked = propCentre{}, propCentreKey{}
 	}
-	return d.askPropagation()
+	return mm.askPropagation(e)
 }
 
 // propLegendRow keys the layer drawn by its colours, in MHz.
-func (d Dashboard) propLegendRow(width int) string {
-	if d.mapPane.propLayer == propFoF2 {
-		return d.presetRow("fof2", "foF2, MHz │ ", "LOWER ", " HIGHER", width)
+func (mm mapModel) propLegendRow(width int) string {
+	if mm.mapPane.propLayer == propFoF2 {
+		return mm.presetRow("fof2", "foF2, MHz │ ", "LOWER ", " HIGHER", width)
 	}
-	return d.presetRow("muf", "MUF(3000), MHz │ ", "LOWER ", " HIGHER", width)
+	return mm.presetRow("muf", "MUF(3000), MHz │ ", "LOWER ", " HIGHER", width)
 }
 
 // hfBand is an amateur HF band by its lower edge: the MUF and foF2
@@ -167,19 +167,19 @@ func bandsUnder(mhz float64) []hfBand {
 // its colour, and under each its lower edge in MHz; one line, cut as
 // presetRow cuts it, where the library's classes are not the bands (with at
 // most a leading class below them, which keys none).
-func (d Dashboard) propLegendRows(width int) [2]string {
+func (mm mapModel) propLegendRows(width int) [2]string {
 	preset, head, bands := "muf", "MUF(3000) │ ", hfBands
-	if d.mapPane.propLayer == propFoF2 {
+	if mm.mapPane.propLayer == propFoF2 {
 		preset, head, bands = "fof2", "foF2 │ ", hfBands[:fof2Bands]
 	}
-	classes := d.legendClasses(preset)
+	classes := mm.legendClasses(preset)
 	each := 0
 	if len(bands) > 0 {
 		each = (width - render.Width(head)) / len(bands)
 	}
 	aligned, ok := bandClasses(classes, len(bands))
 	if !ok || each < 7 {
-		return [2]string{d.propLegendRow(width), ""}
+		return [2]string{mm.propLegendRow(width), ""}
 	}
 	var names, edges strings.Builder
 	for i, b := range bands {
@@ -224,8 +224,8 @@ func cellValue(f ionomaps.Field, lat, lon float64) (float64, bool) {
 // propBlock is D-157's block under the map, styled for the picture: the
 // place's name bold (D-164), the fields as chips (D-165), the age on the
 // freshness ramp (D-166).
-func (d Dashboard) propBlock(width int) []string {
-	return d.propBlockAs(width, max(width, d.mapTextW()))
+func (mm mapModel) propBlock(width int, e mapEnv) []string {
+	return mm.propBlockAs(width, max(width, mm.mapTextW(e)), e)
 }
 
 // propBlockAs is the block: the header with the sources' badges; the mode
@@ -233,30 +233,30 @@ func (d Dashboard) propBlock(width int) []string {
 // bands under its foF2 and MUF(3000); the continents. The rows beside the
 // Controls box are cut at width, the rows below it, with nothing beside
 // them, at below.
-func (d Dashboard) propBlockAs(width, below int) []string {
+func (mm mapModel) propBlockAs(width, below int, e mapEnv) []string {
 	padRows := func(rows []string, width int) []string { return padRowsBeside(rows, width, below) }
 	field := chipFace // D-165: a chip of its own
 	tint := func(text string, tok render.Token) string { return render.Tint(text, render.Tok(tok)) }
-	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(d.propBadges(true), "  ")}
-	snap := d.mapPane.propSnap
-	origin := d.mapPane.propOrigin // D-193: the centre on Observer, the station on the Broadcaster
+	out := []string{"RADIO FREQUENCY PROPAGATION    " + strings.Join(mm.propBadges(true), "  ")}
+	snap := mm.mapPane.propSnap
+	origin := mm.mapPane.propOrigin // D-193: the centre on Observer, the station on the Broadcaster
 	if snap == nil || !propHasField(*snap) {
-		out = append(out, "MODE: "+field(propLayerName(d.mapPane.propLayer))+" · "+strings.TrimPrefix(d.propStatusWords(), "Propagation · "))
+		out = append(out, "MODE: "+field(propLayerName(mm.mapPane.propLayer))+" · "+strings.TrimPrefix(mm.propStatusWords(e), "Propagation · "))
 		return padRows(out, width)
 	}
-	now := d.now()
+	now := e.Now()
 	at := snap.Computed.In(now.Location())
-	words, age, stale := d.propAge(*snap) // FR-5.1: the oldest input's age, never the time computed
+	words, age, stale := mm.propAge(*snap, e) // FR-5.1: the oldest input's age, never the time computed
 	tone := render.FreshnessTone(age)
 	if stale {
 		tone = render.AlertLabel // FR-5.2
 	}
-	mode := "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · COMPUTED " + d.clockFmt.Time(at) + " " + at.Format("MST") +
+	mode := "MODE: " + field(propLayerName(mm.mapPane.propLayer)) + " · COMPUTED " + e.Opts.Clock.Time(at) + " " + at.Format("MST") +
 		" " + tint("("+words+")", tone) + " · " + strings.ToLower(propNoiseLabel(snap.Noise)) + " noise" // D-166; D-187: the circuit's noise, the chart saying the rest
-	if origin.ok && d.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
-		mode = "MODE: " + field(propLayerName(d.mapPane.propLayer)) + " · " + tint(d.propAheadLabel(origin.at.Lat, origin.at.Lon), render.AlertLabel)
+	if origin.ok && mm.mapPane.propAhead > 0 { // an hour ahead: typical, said where the time was (FR-1.13, D-109)
+		mode = "MODE: " + field(propLayerName(mm.mapPane.propLayer)) + " · " + tint(mm.propAheadLabel(origin.at.Lat, origin.at.Lon), render.AlertLabel)
 	}
-	held := d.propFreqLine()
+	held := mm.propFreqLine(e)
 	if n := propOffsetNote(snap.Offset); n != "" { // FR-5.4: the offset's state, in the row the mode line leaves, never cut off its end
 		held = strings.TrimPrefix(held+" · ", " · ") + tint(n, render.AlertLabel)
 	}
@@ -270,9 +270,9 @@ func (d Dashboard) propBlockAs(width, below int) []string {
 	if render.Width(name) > propPlaceColMax { // a long name (a view's, D-193): its answers under it at a short indent, the block's rows unchanged
 		under = strings.Repeat(" ", propLongIndent)
 	}
-	shown := d.propOnScreen()
+	shown := mm.propOnScreen()
 	when := "NOW"
-	if k := d.mapPane.propAhead; k > 0 {
+	if k := mm.mapPane.propAhead; k > 0 {
 		when = "+" + strconv.Itoa(k) + " h"
 	}
 	fo, okF := cellValue(shown.Now.FoF2, origin.at.Lat, origin.at.Lon)
@@ -281,8 +281,8 @@ func (d Dashboard) propBlockAs(width, below int) []string {
 		return padRows(append(out, place+when+" · no data at the place"), width)
 	}
 	out = append(out, fmt.Sprintf("%s%s · %s %.1f MHz · %s %.1f MHz", place, when, field("foF2"), fo, field("MUF(3000)"), muf))
-	out = append(out, under+"Local, to ~"+strconv.Itoa(d.propRadiusKm())+" km ("+d.propLocalName()+"): "+bandNames(bandsUnder(fo))) // D-100: the Setting's radius; the service radius on the Broadcaster (FR-2.3)
-	if best := d.propBestLine(); best != "" {
+	out = append(out, under+"Local, to ~"+strconv.Itoa(mm.propRadiusKm(e))+" km ("+mm.propLocalName(e)+"): "+bandNames(bandsUnder(fo))) // D-100: the Setting's radius; the service radius on the Broadcaster (FR-2.3)
+	if best := mm.propBestLine(e); best != "" {
 		out = append(out, under+best) // D-176, D-177: the continents, in the 3,000 km hops' place, and the key to the chart
 	}
 	return padRows(out, width)
@@ -297,15 +297,15 @@ const (
 
 // propAgeShown reports whether the block says a snapshot's age, which moves
 // with the clock (D-166).
-func (d Dashboard) propAgeShown() bool {
-	return d.modal == modalMap && d.mapMode() == modePropagation && d.mapPane.propSnap != nil && propHasField(*d.mapPane.propSnap)
+func (mm mapModel) propAgeShown(e mapEnv) bool {
+	return e.Window == mapModalMap && mm.mapMode(e) == modePropagation && mm.mapPane.propSnap != nil && propHasField(*mm.mapPane.propSnap)
 }
 
 // propBadges are the sources' badges (D-168): lit for a source that fed the
 // snapshot shown, dimmed for one that did not; as plain words, only the ones
 // that fed it.
-func (d Dashboard) propBadges(styled bool) []string {
-	snap := d.mapPane.propSnap
+func (mm mapModel) propBadges(styled bool) []string {
+	snap := mm.mapPane.propSnap
 	shown := snap != nil && propHasField(*snap)
 	var out []string
 	for _, s := range []struct {

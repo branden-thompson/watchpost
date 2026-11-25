@@ -92,15 +92,15 @@ func TestBackspaceErasesALetterInEveryField(t *testing.T) {
 		}, "25", "2"},
 		{"the Propagation finder", func(s string) (string, string) {
 			d := base
-			d.mapPane.propFindQuery = s
+			d.mapModel.mapPane.propFindQuery = s
 			m, _ := d.handlePropFindKey(backspace)
-			return m.mapPane.propFindQuery, ""
+			return m.mapModel.mapPane.propFindQuery, ""
 		}, "Peñ", "Pe"},
 		{"the frequency's field", func(s string) (string, string) {
 			d := base
-			d.mapPane.propFreqQuery = s
+			d.mapModel.mapPane.propFreqQuery = s
 			m, _ := d.handlePropFreqKey(backspace)
-			return m.mapPane.propFreqQuery, ""
+			return m.mapModel.mapPane.propFreqQuery, ""
 		}, "14.07ñ", "14.07"},
 		{"the card's new position", func(s string) (string, string) {
 			r := NewRouter(base)

@@ -17,8 +17,8 @@ func TestTheTitleAndTheDescriptionNameOneArea(t *testing.T) {
 	}
 	d := openMap(t, Config{Map: &Hooks{MapAreaName: namer}}, 133, 44)
 	widths = nil
-	_ = d.mapTitleAt(d.mapBodySize())
-	_ = d.viewName()
+	_ = d.mapModel.mapTitleAt(d.mapModel.mapBodySize(d.mapEnv()), d.mapEnv())
+	_ = d.mapModel.viewName(d.mapEnv())
 	if len(widths) != 2 {
 		t.Fatalf("the namer was asked %d time(s); want once by the title and once by the description", len(widths))
 	}

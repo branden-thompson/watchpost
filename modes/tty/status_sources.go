@@ -273,7 +273,7 @@ func (d Dashboard) groupTitle(i int) string {
 	if statusGroups[i].feature != FeatureMap {
 		return title
 	}
-	if m := d.mapPane.m; m != nil {
+	if m := d.mapModel.mapPane.m; m != nil {
 		if disk := m.CacheUse().Disk; disk.Limit > 0 {
 			title += "  (tiles held " + render.HumanBytes(disk.Held) + " of " + render.HumanBytes(disk.Limit) + ")"
 		}
@@ -294,8 +294,8 @@ func (d Dashboard) mapWords(tableW int) []string {
 	for _, s := range d.cfg.MapSources {
 		words = append(words, s.Notes...)
 	}
-	words = append(words, d.mapNotesNow()...)
-	if s := d.mapPane.propSnap; s != nil {
+	words = append(words, d.mapModel.mapNotesNow(d.mapEnv())...)
+	if s := d.mapModel.mapPane.propSnap; s != nil {
 		words = append(words, propOffsetWords(s.Offset)) // FR-5.4: the live offset beside its typical value
 	}
 	words = append(words, mapDisclosure(d.cfg.MapSources))

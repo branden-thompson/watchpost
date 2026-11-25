@@ -177,11 +177,11 @@ func TestAnUpdatesResultIsSaid(t *testing.T) {
 	s := &seam{answer: PropagationResult{Snapshot: snap}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	status := ttytest.StripANSI(d.mapStatusLine())
+	status := ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv()))
 	if !strings.Contains(status, "12:00 UTC") {
 		t.Errorf("the status %q does not say when it was computed", status)
 	}
-	words := strings.Join(d.describeLinesAll(), " ")
+	words := strings.Join(d.mapModel.describeLinesAll(d.mapEnv()), " ")
 	for _, want := range []string{"GloTEC at 11:30 UTC", "M(3000)F2 from the climatology", "12:00 UTC"} {
 		if !strings.Contains(words, want) {
 			t.Errorf("the words %q do not say %q", words, want)
@@ -189,8 +189,8 @@ func TestAnUpdatesResultIsSaid(t *testing.T) {
 	}
 	failed := &seam{answer: PropagationResult{Err: errors.New("ionomaps: no field yet: it is asked again at the first update after 12:01:00 UTC")}}
 	d, cmd = keyCmd(t, propDash(t, failed, true), "P")
-	if d = runProp(t, d, cmd); !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "asked again") {
-		t.Errorf("an update with no field says %q", ttytest.StripANSI(d.mapStatusLine()))
+	if d = runProp(t, d, cmd); !strings.Contains(ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), "asked again") {
+		t.Errorf("an update with no field says %q", ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())))
 	}
 }
 
@@ -201,25 +201,25 @@ func TestTheModeRefreshesWhileOpen(t *testing.T) {
 	s := &seam{answer: PropagationResult{Err: errors.New("offline")}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	m, cmd := d.Update(propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq})
+	m, cmd := d.Update(propTickMsg{gen: d.mapModel.mapPane.propGen, seq: d.mapModel.mapPane.propTickSeq})
 	if d = runProp(t, m.(Dashboard), cmd); s.count() != 2 {
 		t.Fatalf("the refresh tick asked %d times in all; want twice", s.count())
 	}
-	stale := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
+	stale := propTickMsg{gen: d.mapModel.mapPane.propGen, seq: d.mapModel.mapPane.propTickSeq}
 	d, _ = keyCmd(t, d, "P") // left
 	m, cmd = d.Update(stale)
 	if runProp(t, m.(Dashboard), cmd); s.count() != 2 {
 		t.Errorf("a tick from before the mode was left asked again (%d)", s.count())
 	}
 	d, cmd = keyCmd(t, d, "P") // a new session, its update answered: none in flight
-	if d = runProp(t, d, cmd); s.count() != 3 || d.mapPane.propSess.busy {
-		t.Fatalf("re-entering asked %d in all, busy %v", s.count(), d.mapPane.propSess.busy)
+	if d = runProp(t, d, cmd); s.count() != 3 || d.mapModel.mapPane.propSess.busy {
+		t.Fatalf("re-entering asked %d in all, busy %v", s.count(), d.mapModel.mapPane.propSess.busy)
 	}
 	m, cmd = d.Update(stale)
 	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {
 		t.Errorf("an old session's tick asked again in the new one (%d)", s.count())
 	}
-	m, cmd = d.Update(propTickMsg{gen: stale.gen, seq: d.mapPane.propTickSeq}) // the old session's, at the live tick's number: only its session tells it apart
+	m, cmd = d.Update(propTickMsg{gen: stale.gen, seq: d.mapModel.mapPane.propTickSeq}) // the old session's, at the live tick's number: only its session tells it apart
 	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {
 		t.Errorf("a tick from a session since left, at the live tick's number, asked again (%d)", s.count())
 	}
@@ -236,7 +236,7 @@ func TestTheModeRefreshesUnderAWindow(t *testing.T) {
 	if d.modal != modalPropChart {
 		t.Fatalf("B opened window %v; want the chart over the map", d.modal)
 	}
-	m, cmd := d.Update(propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq})
+	m, cmd := d.Update(propTickMsg{gen: d.mapModel.mapPane.propGen, seq: d.mapModel.mapPane.propTickSeq})
 	if runProp(t, m.(Dashboard), cmd); s.count() != 2 {
 		t.Fatalf("the refresh tick under the chart asked %d times in all; want twice", s.count())
 	}

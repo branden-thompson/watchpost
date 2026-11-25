@@ -45,7 +45,7 @@ func TestAFeedAskIsOneAtATime(t *testing.T) {
 	}
 	m, cmd := d.Update(answers[0])
 	d = m.(Dashboard)
-	if _, drawn := d.mapPane.given["alert/Wind Warning"]; !drawn {
+	if _, drawn := d.mapModel.mapPane.given["alert/Wind Warning"]; !drawn {
 		t.Error("the answer for the place and view in view was not drawn")
 	}
 	again := feedAsks(t, cmd)
@@ -82,7 +82,7 @@ func TestAStaleFeedAskIsCancelled(t *testing.T) {
 	go runEach(open, stale) // the opening's commands, each on its own goroutine as Bubble Tea runs them
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
-	m, cmd := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, cmd := d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	d = m.(Dashboard)
 	select {
 	case <-cancelled:
@@ -96,7 +96,7 @@ func TestAStaleFeedAskIsCancelled(t *testing.T) {
 			break
 		}
 	}
-	for _, n := range d.mapPane.notes {
+	for _, n := range d.mapModel.mapPane.notes {
 		if n == "stale" {
 			t.Error("the cancelled ask's answer was drawn")
 		}
@@ -107,8 +107,8 @@ func TestAStaleFeedAskIsCancelled(t *testing.T) {
 	}
 	m, _ = d.Update(fresh[0])
 	d = m.(Dashboard)
-	if len(d.mapPane.notes) != 1 || d.mapPane.notes[0] != "fresh" {
-		t.Errorf("the new view's answer was not drawn: %v", d.mapPane.notes)
+	if len(d.mapModel.mapPane.notes) != 1 || d.mapModel.mapPane.notes[0] != "fresh" {
+		t.Errorf("the new view's answer was not drawn: %v", d.mapModel.mapPane.notes)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestAMoveAsksTheFeedOnceWhenItSettles(t *testing.T) {
 		if n := len(feedAsks(t, cmd)); n != 0 {
 			t.Errorf("%s asked the feed %d times before the view settled", key.String(), n)
 		}
-		m, cmd = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+		m, cmd = d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 		d = m.(Dashboard)
 		asks := feedAsks(t, cmd)
 		if len(asks) != 1 {
@@ -171,12 +171,12 @@ func TestAnAnswerForAViewLeftIsNotDrawn(t *testing.T) {
 	d = m.(Dashboard)
 	m, _ = d.Update(answers[0]) // lands after the pan, before its settle tick
 	d = m.(Dashboard)
-	for _, n := range d.mapPane.notes {
+	for _, n := range d.mapModel.mapPane.notes {
 		if n == "answer 1" {
 			t.Error("the answer for the view the pan left was drawn")
 		}
 	}
-	m, cmd := d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	m, cmd := d.Update(mapViewSettledMsg{gen: d.mapModel.mapPane.viewGen})
 	d = m.(Dashboard)
 	if n := len(feedAsks(t, cmd)); n != 1 {
 		t.Errorf("the settled view asked %d times, want once", n)
@@ -193,14 +193,14 @@ func TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged(t *testing.T) {
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: squareFeed(&asked, "Wind Warning")}})
 	d, open := pressKey(d, "g")
 	answers := feedAsks(t, open)
-	before := d.mapAsk().View
-	d.mapPane.notes = []string{"a note", "another", "and a third, as the station's data fills in"}
-	if d.mapAsk().View == before {
+	before := d.mapModel.mapAsk(d.mapEnv()).View
+	d.mapModel.mapPane.notes = []string{"a note", "another", "and a third, as the station's data fills in"}
+	if d.mapModel.mapAsk(d.mapEnv()).View == before {
 		t.Fatal("control: the notes did not change the map's size, so this proves nothing")
 	}
 	m, _ := d.Update(answers[0])
 	d = m.(Dashboard)
-	if _, drawn := d.mapPane.given["alert/Wind Warning"]; !drawn {
+	if _, drawn := d.mapModel.mapPane.given["alert/Wind Warning"]; !drawn {
 		t.Error("an answer was dropped because the map's size changed, with no move")
 	}
 }
@@ -210,17 +210,17 @@ func TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged(t *testing.T) {
 // switches as the listener set them, so what is off is never fetched.
 func TestTheAskSaysWhatIsSwitchedOff(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: []MapLayer{{Key: AlertLayer, On: true}, {Key: FireLayer, On: true}, {Key: QuakeLayer, On: true}}})
-	if a := d.mapAsk(); !a.Fire || !a.Quakes || a.AlertsOff || len(a.AlertCategoriesOff) != 0 {
+	if a := d.mapModel.mapAsk(d.mapEnv()); !a.Fire || !a.Quakes || a.AlertsOff || len(a.AlertCategoriesOff) != 0 {
 		t.Fatalf("with everything on the ask says %+v", a)
 	}
 	off := AlertCategories()[0].Key
-	d.mapLayerChoice = layerChoiceKey(map[string]bool{FireLayer: false, QuakeLayer: false, AlertCategorySwitch(off): false})
-	a := d.mapAsk()
+	d.mapModel.mapLayerChoice = layerChoiceKey(map[string]bool{FireLayer: false, QuakeLayer: false, AlertCategorySwitch(off): false})
+	a := d.mapModel.mapAsk(d.mapEnv())
 	if a.Fire || a.Quakes || len(a.AlertCategoriesOff) != 1 || a.AlertCategoriesOff[0] != off {
 		t.Errorf("with Fire, Quakes and %s off the ask says Fire %v Quakes %v categories off %v", off, a.Fire, a.Quakes, a.AlertCategoriesOff)
 	}
-	d.mapLayerChoice = layerChoiceKey(map[string]bool{AlertLayer: false})
-	if !d.mapAsk().AlertsOff {
+	d.mapModel.mapLayerChoice = layerChoiceKey(map[string]bool{AlertLayer: false})
+	if !d.mapModel.mapAsk(d.mapEnv()).AlertsOff {
 		t.Error("with the Alert areas layer off the ask does not say so")
 	}
 }

@@ -177,14 +177,14 @@ func TestAPlacesTimeIsReadThroughTheZoneCache(t *testing.T) {
 	d := mapDash(t, Config{})
 	before := zones.Cached()
 	at := time.Date(2026, 8, 24, 20, 0, 0, 0, time.UTC)
-	got := d.untilWords(snapshot.Location{TZ: "Pacific/Chatham"}, at)
+	got := d.mapModel.untilWords(snapshot.Location{TZ: "Pacific/Chatham"}, at, d.mapEnv())
 	if zones.Cached() != before+1 {
 		t.Errorf("the place's zone was not read through the memo (held %d, then %d)", before, zones.Cached())
 	}
 	if !strings.Contains(got, "on Tuesday") {
 		t.Errorf("8 pm UTC on a Monday is Tuesday morning in Chatham; said %q", got)
 	}
-	if got := d.untilWords(snapshot.Location{}, at); !strings.Contains(got, "on Monday") {
+	if got := d.mapModel.untilWords(snapshot.Location{}, at, d.mapEnv()); !strings.Contains(got, "on Monday") {
 		t.Errorf("a place with no zone keeps the time as given; said %q", got)
 	}
 }

@@ -135,7 +135,8 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		d := goldenDash(t, false)
 		ownHooks(&d).MapProblem = func(p string) { noted = append(noted, p) }
 		for _, snap := range []ionomaps.Snapshot{s, later} {
-			m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+			m := d
+			m.mapModel, _ = d.mapModel.applyPropUpdated(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: snap}}, d.mapEnv())
 			d = m
 		}
 		if n := strings.Count(strings.Join(noted, "\n"), "GIRO refused this host (a 401 or 403)"); n != 1 {
@@ -166,8 +167,8 @@ func TestTheLibrarysRealStatesAreSaid(t *testing.T) {
 		t.Fatalf("a cold start without the solar file: %v; want no field", err)
 	}
 	d := goldenDash(t, false)
-	d.mapPane.propErr = err
-	if w := d.propStatusWords(); !strings.Contains(w, "solar data could not be read") || !strings.Contains(w, "refreshes now") {
+	d.mapModel.mapPane.propErr = err
+	if w := d.mapModel.propStatusWords(d.mapEnv()); !strings.Contains(w, "solar data could not be read") || !strings.Contains(w, "refreshes now") {
 		t.Errorf("a cold start without the solar file says %q; want what is lacking and the key that asks again", w)
 	}
 }
@@ -184,7 +185,8 @@ func TestEveryRefusedReadingIsNoted(t *testing.T) {
 	ownHooks(&d).MapProblem = func(p string) { noted = append(noted, p) }
 	apply := func(snap ionomaps.Snapshot) {
 		t.Helper()
-		m, _ := d.applyPropUpdated(propUpdatedMsg{gen: d.mapPane.propGen, res: PropagationResult{Snapshot: snap}})
+		m := d
+		m.mapModel, _ = d.mapModel.applyPropUpdated(propUpdatedMsg{gen: d.mapModel.mapPane.propGen, res: PropagationResult{Snapshot: snap}}, d.mapEnv())
 		d = m
 	}
 	refusals := func() int {

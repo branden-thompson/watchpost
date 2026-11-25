@@ -12,14 +12,14 @@ import (
 // menuOn opens the Overlays menu with its cursor on a row, by key.
 func menuOn(t *testing.T, d Dashboard, key string) Dashboard {
 	t.Helper()
-	if !d.mapPane.menuOn {
+	if !d.mapModel.mapPane.menuOn {
 		d = pressMap(t, d, "O")
 	}
-	i := slices.IndexFunc(d.overlayRows(), func(r overlayRow) bool { return r.key == key })
+	i := slices.IndexFunc(d.mapModel.overlayRows(d.mapEnv()), func(r overlayRow) bool { return r.key == key })
 	if i < 0 {
-		t.Fatalf("the menu has no %q row: %+v", key, d.overlayRows())
+		t.Fatalf("the menu has no %q row: %+v", key, d.mapModel.overlayRows(d.mapEnv()))
 	}
-	d.mapPane.menuAt = i
+	d.mapModel.mapPane.menuAt = i
 	return d
 }
 
@@ -28,16 +28,16 @@ func menuOn(t *testing.T, d Dashboard, key string) Dashboard {
 // for the weather mode it came from, as P does.
 func TestTheOverlaysMenuOffersThePropagationMode(t *testing.T) {
 	d := propDash(t, &seam{answer: PropagationResult{Err: errors.New("offline")}}, true)
-	from := d.mapMode()
+	from := d.mapModel.mapMode(d.mapEnv())
 	d = pressMap(t, menuOn(t, d, propagationRowKey), "space")
-	if d.mapMode() != modePropagation || !d.tintChosen(propagationRowKey) {
-		t.Fatalf("space on Radio Propagation gave mode %d, chosen %v", d.mapMode(), d.tintChosen(propagationRowKey))
+	if d.mapModel.mapMode(d.mapEnv()) != modePropagation || !d.mapModel.tintChosen(propagationRowKey, d.mapEnv()) {
+		t.Fatalf("space on Radio Propagation gave mode %d, chosen %v", d.mapModel.mapMode(d.mapEnv()), d.mapModel.tintChosen(propagationRowKey, d.mapEnv()))
 	}
-	if r := d.overlayRows()[d.mapPane.menuAt]; r.key != propagationRowKey {
+	if r := d.mapModel.overlayRows(d.mapEnv())[d.mapModel.mapPane.menuAt]; r.key != propagationRowKey {
 		t.Errorf("the cursor moved to %q", r.key)
 	}
-	if d = pressMap(t, menuOn(t, d, propagationRowKey), "space"); d.mapMode() != from {
-		t.Errorf("space on the chosen row gave mode %d; want %d again", d.mapMode(), from)
+	if d = pressMap(t, menuOn(t, d, propagationRowKey), "space"); d.mapModel.mapMode(d.mapEnv()) != from {
+		t.Errorf("space on the chosen row gave mode %d; want %d again", d.mapModel.mapMode(d.mapEnv()), from)
 	}
 }
 
@@ -48,12 +48,12 @@ func TestAWeatherTintLeavesThePropagationMode(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks) // Forecast mode, temperature on
 	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
-	d.cfg.PropagationAck = propAckVersion
+	d.mapModel.ackSeen = propAckVersion
 	d = pressMap(t, d, "P")
 	for _, c := range []struct{ key string }{{TemperatureLayer}, {UVLayer}} {
 		e := pressMap(t, menuOn(t, d, c.key), "space")
-		if e.mapMode() != modeForecast || !e.tintChosen(c.key) {
-			t.Errorf("%s from the Propagation mode gave mode %d, chosen %v; want Forecast with it drawn", c.key, e.mapMode(), e.tintChosen(c.key))
+		if e.mapModel.mapMode(e.mapEnv()) != modeForecast || !e.mapModel.tintChosen(c.key, e.mapEnv()) {
+			t.Errorf("%s from the Propagation mode gave mode %d, chosen %v; want Forecast with it drawn", c.key, e.mapModel.mapMode(e.mapEnv()), e.mapModel.tintChosen(c.key, e.mapEnv()))
 		}
 	}
 }
@@ -63,16 +63,16 @@ func TestAWeatherTintLeavesThePropagationMode(t *testing.T) {
 // return in the weather modes, their ticks kept.
 func TestTheMenuInThePropagationModeShowsTintsAndDetail(t *testing.T) {
 	d := screenDash(t, "with", false)
-	d.cfg.PropagationAck = propAckVersion
-	weather, choice := len(d.overlayRows()), d.mapLayerChoice
+	d.mapModel.ackSeen = propAckVersion
+	weather, choice := len(d.mapModel.overlayRows(d.mapEnv())), d.mapModel.mapLayerChoice
 	d = pressMap(t, d, "P")
-	for _, r := range d.overlayRows() {
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		if r.kind != menuRadio && r.kind != menuPreset && r.kind != menuDetail {
 			t.Errorf("the Propagation mode's menu has a %d row, %q", r.kind, r.key)
 		}
 	}
-	if d = pressMap(t, d, "P"); len(d.overlayRows()) != weather || d.mapLayerChoice != choice {
-		t.Errorf("back in the weather mode the menu has %d rows of %d, choices %q of %q", len(d.overlayRows()), weather, d.mapLayerChoice, choice)
+	if d = pressMap(t, d, "P"); len(d.mapModel.overlayRows(d.mapEnv())) != weather || d.mapModel.mapLayerChoice != choice {
+		t.Errorf("back in the weather mode the menu has %d rows of %d, choices %q of %q", len(d.mapModel.overlayRows(d.mapEnv())), weather, d.mapModel.mapLayerChoice, choice)
 	}
 }
 
@@ -82,13 +82,13 @@ func TestTheMenuInThePropagationModeShowsTintsAndDetail(t *testing.T) {
 func TestThePropagationRowIsTheFourthOverlay(t *testing.T) {
 	d := screenDash(t, "with", false)
 	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
-	d.cfg.PropagationAck = propAckVersion
+	d.mapModel.ackSeen = propAckVersion
 	for _, mode := range []string{"weather", "propagation"} {
 		if mode == "propagation" {
 			d = pressMap(t, d, "P")
 		}
 		var lines []string
-		for _, l := range d.overlaysBox() {
+		for _, l := range d.mapModel.overlaysBox(d.mapEnv()) {
 			lines = append(lines, strings.Trim(ttytest.StripANSI(l), "│ "))
 		}
 		if n := strings.Count(strings.Join(lines, "\n"), "\nMAP DETAIL\n"); n != 1 {

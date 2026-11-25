@@ -25,9 +25,9 @@ func footerText(d Dashboard) []string {
 // its height, so neither the groups nor the controls move.
 func TestASettingsNoticeSitsAtTheBottom(t *testing.T) {
 	d := setupGolden(t, 133, 44, false, rowMapRainDetail)
-	d.mapRainFull = false
+	d.mapModel.mapRainFull = false
 	coarseBody, coarseFoot := settingsText(d), footerText(d)
-	d.mapRainFull = true
+	d.mapModel.mapRainFull = true
 	fullBody, fullFoot := settingsText(d), footerText(d)
 	if strings.Replace(coarseBody, "Coarse", "Full  ", 1) != fullBody { // the picker's own value aside
 		t.Errorf("the groups moved when the note appeared:\n%s\n---\n%s", coarseBody, fullBody)
@@ -125,7 +125,7 @@ func TestTheWindowKeepsOneHeightAsNoticesComeAndGo(t *testing.T) {
 		d := setupGolden(t, 133, 44, false, at)
 		d.cfg.HistoryUsage = func() string { return "Holds 12 MB" }
 		quiet := strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")
-		d.mapRainFull, d.mapTempNDFD = true, false
+		d.mapModel.mapRainFull, d.mapModel.mapTempNDFD = true, false
 		d = d.applyHistoryCleared(historyClearedMsg{})
 		loud := strings.Split(ttytest.StripANSI(d.renderModal(d.opts())), "\n")
 		if len(quiet) != len(loud) {

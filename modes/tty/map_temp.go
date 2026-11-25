@@ -176,11 +176,11 @@ const (
 
 // mapMode is the mode the map is in: Propagation while P holds it (D-153),
 // else Radar while the radar layer is on (D-94), else Forecast.
-func (d Dashboard) mapMode() mapMode {
-	if d.mapPane.prop {
+func (mm mapModel) mapMode(e mapEnv) mapMode {
+	if mm.mapPane.prop {
 		return modePropagation
 	}
-	if d.chosen(RadarLayer) {
+	if mm.chosen(RadarLayer, e) {
 		return modeRadar
 	}
 	return modeForecast
@@ -188,19 +188,19 @@ func (d Dashboard) mapMode() mapMode {
 
 // tempAnchor is the start of the listener's hour: Forecast mode's Now, and
 // what its days are counted from.
-func (d Dashboard) tempAnchor() time.Time {
-	now := d.now()
+func (mm mapModel) tempAnchor(e mapEnv) time.Time {
+	now := e.Now()
 	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
 }
 
 // forecastSteps are the steps as the window stands.
-func (d Dashboard) forecastSteps() []ForecastStep { return ForecastSteps(d.tempAnchor()) }
+func (mm mapModel) forecastSteps(e mapEnv) []ForecastStep { return ForecastSteps(mm.tempAnchor(e)) }
 
 // toggleTempSource switches the map's temperature, both modes, between NDFD
 // and Open-Meteo (D-93, D-190).
-func (d Dashboard) toggleTempSource() Dashboard {
-	d.mapTempNDFD = !d.mapTempNDFD
-	return d.uiTouched() // the next ask is for the source chosen
+func (mm mapModel) toggleTempSource() (mapModel, mapWant) {
+	mm.mapTempNDFD = !mm.mapTempNDFD
+	return mm.wantTouched() // the next ask is for the source chosen
 }
 
 // tempSourceKey is the file's word: empty for NDFD, the default, or
@@ -240,14 +240,14 @@ func rainDetailLabel(full bool) string {
 const rainFullNote = "Full density asks Open-Meteo about four times the calls for the rain from Day 4 on: it bills every point of the map."
 
 // toggleRainDetail switches the rain's density past NDFD's reach (D-192).
-func (d Dashboard) toggleRainDetail() Dashboard {
-	d.mapRainFull = !d.mapRainFull
-	return d.uiTouched() // the next ask is at the density chosen
+func (mm mapModel) toggleRainDetail() (mapModel, mapWant) {
+	mm.mapRainFull = !mm.mapRainFull
+	return mm.wantTouched() // the next ask is at the density chosen
 }
 
 // tempSourceLabel is the row's words: the source of both modes (D-190).
-func (d Dashboard) tempSourceLabel() string {
-	if d.mapTempNDFD {
+func (mm mapModel) tempSourceLabel() string {
+	if mm.mapTempNDFD {
 		return "NDFD (NWS)"
 	}
 	return "Open-Meteo"
@@ -260,102 +260,102 @@ const tempRefresh = 20 * time.Minute
 // askTemp asks the app for the temperature, off the UI goroutine, one
 // request at a time as the radar is (D-85). ASKED EVEN WITH THE LAYER OFF
 // while the map is open (D-99): held, so switching it on draws at once.
-func (d Dashboard) askTemp() (Dashboard, tea.Cmd) {
-	temp := d.mapHooks.MapTemperature
-	if temp == nil || d.mapPane.m == nil || d.modal != modalMap {
-		return d, nil
+func (mm mapModel) askTemp(e mapEnv) (mapModel, tea.Cmd) {
+	temp := mm.mapHooks.MapTemperature
+	if temp == nil || mm.mapPane.m == nil || e.Window != mapModalMap {
+		return mm, nil
 	}
-	if d.mapPane.tempBusy {
-		d.mapPane.tempAgain = true
-		return d, nil
+	if mm.mapPane.tempBusy {
+		mm.mapPane.tempAgain = true
+		return mm, nil
 	}
-	anchor := d.tempAnchor()
-	d.mapPane.tempBusy, d.mapPane.tempAt = true, d.now()
-	ask, workers := d.mapAsk(), d.mapPane.workers
-	return d, workers.cmd(context.Background(), nil, func(ctx context.Context) tea.Msg {
+	anchor := mm.tempAnchor(e)
+	mm.mapPane.tempBusy, mm.mapPane.tempAt = true, e.Now()
+	ask, workers := mm.mapAsk(e), mm.mapPane.workers
+	return mm, workers.cmd(context.Background(), nil, func(ctx context.Context) tea.Msg {
 		return mapTempMsg{temp: temp(ctx, ask), anchor: anchor}
 	})
 }
 
 // refreshTemp asks again once the answer has stood, or at once when the
 // listener's hour has turned: the steps and the hours move with it.
-func (d Dashboard) refreshTemp() (Dashboard, tea.Cmd) {
-	if d.now().Sub(d.mapPane.tempAt) < tempRefresh && d.mapPane.tempAnchor.Equal(d.tempAnchor()) {
-		return d, nil
+func (mm mapModel) refreshTemp(e mapEnv) (mapModel, tea.Cmd) {
+	if e.Now().Sub(mm.mapPane.tempAt) < tempRefresh && mm.mapPane.tempAnchor.Equal(mm.tempAnchor(e)) {
+		return mm, nil
 	}
-	return d.askTemp()
+	return mm.askTemp(e)
 }
 
 // applyMapTemp keeps the answer and hands its grids in.
-func (d Dashboard) applyMapTemp(v mapTempMsg) (Dashboard, tea.Cmd) {
-	d.mapPane.tempBusy = false
-	if d.mapPane.m == nil || d.modal != modalMap {
-		return d, nil
+func (mm mapModel) applyMapTemp(v mapTempMsg, e mapEnv) (mapModel, tea.Cmd) {
+	mm.mapPane.tempBusy = false
+	if mm.mapPane.m == nil || e.Window != mapModalMap {
+		return mm, nil
 	}
-	d = d.timed("answered:temp")
-	d.mapPane.temp, d.mapPane.tempAnchor = v.temp, v.anchor // held whether or not it is drawn (D-99)
+	mm = mm.timed("answered:temp", e)
+	mm.mapPane.temp, mm.mapPane.tempAnchor = v.temp, v.anchor // held whether or not it is drawn (D-99)
 	for _, p := range v.temp.Problems {
-		d.problem(p) // D-124: the diagnostics', never the listener's
+		mm.problem(p, e) // D-124: the diagnostics', never the listener's
 	}
-	d = d.setTemp()
-	if !d.mapPane.tempHanded || d.mapPane.m.Pending() == 0 {
-		d = d.renderMap() // else the work's answer draws it, whole (D-85)
+	mm = mm.setTemp(e)
+	if !mm.mapPane.tempHanded || mm.mapPane.m.Pending() == 0 {
+		mm = mm.renderMap(e) // else the work's answer draws it, whole (D-85)
 	}
-	cmds := []tea.Cmd{d.mapWorkCmd()}
-	if d.mapPane.tempAgain {
-		d.mapPane.tempAgain = false
+	cmds := []tea.Cmd{mm.mapWorkCmd(e)}
+	if mm.mapPane.tempAgain {
+		mm.mapPane.tempAgain = false
 		var again tea.Cmd
-		d, again = d.askTemp()
+		mm, again = mm.askTemp(e)
 		cmds = append(cmds, again)
 	}
-	return d, tea.Batch(cmds...)
+	return mm, tea.Batch(cmds...)
 }
 
 // tempOverlays are the grids the mode draws: Radar mode's hours; Forecast
 // mode's Now and each day's high, or low (D-97).
-func (d Dashboard) tempOverlays() []tuimaps.Overlay {
-	t := d.mapPane.temp
+func (mm mapModel) tempOverlays(e mapEnv) []tuimaps.Overlay {
+	t := mm.mapPane.temp
 	var out []tuimaps.Overlay
-	if d.layerOn(TemperatureLayer) { // held, not drawn, while off (D-99)
+	if mm.layerOn(TemperatureLayer, e) { // held, not drawn, while off (D-99)
 		out = append(out, t.Overlays...)
 		switch {
-		case d.mapMode() == modeForecast && d.mapPane.fcLow:
+		case mm.mapMode(e) == modeForecast && mm.mapPane.fcLow:
 			out = append(out, t.Low...)
-		case d.mapMode() == modeForecast:
+		case mm.mapMode(e) == modeForecast:
 			out = append(out, t.High...)
 		}
 	}
-	if d.layerOn(FeelsLayer) { // feels-like, as temperature (D-119)
+	if mm.layerOn(FeelsLayer, e) { // feels-like, as temperature (D-119)
 		out = append(out, t.Feels...)
 		switch {
-		case d.mapMode() == modeForecast && d.mapPane.fcLow:
+		case mm.mapMode(e) == modeForecast && mm.mapPane.fcLow:
 			out = append(out, t.FeelsLow...)
-		case d.mapMode() == modeForecast:
+		case mm.mapMode(e) == modeForecast:
 			out = append(out, t.FeelsHigh...)
 		}
 	}
-	if d.layerOn(WindLayer) { // the wind's, beside it or alone (D-110)
+	if mm.layerOn(WindLayer, e) { // the wind's, beside it or alone (D-110)
 		out = append(out, t.Wind...)
-		if d.mapMode() == modeForecast {
+		if mm.mapMode(e) == modeForecast {
 			out = append(out, t.WindDays...)
 		}
 	}
-	if d.layerOn(WaveLayer) { // the waves, over the sea alone (D-126)
+	if mm.layerOn(WaveLayer, e) { // the waves, over the sea alone (D-126)
 		out = append(out, t.Waves...)
-		if d.mapMode() == modeForecast {
+		if mm.mapMode(e) == modeForecast {
 			out = append(out, t.WaveDays...)
 		}
 	}
-	if d.layerOn(RainLayer) && d.mapMode() == modeForecast { // Forecast mode's rain and snow (D-117)
+	if mm.layerOn(RainLayer, e) && mm.mapMode(e) == modeForecast { // Forecast mode's rain and snow (D-117)
 		out = append(out, t.Rain...)
 	}
 	for _, m := range []struct {
 		layer      string
 		hours, day []tuimaps.Overlay
 	}{{UVLayer, t.UV, t.UVDays}, {AirLayer, t.Air, t.AirDays}} { // D-137, D-139
-		if d.layerOn(m.layer) {
+		if mm.layerOn(m.layer, e) {
 			out = append(out, m.hours...)
-			if d.mapMode() == modeForecast {
+			if mm.mapMode(e) == modeForecast {
 				out = append(out, m.day...)
 			}
 		}
@@ -373,13 +373,13 @@ const totalsRowHead = "NDFD TOTALS · NOT RADAR │ "
 
 // rainKey is the colour row's head and the scale it keys: a model's rain in
 // radar's colours wherever any is drawn, else NDFD's totals in theirs.
-func (d Dashboard) rainKey() (head, preset string) {
-	for _, e := range d.mapPane.legend {
+func (mm mapModel) rainKey() (head, preset string) {
+	for _, e := range mm.mapPane.legend {
 		if e.Preset == "radar" {
 			return rainRowHead, "radar"
 		}
 	}
-	for _, e := range d.mapPane.legend {
+	for _, e := range mm.mapPane.legend {
 		if e.Preset == "qpf" {
 			return totalsRowHead, "qpf"
 		}
@@ -388,11 +388,11 @@ func (d Dashboard) rainKey() (head, preset string) {
 }
 
 // rainOn reports whether Forecast mode draws its rain and snow now.
-func (d Dashboard) rainOn() bool {
-	if d.mapMode() == modeRadar || !d.layerOn(RainLayer) {
+func (mm mapModel) rainOn(e mapEnv) bool {
+	if mm.mapMode(e) == modeRadar || !mm.layerOn(RainLayer, e) {
 		return false
 	}
-	for id := range d.mapPane.tempGiven {
+	for id := range mm.mapPane.tempGiven {
 		if strings.HasPrefix(id, RainLayer+"/") {
 			return true
 		}
@@ -403,12 +403,12 @@ func (d Dashboard) rainOn() bool {
 // setTemp hands in the grids the mode draws and takes off the rest; an
 // unchanged grid is not handed in again (U1-28). Whether it handed any in is
 // kept as tempHanded, for the caller that draws only when the library will not.
-func (d Dashboard) setTemp() Dashboard {
-	given, set := d.reconcile(d.mapPane.tempGiven, d.tempOverlays(), func(o tuimaps.Overlay, err error) {
-		d.problem("Temperature: " + o.ID + " not drawn - " + err.Error()) // never swallowed (U2-5), never the listener's to act on (D-124)
+func (mm mapModel) setTemp(e mapEnv) mapModel {
+	given, set := mm.reconcile(mm.mapPane.tempGiven, mm.tempOverlays(e), func(o tuimaps.Overlay, err error) {
+		mm.problem("Temperature: "+o.ID+" not drawn - "+err.Error(), e) // never swallowed (U2-5), never the listener's to act on (D-124)
 	})
-	d.mapPane.tempGiven, d.mapPane.tempHanded = given, set
-	return d
+	mm.mapPane.tempGiven, mm.mapPane.tempHanded = given, set
+	return mm
 }
 
 // reconcile hands the library the overlays wanted that changed, and takes
@@ -417,8 +417,8 @@ func (d Dashboard) setTemp() Dashboard {
 // again - that would drop what was prepared (U1-28); one refused keeps the
 // form drawn before it (U2-14), and refused is told. It returns what is given now, and whether anything was
 // set.
-func (d Dashboard) reconcile(had map[string]tuimaps.Overlay, want []tuimaps.Overlay, refused func(tuimaps.Overlay, error)) (given map[string]tuimaps.Overlay, set bool) {
-	m := d.mapPane.m
+func (mm mapModel) reconcile(had map[string]tuimaps.Overlay, want []tuimaps.Overlay, refused func(tuimaps.Overlay, error)) (given map[string]tuimaps.Overlay, set bool) {
+	m := mm.mapPane.m
 	given = map[string]tuimaps.Overlay{}
 	for _, o := range want {
 		if prev, ok := had[o.ID]; ok && SameOverlay(prev, o) {
@@ -426,7 +426,7 @@ func (d Dashboard) reconcile(had map[string]tuimaps.Overlay, want []tuimaps.Over
 			continue
 		}
 		var err error
-		d.mapPane.call("Set", func() { _, err = m.Set(o) })
+		mm.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
 			refused(o, err)
 			if prev, ok := had[o.ID]; ok {
@@ -438,7 +438,7 @@ func (d Dashboard) reconcile(had map[string]tuimaps.Overlay, want []tuimaps.Over
 	}
 	for id := range had {
 		if _, ok := given[id]; !ok {
-			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+			mm.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
 	}
 	return given, set
@@ -446,12 +446,14 @@ func (d Dashboard) reconcile(had map[string]tuimaps.Overlay, want []tuimaps.Over
 
 // tempOn reports whether temperature - or feels-like, its other measure
 // (D-119) - is drawn now.
-func (d Dashboard) tempOn() bool {
-	return (d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)) && len(d.mapPane.tempGiven) > 0
+func (mm mapModel) tempOn(e mapEnv) bool {
+	return (mm.layerOn(TemperatureLayer, e) || mm.layerOn(FeelsLayer, e)) && len(mm.mapPane.tempGiven) > 0
 }
 
 // feelsOn reports whether feels-like is the tint drawn (D-119).
-func (d Dashboard) feelsOn() bool { return d.layerOn(FeelsLayer) && !d.layerOn(TemperatureLayer) }
+func (mm mapModel) feelsOn(e mapEnv) bool {
+	return mm.layerOn(FeelsLayer, e) && !mm.layerOn(TemperatureLayer, e)
+}
 
 // The mode's keys: R switches Radar mode on and off (D-94); < and > flip
 // Forecast mode's days between high and low (D-97).
@@ -465,13 +467,13 @@ const (
 // saved as the Overlays menu saves it. The loop, the temperature and every
 // timed overlay are asked or set again for the mode, and Forecast mode opens
 // on Now, stopped. From the Propagation mode it goes to Radar (D-153).
-func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
-	choice := choicesOf(d.mapLayerChoice)
+func (mm mapModel) switchMode(e mapEnv) (mapModel, tea.Cmd, mapWant) {
+	choice := choicesOf(mm.mapLayerChoice)
 	if choice == nil {
 		choice = map[string]bool{}
 	}
 	leaving := false
-	switch d.mapMode() {
+	switch mm.mapMode(e) {
 	case modeRadar:
 		choice[RadarLayer] = false
 	case modeForecast:
@@ -479,125 +481,124 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 	case modePropagation:
 		choice[RadarLayer], leaving = true, true
 	}
-	d.mapLayerChoice = layerChoiceKey(choice)
-	d.setup.uiDirty = true
-	save := d.uiApplyCmd()
-	d.setup.uiDirty = false
+	mm.mapLayerChoice = layerChoiceKey(choice)
+	saved := mapWant{Settings: mapSettingsWant{Dirty: true, Save: true}} // saved at once, its command first in the batch
 	if leaving {
-		d.mapPane.prop = false
-		d, cmd := d.enterMode() // the region's bound back, and the weather's data asked again
-		return d, tea.Batch(save, cmd)
+		mm.mapPane.prop = false
+		mm, cmd := mm.enterMode(e) // the region's bound back, and the weather's data asked again
+		return mm, cmd, saved
 	}
-	d = d.resetPlayback() // the automatic temperature is Forecast mode's alone (D-104)
-	d = d.ensureMainOverlay()
-	d = d.setTemp() // what is held, drawn or taken off at once (D-99)
-	d = d.refreshMapCost().showStep().retimeDrawn()
-	d, radar := d.askRadar()
-	d, temp := d.askTemp()
-	return d, tea.Batch(save, radar, temp, d.mapWorkCmd())
+	mm = mm.resetPlayback() // the automatic temperature is Forecast mode's alone (D-104)
+	mm = mm.ensureMainOverlay(e)
+	mm = mm.setTemp(e) // what is held, drawn or taken off at once (D-99)
+	mm = mm.refreshMapCost(e).showStep(e).retimeDrawn(e)
+	mm, radar := mm.askRadar(e)
+	mm, temp := mm.askTemp(e)
+	saved.Settings.Led = [3]tea.Cmd{radar, temp, mm.mapWorkCmd(e)}
+	return mm, nil, saved
 }
 
 // ensureMainOverlay turns temperature on when Forecast mode would otherwise
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
-func (d Dashboard) ensureMainOverlay() Dashboard {
-	mainOn := d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) // temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
-	if d.mapMode() == modeForecast && d.mapHooks.MapTemperature != nil && !mainOn {
-		d.mapPane.tempAuto, d.mapPane.modeChip = true, true
-		d.mapPane.gen++
+func (mm mapModel) ensureMainOverlay(e mapEnv) mapModel {
+	mainOn := mm.layerOn(TemperatureLayer, e) || mm.layerOn(WindLayer, e) || mm.layerOn(FeelsLayer, e) || mm.layerOn(UVLayer, e) || mm.layerOn(AirLayer, e) // temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
+	if mm.mapMode(e) == modeForecast && mm.mapHooks.MapTemperature != nil && !mainOn {
+		mm.mapPane.tempAuto, mm.mapPane.modeChip = true, true
+		mm.mapPane.gen++
 	}
-	return d
+	return mm
 }
 
 // showStep sets the library's moment for the mode: Forecast mode's step, or
 // in Radar mode none - the loop's frame is the moment (L-15.2).
-func (d Dashboard) showStep() Dashboard {
-	m := d.mapPane.m
+func (mm mapModel) showStep(e mapEnv) mapModel {
+	m := mm.mapPane.m
 	if m == nil {
-		return d
+		return mm
 	}
 	var sp tuimaps.Span
-	if d.mapMode() == modeForecast {
-		steps := d.forecastSteps()
-		sp = steps[min(d.mapPane.fcStep, len(steps)-1)].Span
+	if mm.mapMode(e) == modeForecast {
+		steps := mm.forecastSteps(e)
+		sp = steps[min(mm.mapPane.fcStep, len(steps)-1)].Span
 	}
-	d.mapPane.call("ShowMoment", func() { _ = m.ShowMoment(sp.From, sp.Until) })
-	return d
+	mm.mapPane.call("ShowMoment", func() { _ = m.ShowMoment(sp.From, sp.Until) })
+	return mm
 }
 
 // resetPlayback is a mode's start: Forecast mode's playback on Now and
 // stopped, a step in flight dropped, and no automatic temperature until the
 // mode asks for one (D-94, D-104).
-func (d Dashboard) resetPlayback() Dashboard {
-	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
-	d.mapPane.fcGen++
-	d.mapPane.tempAuto = false
-	return d
+func (mm mapModel) resetPlayback() mapModel {
+	mm.mapPane.fcStep, mm.mapPane.fcPlaying = 0, false
+	mm.mapPane.fcGen++
+	mm.mapPane.tempAuto = false
+	return mm
 }
 
 // flipHighLow switches Forecast mode's days between high and low (D-97).
-func (d Dashboard) flipHighLow() Dashboard {
-	if d.mapMode() == modeForecast {
-		d.mapPane.fcLow = !d.mapPane.fcLow
-		return d.setTemp().renderMap()
+func (mm mapModel) flipHighLow(e mapEnv) mapModel {
+	if mm.mapMode(e) == modeForecast {
+		mm.mapPane.fcLow = !mm.mapPane.fcLow
+		return mm.setTemp(e).renderMap(e)
 	}
-	return d
+	return mm
 }
 
 // forecastTickMsg is Forecast mode's playback step, to the play it belongs to.
 type forecastTickMsg struct{ gen uint64 }
 
 // forecastTick is the next step's tick.
-func (d Dashboard) forecastTick() tea.Cmd {
-	gen := d.mapPane.fcGen
-	return d.after(d.mapPlayback, forecastTickMsg{gen: gen}) // at the speed chosen (D-361)
+func (mm mapModel) forecastTick(e mapEnv) tea.Cmd {
+	gen := mm.mapPane.fcGen
+	return tickAfter(e.Ticks, mm.mapPlayback, forecastTickMsg{gen: gen}) // at the speed chosen (D-361)
 }
 
 // handleForecastPlayback is the playback keys in Forecast mode: the host
 // steps, since there is no loop for the library to play (L-15.2).
-func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, bool) {
-	last := len(d.forecastSteps()) - 1
+func (mm mapModel) handleForecastPlayback(act term.Action, e mapEnv) (mapModel, tea.Cmd, bool) {
+	last := len(mm.forecastSteps(e)) - 1
 	var cmd tea.Cmd
 	switch act {
 	case actMapPlay:
-		if d.reduceMotion { // nothing plays under Reduce motion; the timeline says so (D-360)
-			return d.showStep(), nil, true
+		if e.ReduceMotion { // nothing plays under Reduce motion; the timeline says so (D-360)
+			return mm.showStep(e), nil, true
 		}
-		d.mapPane.fcPlaying = !d.mapPane.fcPlaying
-		d.mapPane.fcGen++
-		if d.mapPane.fcPlaying {
-			d.mapPane.fcHeld = 0
-			cmd = d.forecastTick()
+		mm.mapPane.fcPlaying = !mm.mapPane.fcPlaying
+		mm.mapPane.fcGen++
+		if mm.mapPane.fcPlaying {
+			mm.mapPane.fcHeld = 0
+			cmd = mm.forecastTick(e)
 		}
 	case actMapBack:
-		d.mapPane.fcStep, d.mapPane.fcPlaying = max(d.mapPane.fcStep-1, 0), false
+		mm.mapPane.fcStep, mm.mapPane.fcPlaying = max(mm.mapPane.fcStep-1, 0), false
 	case actMapOn:
-		d.mapPane.fcStep, d.mapPane.fcPlaying = min(d.mapPane.fcStep+1, last), false
+		mm.mapPane.fcStep, mm.mapPane.fcPlaying = min(mm.mapPane.fcStep+1, last), false
 	case actMapNewest:
-		d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
+		mm.mapPane.fcStep, mm.mapPane.fcPlaying = 0, false
 	default:
-		return d, nil, false
+		return mm, nil, false
 	}
-	return d.showStep().retimeDrawn(), cmd, true
+	return mm.showStep(e).retimeDrawn(e), cmd, true
 }
 
 // applyForecastTick advances a playing forecast one step, holding the last.
-func (d Dashboard) applyForecastTick(v forecastTickMsg) (Dashboard, tea.Cmd) {
-	playing := v.gen == d.mapPane.fcGen && d.mapPane.fcPlaying && d.modal == modalMap && d.mapMode() == modeForecast
+func (mm mapModel) applyForecastTick(v forecastTickMsg, e mapEnv) (mapModel, tea.Cmd) {
+	playing := v.gen == mm.mapPane.fcGen && mm.mapPane.fcPlaying && e.Window == mapModalMap && mm.mapMode(e) == modeForecast
 	if !playing {
-		return d, nil
+		return mm, nil
 	}
-	last := len(d.forecastSteps()) - 1
+	last := len(mm.forecastSteps(e)) - 1
 	switch {
-	case d.mapPane.fcStep < last:
-		d.mapPane.fcStep++
-	case d.mapPane.fcHeld < forecastHoldSteps(d.mapPlayback)-1: // 2 s, whatever the speed (D-361)
-		d.mapPane.fcHeld++
-		return d, d.forecastTick()
+	case mm.mapPane.fcStep < last:
+		mm.mapPane.fcStep++
+	case mm.mapPane.fcHeld < forecastHoldSteps(mm.mapPlayback)-1: // 2 s, whatever the speed (D-361)
+		mm.mapPane.fcHeld++
+		return mm, mm.forecastTick(e)
 	default:
-		d.mapPane.fcStep, d.mapPane.fcHeld = 0, 0
+		mm.mapPane.fcStep, mm.mapPane.fcHeld = 0, 0
 	}
-	return d.showStep().retimeDrawn(), d.forecastTick()
+	return mm.showStep(e).retimeDrawn(e), mm.forecastTick(e)
 }
 
 // TimedOverlay is when an overlay of the feed is: its onset and its end, and
@@ -610,14 +611,14 @@ type TimedOverlay struct {
 
 // timedAnchor is the moment the mode calls now: in Radar mode the newest
 // observed frame, else the start of the listener's hour.
-func (d Dashboard) timedAnchor() time.Time {
-	if d.mapMode() == modeRadar && d.mapPane.m != nil {
-		if st := d.mapPane.m.Loop(); st.Count > 0 {
+func (mm mapModel) timedAnchor(e mapEnv) time.Time {
+	if mm.mapMode(e) == modeRadar && mm.mapPane.m != nil {
+		if st := mm.mapPane.m.Loop(); st.Count > 0 {
 			return st.Now
 		}
-		return d.now()
+		return e.Now()
 	}
-	return d.tempAnchor()
+	return mm.tempAnchor(e)
 }
 
 // spanFor is an overlay's span in the mode (D-98): from its onset to its end.
@@ -625,13 +626,13 @@ func (d Dashboard) timedAnchor() time.Time {
 // issued after the newest radar frame, or inside the listener's hour, is
 // drawn from the mode's now - the map never hides a warning in effect. A
 // quake has happened: from its time on, and in Forecast mode on Now alone.
-func (d Dashboard) spanFor(t TimedOverlay) tuimaps.Span {
-	anchor := d.timedAnchor()
+func (mm mapModel) spanFor(t TimedOverlay, e mapEnv) tuimaps.Span {
+	anchor := mm.timedAnchor(e)
 	sp := tuimaps.Span{From: t.From, Until: t.Until}
-	if !t.From.IsZero() && !t.From.After(d.now()) && t.From.After(anchor) {
+	if !t.From.IsZero() && !t.From.After(e.Now()) && t.From.After(anchor) {
 		sp.From = anchor
 	}
-	if t.Happened && d.mapMode() == modeForecast {
+	if t.Happened && mm.mapMode(e) == modeForecast {
 		sp.Until = anchor
 	}
 	if !sp.Until.IsZero() && sp.Until.Before(sp.From) {
@@ -643,72 +644,72 @@ func (d Dashboard) spanFor(t TimedOverlay) tuimaps.Span {
 // retime sets the feed's overlays again with the mode's spans: after a mode
 // switch, a step, or a new loop. Only an overlay whose span changed is
 // handed in again.
-func (d Dashboard) retime() Dashboard {
-	if d.mapPane.m == nil || d.mapPane.feed == nil {
-		return d
+func (mm mapModel) retime(e mapEnv) mapModel {
+	if mm.mapPane.m == nil || mm.mapPane.feed == nil {
+		return mm
 	}
-	return d.setFeed(d.feedForLayers(*d.mapPane.feed)) // the mode's layers: none of the weather's in the Propagation mode
+	return mm.setFeed(mm.feedForLayers(*mm.mapPane.feed, e), e) // the mode's layers: none of the weather's in the Propagation mode
 }
 
 // retimeDrawn is retime, drawn once: the feed's overlays set again with the
 // mode's spans, which draws, or with no feed yet, the frame drawn alone - so a
 // step, a tick and the mode's switch draw the frame once, not twice (W14, P-9).
-func (d Dashboard) retimeDrawn() Dashboard {
-	if d.mapPane.feed == nil {
-		return d.renderMap()
+func (mm mapModel) retimeDrawn(e mapEnv) mapModel {
+	if mm.mapPane.feed == nil {
+		return mm.renderMap(e)
 	}
-	return d.retime()
+	return mm.retime(e)
 }
 
 // forecastBadge is Forecast mode's badge in the radar badge's place (D-92),
 // the HUM LEAD's layout (UAT-2 U2-19), three rows flush right: FORECAST; the
 // temperature's source as a chip, O-METEO or NDFD on its ground, when it is drawn;
 // the step in capitals, NOW or FRI HIGHS.
-func (d Dashboard) forecastBadge() string {
+func (mm mapModel) forecastBadge(e mapEnv) string {
 	chip := ""
-	if d.tempOn() {
-		chip = chipFace(d.tempFace()) // no brackets (D-174)
+	if mm.tempOn(e) {
+		chip = chipFace(mm.tempFace(e)) // no brackets (D-174)
 	}
-	return mapBadge(render.Tint(forecastLabel, render.Tok(render.ModalTitle)), chip, d.badgeStep())
+	return mapBadge(render.Tint(forecastLabel, render.Tok(render.ModalTitle)), chip, mm.badgeStep(e))
 }
 
 // badgeStep is the step as the badge says it: NOW, or the day and HIGHS or
 // LOWS - TODAY HIGHS, FRI LOWS.
-func (d Dashboard) badgeStep() string {
-	if d.mapPane.fcStep == 0 {
+func (mm mapModel) badgeStep(e mapEnv) string {
+	if mm.mapPane.fcStep == 0 {
 		switch {
-		case d.layerOn(UVLayer):
+		case mm.layerOn(UVLayer, e):
 			return "NOW UV" // D-137
-		case d.layerOn(AirLayer):
+		case mm.layerOn(AirLayer, e):
 			return "NOW AIR" // D-139
-		case d.feelsOn():
+		case mm.feelsOn(e):
 			return "NOW FEELS LIKE" // D-119
 		}
 		return "NOW"
 	}
-	steps := d.forecastSteps()
-	s := steps[min(d.mapPane.fcStep, len(steps)-1)]
+	steps := mm.forecastSteps(e)
+	s := steps[min(mm.mapPane.fcStep, len(steps)-1)]
 	day := strings.ToUpper(s.Span.From.Format("Mon"))
-	if d.mapPane.fcStep == 1 {
+	if mm.mapPane.fcStep == 1 {
 		day = "TODAY"
 	}
-	if d.feelsOn() {
+	if mm.feelsOn(e) {
 		day += " FEELS" // D-119: room on D-120's one line
 	}
 	switch {
-	case d.layerOn(UVLayer):
+	case mm.layerOn(UVLayer, e):
 		return day + " UV" // the day's highest (D-137)
-	case d.layerOn(AirLayer):
+	case mm.layerOn(AirLayer, e):
 		return day + " AIR" // the day's worst (D-139)
 	}
-	tint := d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)
-	if !tint && d.layerOn(WindLayer) {
+	tint := mm.layerOn(TemperatureLayer, e) || mm.layerOn(FeelsLayer, e)
+	if !tint && mm.layerOn(WindLayer, e) {
 		return day + " PEAK" // the day's peak wind (D-108)
 	}
-	if !tint && d.rainOn() {
+	if !tint && mm.rainOn(e) {
 		return day + " RAIN" // the day's rain and snow alone (D-116)
 	}
-	if d.mapPane.fcLow {
+	if mm.mapPane.fcLow {
 		return day + " LOWS"
 	}
 	return day + " HIGHS"
@@ -716,42 +717,42 @@ func (d Dashboard) badgeStep() string {
 
 // stepSource is the source of the step shown: Open-Meteo on a day it filled
 // (D-100), else the source asked.
-func (d Dashboard) stepSource() string {
-	if at := d.mapPane.fcStep; at > 0 && d.mapMode() == modeForecast {
+func (mm mapModel) stepSource(e mapEnv) string {
+	if at := mm.mapPane.fcStep; at > 0 && mm.mapMode(e) == modeForecast {
 		side := "high"
 		switch {
-		case !d.layerOn(TemperatureLayer) && !d.layerOn(FeelsLayer) && d.layerOn(WindLayer):
+		case !mm.layerOn(TemperatureLayer, e) && !mm.layerOn(FeelsLayer, e) && mm.layerOn(WindLayer, e):
 			side = "wind"
-		case d.mapPane.fcLow:
+		case mm.mapPane.fcLow:
 			side = "low"
 		}
-		if d.feelsOn() && side != "wind" {
+		if mm.feelsOn(e) && side != "wind" {
 			side = "feels" + side // D-119: filled as temperature's are
 		}
-		if d.mapPane.temp.Filled[strconv.Itoa(at-1)+"/"+side] {
+		if mm.mapPane.temp.Filled[strconv.Itoa(at-1)+"/"+side] {
 			return "Open-Meteo"
 		}
 	}
-	return d.mapPane.temp.Source
+	return mm.mapPane.temp.Source
 }
 
 // tempFace is the temperature source as its chip says it: O-METEO or NDFD.
-func (d Dashboard) tempFace() string {
-	if d.stepSource() == "Open-Meteo" {
+func (mm mapModel) tempFace(e mapEnv) string {
+	if mm.stepSource(e) == "Open-Meteo" {
 		return "O-METEO"
 	}
-	return strings.ToUpper(d.stepSource())
+	return strings.ToUpper(mm.stepSource(e))
 }
 
 // stepWords are the step shown, short: "Now", "Sun high", "Tmrw low".
-func (d Dashboard) stepWords() string {
-	steps := d.forecastSteps()
-	s := steps[min(d.mapPane.fcStep, len(steps)-1)]
-	if d.mapPane.fcStep == 0 {
+func (mm mapModel) stepWords(e mapEnv) string {
+	steps := mm.forecastSteps(e)
+	s := steps[min(mm.mapPane.fcStep, len(steps)-1)]
+	if mm.mapPane.fcStep == 0 {
 		return s.Label
 	}
 	word := s.Span.From.Format("Mon")
-	if d.mapPane.fcLow {
+	if mm.mapPane.fcLow {
 		return word + " low"
 	}
 	return word + " high"
@@ -759,16 +760,16 @@ func (d Dashboard) stepWords() string {
 
 // forecastStatus is Forecast mode's line in the radar line's place: the step,
 // where it is among the steps, and whether it plays.
-func (d Dashboard) forecastStatus() string {
-	steps := d.forecastSteps()
-	at := min(d.mapPane.fcStep, len(steps)-1)
+func (mm mapModel) forecastStatus(e mapEnv) string {
+	steps := mm.forecastSteps(e)
+	at := min(mm.mapPane.fcStep, len(steps)-1)
 	state := "stopped"
-	if d.mapPane.fcPlaying {
+	if mm.mapPane.fcPlaying {
 		state = "playing"
 	}
 	words := "Forecast · " + steps[at].Label
-	if at > 0 && d.tempOn() {
-		words += " (" + d.stepWords() + ")"
+	if at > 0 && mm.tempOn(e) {
+		words += " (" + mm.stepWords(e) + ")"
 	}
 	return strings.Join([]string{words, "step " + strconv.Itoa(at+1) + " of " + strconv.Itoa(len(steps)), state}, " · ")
 }
@@ -777,10 +778,10 @@ func (d Dashboard) forecastStatus() string {
 // place (D-94): the step's words above its mark; the steps as a bar, the step
 // keys at its ends; beneath, each step's short name where it fits, and the
 // high/low keys.
-func (d Dashboard) forecastTimeline(width int) []string {
-	steps := d.forecastSteps()
+func (mm mapModel) forecastTimeline(width int, e mapEnv) []string {
+	steps := mm.forecastSteps(e)
 	n := float64(len(steps) - 1)
-	cur := min(d.mapPane.fcStep, len(steps)-1)
+	cur := min(mm.mapPane.fcStep, len(steps)-1)
 	s := scrubber{cursor: float64(cur) / n, above: steps[cur].Label}
 	for i, st := range steps {
 		name := st.Label
@@ -793,37 +794,37 @@ func (d Dashboard) forecastTimeline(width int) []string {
 	if width < 2*len(steps)+20 {
 		return []string{"", "", ""}
 	}
-	return d.draw(s, width)
+	return mm.draw(s, width, e)
 }
 
 // tempLegendRow is the temperature's colours under the map in Forecast mode,
 // as the radar's row is (W10.10): a swatch a band, coldest to warmest, each
 // band's lower bound written where colour is off.
-func (d Dashboard) tempLegendRow(width int) string {
+func (mm mapModel) tempLegendRow(width int, e mapEnv) string {
 	switch { // the key of what is drawn: its scale is in the map's legend
-	case d.layerOn(UVLayer) && d.legendHas("uv"):
-		return d.presetRow("uv", "UV │ ", "LOW ", " EXTREME", width) // D-137, D-140: the key the bands are read by
-	case d.layerOn(AirLayer) && d.legendHas("aqi"):
-		return d.presetRow("aqi", "AIR QUALITY │ ", "GOOD ", " HAZARDOUS", width) // D-139, D-140
+	case mm.layerOn(UVLayer, e) && mm.legendHas("uv"):
+		return mm.presetRow("uv", "UV │ ", "LOW ", " EXTREME", width) // D-137, D-140: the key the bands are read by
+	case mm.layerOn(AirLayer, e) && mm.legendHas("aqi"):
+		return mm.presetRow("aqi", "AIR QUALITY │ ", "GOOD ", " HAZARDOUS", width) // D-139, D-140
 	}
-	if d.feelsOn() {
-		return d.presetRow("temperature", "FEELS LIKE │ ", "COLDER ", " WARMER", width) // D-119
+	if mm.feelsOn(e) {
+		return mm.presetRow("temperature", "FEELS LIKE │ ", "COLDER ", " WARMER", width) // D-119
 	}
-	if !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer) {
-		return d.presetRow("wind", "WIND │ ", "CALMER ", " STRONGER", width) // the wind's colours, where temperature's are not shown (D-109)
+	if !mm.layerOn(TemperatureLayer, e) && mm.layerOn(WindLayer, e) {
+		return mm.presetRow("wind", "WIND │ ", "CALMER ", " STRONGER", width) // the wind's colours, where temperature's are not shown (D-109)
 	}
-	return d.presetRow("temperature", "TEMPERATURE │ ", "COLDER ", " WARMER", width)
+	return mm.presetRow("temperature", "TEMPERATURE │ ", "COLDER ", " WARMER", width)
 }
 
 // legendHas reports whether a preset is in the map's legend: drawn.
-func (d Dashboard) legendHas(preset string) bool {
-	return slices.ContainsFunc(d.mapPane.legend, func(e tuimaps.LegendEntry) bool { return e.Preset == preset })
+func (mm mapModel) legendHas(preset string) bool {
+	return slices.ContainsFunc(mm.mapPane.legend, func(e tuimaps.LegendEntry) bool { return e.Preset == preset })
 }
 
 // legendClasses are a preset's classes in the map's legend, low to high:
 // none where it is not drawn.
-func (d Dashboard) legendClasses(preset string) []tuimaps.Class {
-	for _, e := range d.mapPane.legend {
+func (mm mapModel) legendClasses(preset string) []tuimaps.Class {
+	for _, e := range mm.mapPane.legend {
 		if e.Preset == preset {
 			return e.Classes
 		}
@@ -832,15 +833,16 @@ func (d Dashboard) legendClasses(preset string) []tuimaps.Class {
 }
 
 // rainIsRadar reports whether a layer is rain and snow in Radar mode, where
-// the radar is the rain: the layer is Forecast mode's alone (D-117).
-func (d Dashboard) rainIsRadar(key string) bool {
-	return key == RainLayer && d.mapMode() == modeRadar
+// the radar is the rain: the layer is Forecast mode's alone (D-117). The
+// caller's mode, decided once for its loop (0.19.6 D-82).
+func rainIsRadar(key string, mode mapMode) bool {
+	return key == RainLayer && mode == modeRadar
 }
 
 // presetRow is a preset's colours as a row of swatches, low to high, each
 // class's words on it in black or white, whichever reads (U2-18).
-func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) string {
-	classes := d.legendClasses(preset)
+func (mm mapModel) presetRow(preset, head, colder, warmer string, width int) string {
+	classes := mm.legendClasses(preset)
 	room := width - render.Width(head+colder+warmer)
 	if len(classes) == 0 || room < len(classes)*2 {
 		return ""
@@ -859,24 +861,24 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 //
 // fcStep is a position (#12): a step of the forecast, whose steps the
 // timeline's words beside it carry.
-func (d Dashboard) tempMemoKey() string {
-	p := d.mapPane
-	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), fmt.Sprint(p.temp.LayerNotes), fmt.Sprint(p.temp.Chips), strconv.FormatBool(d.rainOn()),
+func (mm mapModel) tempMemoKey(e mapEnv) string {
+	p := mm.mapPane
+	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), fmt.Sprint(p.temp.LayerNotes), fmt.Sprint(p.temp.Chips), strconv.FormatBool(mm.rainOn(e)),
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
-		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
+		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), mm.stepSource(e)}, "|")
 }
 
 // tempNotes are the words temperature says under the map: what its source
 // lacks, while it does. Its credit is its badge's, in full the Status
 // window's (D-131, D-132).
-func (d Dashboard) tempNotes() []string {
+func (mm mapModel) tempNotes(e mapEnv) []string {
 	var out []string
-	if d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) {
-		out = append(out, d.mapPane.temp.Notes...)
+	if mm.layerOn(TemperatureLayer, e) || mm.layerOn(FeelsLayer, e) {
+		out = append(out, mm.mapPane.temp.Notes...)
 	}
 	for _, key := range notedLayers { // in one order, not the map's (D-203)
-		if d.layerOn(key) {
-			out = append(out, d.mapPane.temp.LayerNotes[key]...)
+		if mm.layerOn(key, e) {
+			out = append(out, mm.mapPane.temp.LayerNotes[key]...)
 		}
 	}
 	return out

@@ -150,17 +150,17 @@ func (w *mapWorkers) loopsFull() bool { return w != nil && w.loops.Load() >= map
 // since the last Update (QA-11): the panic's words go to the diagnostics, the
 // map is let go so the next open builds a new one, and the window says how to
 // open it again (D-124).
-func (d Dashboard) mapPanicked() Dashboard {
-	panics := d.mapPane.workers.takePanics()
+func (mm mapModel) mapPanicked(e mapEnv) mapModel {
+	panics := mm.mapPane.workers.takePanics()
 	if len(panics) == 0 {
-		return d
+		return mm
 	}
 	for _, p := range panics { // each stopped panic, said once (P10-02)
-		d.problem("Map: stopped a panic in " + p)
+		mm.problem("Map: stopped a panic in "+p, e)
 	}
-	d = d.releaseMap()
-	d.mapPane.failed = mapFailedText
-	return d
+	mm = mm.releaseMap()
+	mm.mapPane.failed = mapFailedText
+	return mm
 }
 
 // shut cancels every command and waits for them, up to mapJoinLimit.
@@ -185,32 +185,32 @@ type mapTickMsg struct{ at time.Time }
 
 // armMapTick keeps one tick outstanding at the library's NextCall while the
 // window is open, and none while it is closed.
-func (d Dashboard) armMapTick() (Dashboard, tea.Cmd) {
-	m := d.mapPane.m
-	if m == nil || d.modal != modalMap {
-		d.mapPane.tickAt = time.Time{}
-		return d, nil
+func (mm mapModel) armMapTick(e mapEnv) (mapModel, tea.Cmd) {
+	m := mm.mapPane.m
+	if m == nil || e.Window != mapModalMap {
+		mm.mapPane.tickAt = time.Time{}
+		return mm, nil
 	}
-	now := d.now()
+	now := e.Now()
 	var at time.Time
 	var ok bool
-	d.mapPane.call("NextCall", func() { at, ok = m.NextCall(now) })
-	if !ok || at.Equal(d.mapPane.tickAt) {
-		return d, nil
+	mm.mapPane.call("NextCall", func() { at, ok = m.NextCall(now) })
+	if !ok || at.Equal(mm.mapPane.tickAt) {
+		return mm, nil
 	}
-	d.mapPane.tickAt = at
-	return d, d.after(max(at.Sub(now), mapTickFloor), mapTickMsg{at: at})
+	mm.mapPane.tickAt = at
+	return mm, tickAfter(e.Ticks, max(at.Sub(now), mapTickFloor), mapTickMsg{at: at})
 }
 
 // applyMapTick draws for the tick outstanding; one for a time no longer
 // wanted is dropped, the newer one being already armed.
-func (d Dashboard) applyMapTick(v mapTickMsg) Dashboard {
-	if d.modal != modalMap || !v.at.Equal(d.mapPane.tickAt) {
-		return d
+func (mm mapModel) applyMapTick(v mapTickMsg, e mapEnv) mapModel {
+	if e.Window != mapModalMap || !v.at.Equal(mm.mapPane.tickAt) {
+		return mm
 	}
-	d.mapPane.tickAt = time.Time{}
-	d.timeTick(v.at) // M6: how late the library's asked-for moment was drawn
-	return d.renderMap()
+	mm.mapPane.tickAt = time.Time{}
+	mm.timeTick(v.at, e) // M6: how late the library's asked-for moment was drawn
+	return mm.renderMap(e)
 }
 
 // callSite is one library call and the goroutine it ran on, for W2.2's test.
@@ -234,4 +234,4 @@ func goroutineID() uint64 {
 
 // CloseMap lets Observer's map go when the program ends: the app calls it
 // with the model the program ended with.
-func (r Router) CloseMap() { r.observer.closeMap() }
+func (r Router) CloseMap() { r.observer.mapModel.closeMap() }

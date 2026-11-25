@@ -16,16 +16,16 @@ import (
 func TestUVAndAirAreOneTintWithTemperature(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	if !d.layerOn(TemperatureLayer) {
+	if !d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) {
 		t.Fatal("the test needs temperature on")
 	}
 	d = switchLayer(t, d, UVLayer)
-	if !d.layerOn(UVLayer) || d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) || d.layerOn(AirLayer) {
-		t.Fatalf("UV on: temperature %v, feels %v, air %v; want UV alone", d.layerOn(TemperatureLayer), d.layerOn(FeelsLayer), d.layerOn(AirLayer))
+	if !d.mapModel.layerOn(UVLayer, d.mapEnv()) || d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) || d.mapModel.layerOn(FeelsLayer, d.mapEnv()) || d.mapModel.layerOn(AirLayer, d.mapEnv()) {
+		t.Fatalf("UV on: temperature %v, feels %v, air %v; want UV alone", d.mapModel.layerOn(TemperatureLayer, d.mapEnv()), d.mapModel.layerOn(FeelsLayer, d.mapEnv()), d.mapModel.layerOn(AirLayer, d.mapEnv()))
 	}
 	d = switchLayer(t, d, AirLayer)
-	if !d.layerOn(AirLayer) || d.layerOn(UVLayer) {
-		t.Errorf("air on: UV %v; want air quality alone", d.layerOn(UVLayer))
+	if !d.mapModel.layerOn(AirLayer, d.mapEnv()) || d.mapModel.layerOn(UVLayer, d.mapEnv()) {
+		t.Errorf("air on: UV %v; want air quality alone", d.mapModel.layerOn(UVLayer, d.mapEnv()))
 	}
 }
 
@@ -42,7 +42,7 @@ func TestSwitchingUVOnAsksForIt(t *testing.T) {
 	if givenOf(d, UVLayer) == 0 {
 		t.Error("no UV grid was handed in")
 	}
-	if row := ttytest.StripANSI(d.tempLegendRow(120)); !strings.HasPrefix(row, "UV │") || !strings.Contains(row, "EXTREME") {
+	if row := ttytest.StripANSI(d.mapModel.tempLegendRow(120, d.mapEnv())); !strings.HasPrefix(row, "UV │") || !strings.Contains(row, "EXTREME") {
 		t.Errorf("the key row is %q; want UV's, low to extreme", row)
 	}
 }
@@ -56,10 +56,10 @@ func TestForecastModeDrawsTheAirsDays(t *testing.T) {
 	if n := givenOf(d, AirLayer); n != 1+forecastDays {
 		t.Errorf("Forecast mode drew %d air grids; want Now and every day's worst", n)
 	}
-	if step := d.badgeStep(); step != "NOW AIR" {
+	if step := d.mapModel.badgeStep(d.mapEnv()); step != "NOW AIR" {
 		t.Errorf("the badge's step is %q; want NOW AIR", step)
 	}
-	if row := ttytest.StripANSI(d.tempLegendRow(120)); !strings.HasPrefix(row, "AIR QUALITY │") {
+	if row := ttytest.StripANSI(d.mapModel.tempLegendRow(120, d.mapEnv())); !strings.HasPrefix(row, "AIR QUALITY │") {
 		t.Errorf("the key row is %q; want air quality's", row)
 	}
 }

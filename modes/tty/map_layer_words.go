@@ -22,13 +22,13 @@ import (
 )
 
 // layerAnswerWords are the layers' sentences about a place in view.
-func (d Dashboard) layerAnswerWords(loc snapshot.Location) []string {
-	if d.mapMode() == modePropagation {
+func (mm mapModel) layerAnswerWords(loc snapshot.Location, e mapEnv) []string {
+	if mm.mapMode(e) == modePropagation {
 		return nil // the mode says its own (D-210)
 	}
 	best := map[string]tuimaps.Answer{}
-	for _, a := range d.mapPane.report.Answers {
-		key, ok := d.answerLayer(a)
+	for _, a := range mm.mapPane.report.Answers {
+		key, ok := mm.answerLayer(a, e)
 		if !ok {
 			continue
 		}
@@ -37,14 +37,14 @@ func (d Dashboard) layerAnswerWords(loc snapshot.Location) []string {
 		}
 	}
 	var out []string
-	for _, l := range d.cfg.MapLayers {
+	for _, l := range e.Layers {
 		a, ok := best[l.Key]
 		if !ok {
 			continue
 		}
-		out = append(out, d.answerSentence(l.Label, loc.Label, a))
+		out = append(out, mm.answerSentence(l.Label, loc.Label, a))
 		if l.Key == RadarLayer {
-			out = append(out, d.motionWords(loc.Label)...)
+			out = append(out, mm.motionWords(loc.Label, e)...)
 		}
 	}
 	return out
@@ -53,27 +53,27 @@ func (d Dashboard) layerAnswerWords(loc snapshot.Location) []string {
 // answerLayer is the layer an answer is about, when that layer is on and
 // the moment shown draws the overlay: alerts are said on their own, and the
 // radar's frames are the radar's only in Radar mode.
-func (d Dashboard) answerLayer(a tuimaps.Answer) (string, bool) {
+func (mm mapModel) answerLayer(a tuimaps.Answer, e mapEnv) (string, bool) {
 	key, _, _ := strings.Cut(a.Overlay, "/")
 	switch {
 	case key == AlertLayer:
 		return "", false
 	case key == RadarLayer:
-		return key, d.mapMode() == modeRadar
-	case !d.layerOn(key):
+		return key, mm.mapMode(e) == modeRadar
+	case !mm.layerOn(key, e):
 		return "", false
 	}
-	o, held := d.handedIn(a.Overlay)
+	o, held := mm.handedIn(a.Overlay)
 	if !held {
 		return "", false
 	}
-	from, to := d.momentShown()
+	from, to := mm.momentShown(e)
 	return key, o.During.Meets(from, to)
 }
 
 // handedIn is an overlay as watchpost handed it to the map.
-func (d Dashboard) handedIn(id string) (tuimaps.Overlay, bool) {
-	for _, given := range []map[string]tuimaps.Overlay{d.mapPane.given, d.mapPane.tempGiven, d.mapPane.radarGiven} {
+func (mm mapModel) handedIn(id string) (tuimaps.Overlay, bool) {
+	for _, given := range []map[string]tuimaps.Overlay{mm.mapPane.given, mm.mapPane.tempGiven, mm.mapPane.radarGiven} {
 		if o, ok := given[id]; ok {
 			return o, true
 		}
@@ -82,15 +82,15 @@ func (d Dashboard) handedIn(id string) (tuimaps.Overlay, bool) {
 }
 
 // momentShown is the moment the map draws: Forecast mode's step, else now.
-func (d Dashboard) momentShown() (time.Time, time.Time) {
-	switch d.mapMode() {
+func (mm mapModel) momentShown(e mapEnv) (time.Time, time.Time) {
+	switch mm.mapMode(e) {
 	case modeForecast:
-		steps := d.forecastSteps()
-		sp := steps[min(d.mapPane.fcStep, len(steps)-1)].Span
+		steps := mm.forecastSteps(e)
+		sp := steps[min(mm.mapPane.fcStep, len(steps)-1)].Span
 		return sp.From, sp.Until
 	case modeRadar, modePropagation:
 	}
-	now := d.now()
+	now := e.Now()
 	return now, now
 }
 
@@ -112,12 +112,12 @@ const (
 
 // answerSentence is one layer's answer as a sentence, in the words of its
 // shape.
-func (d Dashboard) answerSentence(layer, place string, a tuimaps.Answer) string {
+func (mm mapModel) answerSentence(layer, place string, a tuimaps.Answer) string {
 	switch a.Form {
 	case answerField:
 		return fieldWords(layer, place, a)
 	case answerImage:
-		return d.imageWords(layer, place, a)
+		return mm.imageWords(layer, place, a)
 	case answerArea:
 		return areaAnswerWords(layer, place, a)
 	}
@@ -142,9 +142,9 @@ func fieldWords(layer, place string, a tuimaps.Answer) string {
 
 // imageWords: the radar's class at the place as the legend words it, and
 // the nearest heavier echo's distance and way.
-func (d Dashboard) imageWords(layer, place string, a tuimaps.Answer) string {
+func (mm mapModel) imageWords(layer, place string, a tuimaps.Answer) string {
 	s := layer + ": no echo at " + place
-	if words := d.classWords(a.Overlay, a.Class); !a.NoData && a.Class > 0 && words != "" {
+	if words := mm.classWords(a.Overlay, a.Class); !a.NoData && a.Class > 0 && words != "" {
 		s = layer + " at " + place + ": " + words
 	}
 	if a.Heavier != "" {
@@ -154,8 +154,8 @@ func (d Dashboard) imageWords(layer, place string, a tuimaps.Answer) string {
 }
 
 // classWords are an overlay's class as its legend says it, with the unit.
-func (d Dashboard) classWords(id string, class int) string {
-	for _, e := range d.mapPane.legend {
+func (mm mapModel) classWords(id string, class int) string {
+	for _, e := range mm.mapPane.legend {
 		if e.ID == id && class >= 0 && class < len(e.Classes) {
 			return strings.TrimSpace(e.Classes[class].Label + " " + e.Unit)
 		}
@@ -188,14 +188,14 @@ func nearWords(layer string, a tuimaps.Answer) string {
 
 // motionWords are the radar's observed motion near the place, when the
 // heavier rain moves.
-func (d Dashboard) motionWords(place string) []string {
+func (mm mapModel) motionWords(place string, e mapEnv) []string {
 	var out []string
-	for _, m := range d.mapPane.motion {
+	for _, m := range mm.mapPane.motion {
 		if !m.Moving || m.Missing != 0 {
 			continue
 		}
 		s := "Heavier rain " + distanceWords(m.To.Distance, m.To.Unit) + " to the " + m.To.Compass + " of " + place +
-			" moves towards the " + m.HeadingCompass + " at " + d.speedWords(m.SpeedKmh)
+			" moves towards the " + m.HeadingCompass + " at " + mm.speedWords(m.SpeedKmh, e)
 		switch m.Trend {
 		case tuimaps.Closer:
 			s += ", coming closer"
@@ -208,8 +208,8 @@ func (d Dashboard) motionWords(place string) []string {
 }
 
 // speedWords is a speed in the station's units.
-func (d Dashboard) speedWords(kmh float64) string {
-	if d.units == render.UnitF {
+func (mm mapModel) speedWords(kmh float64, e mapEnv) string {
+	if e.Opts.Units == render.UnitF {
 		return roundWords(units.MilesOf(kmh)) + " miles an hour" // km to miles, the same per hour
 	}
 	return roundWords(kmh) + " kilometres an hour"

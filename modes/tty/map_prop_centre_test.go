@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 )
 
@@ -14,8 +15,9 @@ import (
 func workCentre(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
 	d = settled(t, d)
-	d.mapPane.propCentreAsked = propCentreKey{}
-	d, cmd := d.armPropCentre()
+	d.mapModel.mapPane.propCentreAsked = propCentreKey{}
+	var cmd tea.Cmd
+	d.mapModel, cmd = d.mapModel.armPropCentre(d.mapEnv())
 	if cmd == nil {
 		return d
 	}
@@ -30,7 +32,7 @@ func stationDash(t *testing.T) Dashboard {
 	t.Helper()
 	d := chartDash(t)
 	d.surface = SurfaceBroadcaster
-	return workChart(t, d.renderMap())
+	return workChart(t, withModel(d, d.mapModel.renderMap(d.mapEnv())))
 }
 
 // TestTheCentreIsAnsweredAsTheMapPans is FR-1.11 (D-37, D-180, D-193): on the
@@ -40,7 +42,7 @@ func stationDash(t *testing.T) Dashboard {
 // with it.
 func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 	d := workCentre(t, stationDash(t))
-	box := ttytest.StripANSI(strings.Join(d.propCentreBox(), "\n"))
+	box := ttytest.StripANSI(strings.Join(d.mapModel.propCentreBox(d.mapEnv()), "\n"))
 	for _, want := range []string{"Centre", "MUF(3000) 18.0", "foF2 6.0", "OCEANSIDE, CA (NO TRANSMITTER SET)", "usable ", "best ~"} { // the LUF only at hours the absorption closes a band
 		if !strings.Contains(box, want) {
 			t.Errorf("the centre box does not say %q:\n%s", want, box)
@@ -49,20 +51,20 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 	if !regexp.MustCompile(`usable [^\n│]* · foF2 `).MatchString(box) {
 		t.Errorf("a centre within the near-vertical radius is not answered from the area, its limit foF2:\n%s", box)
 	}
-	window := ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n"))
+	window := ttytest.StripANSI(strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n"))
 	if !strings.Contains(window, "┌─ Centre") {
 		t.Errorf("the centre box is not over the map:\n%s", window)
 	}
-	before := d.mapPane.propCentre.key.centre
+	before := d.mapModel.mapPane.propCentre.key.centre
 	for range 6 {
 		d = pressMap(t, d, "right")
 	}
 	d = workCentre(t, d)
-	if after := d.mapPane.propCentre.key.centre; after == before {
+	if after := d.mapModel.mapPane.propCentre.key.centre; after == before {
 		t.Errorf("six pans east left the centre answered at %v", after)
 	}
 	pathLimit := regexp.MustCompile(`usable[^\n│]* · MUF \d`) // the usable line's limit: the best frequency's words say "MUF" too
-	if box := ttytest.StripANSI(strings.Join(d.propCentreBox(), "\n")); !strings.Contains(box, "From OCEANSIDE, CA (NO TRANSMITTER SET): ") || !pathLimit.MatchString(box) {
+	if box := ttytest.StripANSI(strings.Join(d.mapModel.propCentreBox(d.mapEnv()), "\n")); !strings.Contains(box, "From OCEANSIDE, CA (NO TRANSMITTER SET): ") || !pathLimit.MatchString(box) {
 		t.Errorf("a centre far from the place is not given its distance and the path's MUF:\n%s", box)
 	}
 }
@@ -73,8 +75,8 @@ func TestTheCentreIsAnsweredAsTheMapPans(t *testing.T) {
 // written, not in the box's capitals (AX-8).
 func TestTheCentreAnswerIsSaid(t *testing.T) {
 	d := workCentre(t, stationDash(t))
-	loc := d.mapPlace()
-	mode := d.propWords(loc.Lat, loc.Lon)
+	loc := d.mapModel.mapPlace(d.mapEnv())
+	mode := d.mapModel.propWords(loc.Lat, loc.Lon, d.mapEnv())
 	last := mode[len(mode)-1]
 	if !strings.Contains(last, "The map's centre") || !strings.Contains(last, "MUF(3000) 18.0") {
 		t.Errorf("the mode's words do not end with the centre's answer: %q", last)
@@ -82,7 +84,7 @@ func TestTheCentreAnswerIsSaid(t *testing.T) {
 	if !strings.Contains(last, "near-vertical from Oceanside, CA") || strings.Contains(last, "OCEANSIDE") || strings.Contains(last, "; No station") {
 		t.Errorf("the centre's words name the station in capitals, or begin a clause with one: %q", last)
 	}
-	words := d.describeLinesAll()
+	words := d.mapModel.describeLinesAll(d.mapEnv())
 	if at := lineWith(words, "The map's centre"); at != len(mode)-1 || !strings.HasPrefix(words[at+1], "Oceanside, CA") {
 		t.Errorf("the place's weather heading is not after the mode's words:\n%s", strings.Join(words, "\n"))
 	}
@@ -132,23 +134,23 @@ func TestTheTargetSaysWhatIsUsable(t *testing.T) {
 	}
 	named()
 	var d Dashboard
-	if got := d.propTarget(bands); len(got) != 2 || got[0] != "nothing usable at 100 W · MUF 16.0 MHz · LUF 4.0 MHz" || got[1] != "best ~13.6 MHz (30m), 85% of the MUF" {
+	if got := d.mapModel.propTarget(bands); len(got) != 2 || got[0] != "nothing usable at 100 W · MUF 16.0 MHz · LUF 4.0 MHz" || got[1] != "best ~13.6 MHz (30m), 85% of the MUF" {
 		t.Errorf("no band open: %q", got)
 	}
 	bands[3] = band(ionomaps.Open)
 	named()
-	if got := d.propTarget(bands); got[0] != "usable 40m · MUF 16.0 MHz · LUF 4.0 MHz" {
+	if got := d.mapModel.propTarget(bands); got[0] != "usable 40m · MUF 16.0 MHz · LUF 4.0 MHz" {
 		t.Errorf("one band open: %q", got[0])
 	}
 	bands[5] = band(ionomaps.Disturbed)
 	named()
-	d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = 7.2, "7.2 MHz"
-	got := d.propTarget(bands)
+	d.mapModel.mapPane.propFreqMHz, d.mapModel.mapPane.propFreqLabel = 7.2, "7.2 MHz"
+	got := d.mapModel.propTarget(bands)
 	if got[0] != "usable 40m-20m · MUF 16.0 MHz · LUF 4.0 MHz" || len(got) != 3 || got[2] != "7.2 MHz: open" {
 		t.Errorf("40m open and 20m disturbed, 7.2 MHz held: %q", got)
 	}
-	bands[0].Limit, d.mapPane.propFreqMHz, d.mapPane.propFreqLabel = ionomaps.LimitCircuit, 3, "3.0 MHz"
-	if got := d.propTarget(bands); got[len(got)-1] != "3.0 MHz: too weak at 100 W - go up to 4.0+" {
+	bands[0].Limit, d.mapModel.mapPane.propFreqMHz, d.mapModel.mapPane.propFreqLabel = ionomaps.LimitCircuit, 3, "3.0 MHz"
+	if got := d.mapModel.propTarget(bands); got[len(got)-1] != "3.0 MHz: too weak at 100 W - go up to 4.0+" {
 		t.Errorf("under a LUF the circuit decides, 3 MHz held: %q", got)
 	}
 }
@@ -159,14 +161,14 @@ func TestTheTargetSaysWhatIsUsable(t *testing.T) {
 // hour before's.
 func TestTheCentreBoxIsForWhatIsShown(t *testing.T) {
 	d := workCentre(t, stationDash(t))
-	if d.propCentreBox() == nil {
+	if d.mapModel.propCentreBox(d.mapEnv()) == nil {
 		t.Fatal("control: the centre is not answered")
 	}
 	d = stepAhead(t, d, "shift+right")
-	if box := d.propCentreBox(); box != nil {
+	if box := d.mapModel.propCentreBox(d.mapEnv()); box != nil {
 		t.Errorf("after an hour step the box shows the hour before's answer:\n%s", strings.Join(box, "\n"))
 	}
-	if d = workCentre(t, d); d.propCentreBox() == nil {
+	if d = workCentre(t, d); d.mapModel.propCentreBox(d.mapEnv()) == nil {
 		t.Error("the hour's answer, worked out, is not shown")
 	}
 }

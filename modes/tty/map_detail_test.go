@@ -21,8 +21,8 @@ import (
 // library and is written; the list marks what the level leaves out.
 func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 	d, got := uiDash(t, rowMapDetailLevel)
-	if d.mapDetailLevel.String() != "weather" {
-		t.Fatalf("an empty file opens at %v, want weather", d.mapDetailLevel)
+	if d.mapModel.mapDetailLevel.String() != "weather" {
+		t.Fatalf("an empty file opens at %v, want weather", d.mapModel.mapDetailLevel)
 	}
 	body, _, _ := d.focusBody(d.opts())
 	text := ttytest.StripANSI(strings.Join(body, "\n"))
@@ -33,8 +33,8 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapDetailLevel.String() != "full" {
-		t.Errorf("→ went to %v, want full - All (D-144)", d.mapDetailLevel)
+	if d.mapModel.mapDetailLevel.String() != "full" {
+		t.Errorf("→ went to %v, want full - All (D-144)", d.mapModel.mapDetailLevel)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
@@ -54,19 +54,19 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 	calls := &[]string{}
 	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	d = pressCode(d, 'O', "O")
 	var keys []string
-	for _, r := range d.overlayRows() {
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		keys = append(keys, r.key)
 	}
-	d.mapPane.menuAt = slices.Index(keys, detailLevelKey)
+	d.mapModel.mapPane.menuAt = slices.Index(keys, detailLevelKey)
 	*calls = nil
 	m, _, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if !ok || m.mapDetailLevel.String() != "full" {
-		t.Fatalf("space on the level row: handled %v, level %v", ok, m.mapDetailLevel)
+	if !ok || m.mapModel.mapDetailLevel.String() != "full" {
+		t.Fatalf("space on the level row: handled %v, level %v", ok, m.mapModel.mapDetailLevel)
 	}
 	if !strings.Contains(strings.Join(*calls, " "), "Layers:rail:on") || !strings.Contains(strings.Join(*calls, " "), "Layers:parks:on") {
 		t.Errorf("the level's preset did not reach the library's switches (D-79): %v", *calls)
@@ -81,7 +81,7 @@ func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
 	calls := &[]string{}
 	d := mapDash(t, Config{Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	joined := strings.Join(*calls, " ")
 	for _, want := range []string{"SetDetail:full", "Layers:minor-roads:off", "Layers:rail:off", "Layers:parks:off", "Layers:roads:on"} {
@@ -89,24 +89,24 @@ func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
 			t.Errorf("the Weather preset was not applied as switches: no %s in %v", want, *calls)
 		}
 	}
-	if d.detailLevelShown() != "Standard" {
-		t.Errorf("an untouched preset reads %q; want Standard (D-144)", d.detailLevelShown())
+	if d.mapModel.detailLevelShown() != "Standard" {
+		t.Errorf("an untouched preset reads %q; want Standard (D-144)", d.mapModel.detailLevelShown())
 	}
 	*calls = nil
-	d = d.setDetail("rail", true)
+	d.mapModel = d.mapModel.setDetail("rail", true, d.mapEnv())
 	if !strings.Contains(strings.Join(*calls, " "), "Layers:rail:on") || strings.Contains(strings.Join(*calls, " "), "SetDetail:weather") {
 		t.Errorf("rail switched on at Weather did not reach the library as on: %v", *calls)
 	}
-	if d.detailLevelShown() != "Custom" {
-		t.Errorf("a switch off its preset reads %q, want Custom", d.detailLevelShown())
+	if d.mapModel.detailLevelShown() != "Custom" {
+		t.Errorf("a switch off its preset reads %q, want Custom", d.mapModel.detailLevelShown())
 	}
-	d = d.cycleDetailLevel(true) // All: rail and parks on by the preset
-	if !d.detailOn("rail") || !d.detailOn("parks") || d.detailLevelShown() != "All" {
-		t.Errorf("All's preset: rail %v, parks %v, reads %q", d.detailOn("rail"), d.detailOn("parks"), d.detailLevelShown())
+	d.mapModel = d.mapModel.cycleDetailLevel(true, d.mapEnv()) // All: rail and parks on by the preset
+	if !d.mapModel.detailOn("rail") || !d.mapModel.detailOn("parks") || d.mapModel.detailLevelShown() != "All" {
+		t.Errorf("All's preset: rail %v, parks %v, reads %q", d.mapModel.detailOn("rail"), d.mapModel.detailOn("parks"), d.mapModel.detailLevelShown())
 	}
-	d = d.cycleDetailLevel(false) // back to Standard: the preset again, not the old switch
-	if d.detailOn("rail") || d.detailLevelShown() != "Standard" {
-		t.Errorf("Standard again left rail %v and reads %q", d.detailOn("rail"), d.detailLevelShown())
+	d.mapModel = d.mapModel.cycleDetailLevel(false, d.mapEnv()) // back to Standard: the preset again, not the old switch
+	if d.mapModel.detailOn("rail") || d.mapModel.detailLevelShown() != "Standard" {
+		t.Errorf("Standard again left rail %v and reads %q", d.mapModel.detailOn("rail"), d.mapModel.detailLevelShown())
 	}
 	for _, l := range mapDetailLayers() {
 		if l.layer == tuimaps.MinorRoadLayer || strings.Contains(l.label, "Minor") {
@@ -119,10 +119,10 @@ func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
 // Essential draws without the place names Weather draws.
 func TestADetailLevelChangesThePicture(t *testing.T) {
 	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
-	before := strings.Join(d.mapPane.lines, "\n")
-	d = d.cycleDetailLevel(false) // Weather to Essential
-	d = settleMap(t, d.renderMap())
-	if strings.Join(d.mapPane.lines, "\n") == before {
+	before := strings.Join(d.mapModel.mapPane.lines, "\n")
+	d.mapModel = d.mapModel.cycleDetailLevel(false, d.mapEnv()) // Weather to Essential
+	d = settleMap(t, withModel(d, d.mapModel.renderMap(d.mapEnv())))
+	if strings.Join(d.mapModel.mapPane.lines, "\n") == before {
 		t.Error("Essential drew the picture Weather drew")
 	}
 }

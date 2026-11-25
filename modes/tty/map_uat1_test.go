@@ -33,7 +33,9 @@ func openMap(t testing.TB, cfg Config, w, h int) Dashboard {
 	return feedAndSettle(t, d)
 }
 
-func bodyText(d Dashboard) string { return ttytest.StripANSI(strings.Join(d.mapBodyLines(), "\n")) }
+func bodyText(d Dashboard) string {
+	return ttytest.StripANSI(strings.Join(d.mapModel.mapBodyLines(d.mapEnv()), "\n"))
+}
 
 // TestTheMapWindowLeavesTheDashboardInSight is U1-13 as D-194 widens it: on
 // a large terminal the window is 85% of its width, so the dashboard shows
@@ -48,8 +50,8 @@ func TestTheMapWindowLeavesTheDashboardInSight(t *testing.T) {
 		t.Errorf("at 44 rows the window is %d tall; past the insets' %d", rows, 44-topInset-bottomInset)
 	}
 	small := openMap(t, Config{MapDescription: "off"}, 80, 24)
-	if !small.mapFits() {
-		t.Errorf("at 80×24 the map is %+v, under the floor", small.mapBodySize())
+	if !small.mapModel.mapFits(small.mapEnv()) {
+		t.Errorf("at 80×24 the map is %+v, under the floor", small.mapModel.mapBodySize(small.mapEnv()))
 	}
 }
 
@@ -80,7 +82,7 @@ func TestTheDescriptionBoxWaitsForA(t *testing.T) {
 	if !strings.ContainsFunc(lines[first], func(r rune) bool { return r >= 0x2800 && r <= 0x28ff }) {
 		t.Errorf("the box's row carries no map beside it: %q", lines[first])
 	}
-	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "Description") {
+	if !strings.Contains(ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), "Description") {
 		t.Error("the status line has no Description chip")
 	}
 	d = pressCode(d, 'A', "A")
@@ -113,18 +115,18 @@ func TestTheControlsBoxBlinksThePressedKey(t *testing.T) {
 			t.Errorf("the controls box does not show %q", want)
 		}
 	}
-	before := strings.Join(d.controlsBox(), "\n")
+	before := strings.Join(d.mapModel.controlsBox(d.mapEnv()), "\n")
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
-	if d.mapPane.flash != actMapPanRight || !d.tickNeeded() {
-		t.Fatalf("→ blinks %q (tick needed %v)", d.mapPane.flash, d.tickNeeded())
+	if d.mapModel.mapPane.flash != actMapPanRight || !d.tickNeeded() {
+		t.Fatalf("→ blinks %q (tick needed %v)", d.mapModel.mapPane.flash, d.tickNeeded())
 	}
-	if strings.Join(d.controlsBox(), "\n") == before {
+	if strings.Join(d.mapModel.controlsBox(d.mapEnv()), "\n") == before {
 		t.Error("the pressed chip is drawn as it was")
 	}
-	d.mapPane.flashEnd = time.Now().Add(-time.Millisecond)
+	d.mapModel.mapPane.flashEnd = time.Now().Add(-time.Millisecond)
 	d = d.applyTick()
-	if d.mapPane.flash != "" {
+	if d.mapModel.mapPane.flash != "" {
 		t.Error("the blink did not end on the tick after it expired")
 	}
 }
@@ -143,23 +145,23 @@ func TestTheTitleNamesWhatIsInView(t *testing.T) {
 		return "California"
 	}
 	d := openMap(t, Config{Map: &Hooks{MapAreaName: namer}}, 133, 44)
-	if got := d.mapTitle(); got != "Map · Southern California · Oceanside, CA" {
+	if got := d.mapModel.mapTitle(d.mapEnv()); got != "Map · Southern California · Oceanside, CA" {
 		t.Errorf("at the state scale the title is %q", got)
 	}
 	for range 3 {
 		d = pressCode(d, '+', "+")
 	}
-	if got := d.mapTitle(); got != "Map · Oceanside, CA" {
+	if got := d.mapModel.mapTitle(d.mapEnv()); got != "Map · Oceanside, CA" {
 		t.Errorf("zoomed in the title is %q", got)
 	}
 	for range 12 {
 		m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 		d = m.(Dashboard)
 	}
-	if got := d.mapTitle(); strings.Contains(got, "· Oceanside, CA") && got != "Map · Oceanside, CA" {
+	if got := d.mapModel.mapTitle(d.mapEnv()); strings.Contains(got, "· Oceanside, CA") && got != "Map · Oceanside, CA" {
 		t.Errorf("panned away, the title still names the place: %q", got)
 	}
-	if got := openMap(t, Config{}, 133, 44).mapTitle(); got != "Map · Oceanside, CA" {
+	if got := mapModel.mapTitle(envOf(openMap(t, Config{}, 133, 44))); got != "Map · Oceanside, CA" {
 		t.Errorf("with no namer the title is %q, want the place", got)
 	}
 }
@@ -171,7 +173,7 @@ func TestTheTitleNamesWhatIsInView(t *testing.T) {
 func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	calls := &[]string{}
 	d := mapDash(t, Config{MapLayers: alertLayers, Map: &Hooks{MapFeed: boxFeed(-117.6, -117.1, false)}})
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	joined := strings.Join(*calls, " ")
@@ -187,16 +189,16 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 			t.Errorf("the menu does not list %q", want)
 		}
 	}
-	centre, _ := d.mapPane.m.Centre()
+	centre, _ := d.mapModel.mapPane.m.Centre()
 	var rows []string
-	for i := range d.overlayRows() {
-		rows = append(rows, d.overlayRows()[i].key)
+	for i := range d.mapModel.overlayRows(d.mapEnv()) {
+		rows = append(rows, d.mapModel.overlayRows(d.mapEnv())[i].key)
 	}
 	for range slices.Index(rows, "roads") {
 		m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 		d = m.(Dashboard)
 	}
-	if now, _ := d.mapPane.m.Centre(); now != centre {
+	if now, _ := d.mapModel.mapPane.m.Centre(); now != centre {
 		t.Error("↓ panned the map while the menu was open")
 	}
 	*calls = nil
@@ -279,19 +281,19 @@ func TestADetailSwitchChangesThePictureAndIsSaved(t *testing.T) {
 	d.cfg.SetUI = func(p UIPrefs) error { saved = p; return nil }
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	before := strings.Join(d.mapPane.lines, "\n")
+	before := strings.Join(d.mapModel.mapPane.lines, "\n")
 	d = pressCode(d, 'O', "O")
 	var keys []string
-	for _, r := range d.overlayRows() {
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		keys = append(keys, r.key)
 	}
-	d.mapPane.menuAt = slices.Index(keys, "borders")
+	d.mapModel.mapPane.menuAt = slices.Index(keys, "borders")
 	m, cmd, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	if !ok {
 		t.Fatal("space in the menu was not handled")
 	}
 	d = settleMap(t, m)
-	if strings.Join(d.mapPane.lines, "\n") == before {
+	if strings.Join(d.mapModel.mapPane.lines, "\n") == before {
 		t.Error("switching the borders off left the picture as it was")
 	}
 	for _, msg := range msgsOf(t, cmd) {

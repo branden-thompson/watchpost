@@ -184,16 +184,44 @@ func TestTheJudgeHoldsEachRule(t *testing.T) {
 	baseEsc := counts{"modes/tty\tUpdate\t*Model": 1}
 	baseInl := counts{"app\tRun\ttty.Model.Update": 2}
 	same := &probe{escapes: counts{"modes/tty\tUpdate\t*Model": 1}, inlining: counts{"app\tRun\ttty.Model.Update": 2}}
-	if got := judge(baseEsc, baseInl, same); len(got) != 0 {
+	if got := judge(baseEsc, baseInl, same, nil); len(got) != 0 {
 		t.Errorf("the baseline itself failed: %q", got)
 	}
 	more := &probe{escapes: counts{"modes/tty\tUpdate\t*Model": 1, "modes/tty\tView\t*Model": 1}, inlining: baseInl}
-	if got := strings.Join(judge(baseEsc, baseInl, more), "\n"); !strings.Contains(got, "escape modes/tty | View | *Model") || !strings.Contains(got, "type *Model escapes 2 times") {
+	if got := strings.Join(judge(baseEsc, baseInl, more, nil), "\n"); !strings.Contains(got, "escape modes/tty | View | *Model") || !strings.Contains(got, "type *Model escapes 2 times") {
 		t.Errorf("a new escape: %q", got)
 	}
 	fewer := &probe{escapes: baseEsc, inlining: counts{"app\tRun\ttty.Model.Update": 1}}
-	if got := strings.Join(judge(baseEsc, baseInl, fewer), "\n"); !strings.Contains(got, "inlining app | Run | tty.Model.Update: 1, against 2") || !strings.Contains(got, "inline 1 calls, against 2") {
+	if got := strings.Join(judge(baseEsc, baseInl, fewer, nil), "\n"); !strings.Contains(got, "inlining app | Run | tty.Model.Update: 1, against 2") || !strings.Contains(got, "inline 1 calls, against 2") {
 		t.Errorf("a lost inlining: %q", got)
+	}
+}
+
+// TestAnExcuseCoversItsKeyAlone holds 0.19.6 D-82's list: an excused key may
+// reach its count and no further, a key outside the list fails as before,
+// and a line whose key is back within its baseline fails as stale.
+func TestAnExcuseCoversItsKeyAlone(t *testing.T) {
+	baseEsc := counts{"modes/tty\tUpdate\t*Model": 1}
+	baseInl := counts{"modes/tty\trender\topts": 3}
+	moved := &probe{escapes: counts{"modes/tty\tUpdate\t*Model": 1, "modes/tty\tcarved\ttea.Cmd": 2}, inlining: counts{"modes/tty\trender\topts": 0, "modes/tty\tcarved\tx": 3}}
+	ex := []excuse{{"escape", "modes/tty\tcarved\ttea.Cmd", 2, "moved"}, {"type", "tea.Cmd", 2, "moved"}, {"inlining", "modes/tty\trender\topts", 0, "seam"}}
+	if got := judge(baseEsc, baseInl, moved, ex); len(got) != 0 {
+		t.Errorf("the excused keys failed: %q", got)
+	}
+	if got := strings.Join(judge(baseEsc, baseInl, moved, nil), "\n"); !strings.Contains(got, "escape modes/tty | carved | tea.Cmd") || !strings.Contains(got, "inlining modes/tty | render | opts") {
+		t.Errorf("without the list the keys pass: %q", got)
+	}
+	further := &probe{escapes: counts{"modes/tty\tUpdate\t*Model": 1, "modes/tty\tcarved\ttea.Cmd": 3}, inlining: moved.inlining}
+	if got := strings.Join(judge(baseEsc, baseInl, further, ex), "\n"); !strings.Contains(got, "escape modes/tty | carved | tea.Cmd: 3") {
+		t.Errorf("an excused key past its count passed: %q", got)
+	}
+	other := &probe{escapes: counts{"modes/tty\tUpdate\t*Model": 1, "modes/tty\tcarved\ttea.Cmd": 2, "modes/tty\tView\t*Model": 1}, inlining: moved.inlining}
+	if got := strings.Join(judge(baseEsc, baseInl, other, ex), "\n"); !strings.Contains(got, "escape modes/tty | View | *Model") {
+		t.Errorf("a key outside the list passed: %q", got)
+	}
+	back := &probe{escapes: baseEsc, inlining: baseInl}
+	if got := strings.Join(judge(baseEsc, baseInl, back, ex), "\n"); strings.Count(got, "needs no excuse") != 3 {
+		t.Errorf("stale lines passed: %q", got)
 	}
 }
 
@@ -210,14 +238,15 @@ func TestRenamesMergeKeys(t *testing.T) {
 // TestTheTreesKeepWhatTheCompilerDecided holds the repository to the
 // baselines recorded on e57afeaf: no new escape, no lost inlining (0.19.6
 // B0.7, PB-2, PB-3), through the release's renames, 06_docs/perf/renames.tsv
-// (0.19.6 A-44), and its package moves, moves.tsv (A-52). On another platform the comparison says so and passes,
+// (0.19.6 A-44), its package moves, moves.tsv (A-52), and the reviewed list
+// of keys no rename carries, excused-B4.tsv (D-82). On another platform the comparison says so and passes,
 // and under another Go it fails until the baselines are recorded again.
 func TestTheTreesKeepWhatTheCompilerDecided(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds both trees")
 	}
 	var out, errs bytes.Buffer
-	code := run([]string{"compare", "-dir", "../..", "-escapes", "../../06_docs/perf/escapes-e57afeaf.tsv", "-inlining", "../../06_docs/perf/inlining-e57afeaf.tsv", "-map", "../../06_docs/perf/renames.tsv", "-moves", "../../06_docs/perf/moves.tsv"}, &out, &errs)
+	code := run([]string{"compare", "-dir", "../..", "-escapes", "../../06_docs/perf/escapes-e57afeaf.tsv", "-inlining", "../../06_docs/perf/inlining-e57afeaf.tsv", "-map", "../../06_docs/perf/renames.tsv", "-moves", "../../06_docs/perf/moves.tsv", "-excused", "../../06_docs/perf/excused-B4.tsv"}, &out, &errs)
 	t.Log(strings.TrimSpace(out.String()))
 	if code != 0 {
 		t.Errorf("the trees left the compiler's baselines (exit %d):\n%s%s", code, out.String(), errs.String())

@@ -62,12 +62,12 @@ func TestClearingLeavesTheDiskToTheAppsCommand(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "v1", "source", "3", "1-2.pbf")); err != nil {
 		t.Errorf("the UI goroutine unlinked the disk cache's tiles: %v", err)
 	}
-	if use := d.mapPane.m.CacheUse(); use.Disk.Limit != 0 {
+	if use := d.mapModel.mapPane.m.CacheUse(); use.Disk.Limit != 0 {
 		t.Error("the live map still holds the disk cache the app is emptying")
 	}
 	m, _ = d.update(cmd())
 	d = m
-	if attached != 1 || d.mapPane.m.CacheUse().Disk.Limit == 0 {
+	if attached != 1 || d.mapModel.mapPane.m.CacheUse().Disk.Limit == 0 {
 		t.Errorf("after the app's answer the disk cache was named %d times; want the live map keeping tiles on disk again", attached)
 	}
 }
@@ -82,7 +82,7 @@ func TestClearingSaysACountAndWhereTheDetailIs(t *testing.T) {
 	d := diskMapDash(t, Config{Map: &Hooks{MapProblem: func(p string) { said = append(said, p) }, ClearMapData: func() MapCleared { return MapCleared{Files: 7, Zones: 3, Err: failed} }}}, t.TempDir())
 	m, cmd, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
-	d.mapPane.clearErr = errors.New("the map is closed") // the live map's own purge refused (IS-M5)
+	d.mapModel.mapPane.clearErr = errors.New("the map is closed") // the live map's own purge refused (IS-M5)
 	m, _ = d.update(cmd())
 	notes := strings.Join(footerText(m), "\n")
 	if strings.Contains(notes, "/Users/") || strings.Contains(notes, "permission denied") {

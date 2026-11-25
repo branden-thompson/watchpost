@@ -149,34 +149,34 @@ func TestForecastStepsAreNowAndTheDays(t *testing.T) {
 func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	if !strings.Contains(ttytest.StripANSI(d.mapStatusLine()), "R] Radar On") {
-		t.Errorf("the chips are %q; want R Radar On among them (D-94)", ttytest.StripANSI(d.mapStatusLine()))
+	if !strings.Contains(ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())), "R] Radar On") {
+		t.Errorf("the chips are %q; want R Radar On among them (D-94)", ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv())))
 	}
-	for _, r := range d.overlayRows() {
+	for _, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		if r.key == RadarLayer {
 			t.Error("the Overlays menu lists radar; R is the mode, not an overlay (D-94)")
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if d.mapMode() == modeRadar || len(d.mapPane.radarGiven) != 0 {
-		t.Fatalf("R left Radar mode on (%v) or its loops (%d)", d.mapMode() == modeRadar, len(d.mapPane.radarGiven))
+	if d.mapModel.mapMode(d.mapEnv()) == modeRadar || len(d.mapModel.mapPane.radarGiven) != 0 {
+		t.Fatalf("R left Radar mode on (%v) or its loops (%d)", d.mapModel.mapMode(d.mapEnv()) == modeRadar, len(d.mapModel.mapPane.radarGiven))
 	}
-	if !d.radarTimelineOn() || len(d.mapPane.fcTimeline) != radarRows {
-		t.Errorf("Forecast mode holds no timeline rows (%d); the steps are its scrubber (D-94)", len(d.mapPane.fcTimeline))
+	if !d.mapModel.radarTimelineOn() || len(d.mapModel.mapPane.fcTimeline) != radarRows {
+		t.Errorf("Forecast mode holds no timeline rows (%d); the steps are its scrubber (D-94)", len(d.mapModel.mapPane.fcTimeline))
 	}
-	status := ttytest.StripANSI(d.mapStatusLine())
+	status := ttytest.StripANSI(d.mapModel.mapStatusLine(d.mapEnv()))
 	if !strings.Contains(status, "R] Radar Off") || !strings.Contains(status, "Forecast · Now") {
 		t.Errorf("Forecast mode's lines are %q", status)
 	}
-	if badge := ttytest.StripANSI(d.forecastBadge()); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
+	if badge := ttytest.StripANSI(d.mapModel.forecastBadge(d.mapEnv())); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
 		t.Errorf("Forecast mode's badge is %q; want FORECAST, the source and the step", badge)
 	}
 	if last := asks[len(asks)-1]; !last.Forecast {
 		t.Error("the temperature was not asked again for Forecast mode")
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if d = settleRadar(t, m, cmd); d.mapMode() != modeRadar || len(d.mapPane.radarGiven) == 0 {
+	if d = settleRadar(t, m, cmd); d.mapModel.mapMode(d.mapEnv()) != modeRadar || len(d.mapModel.mapPane.radarGiven) == 0 {
 		t.Error("R again did not bring Radar mode and its loop back")
 	}
 }
@@ -184,15 +184,15 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 func TestEveryGridIsHandedInUpFrontWithItsSpan(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	if n := len(d.mapPane.tempGiven); n != 2 {
+	if n := len(d.mapModel.mapPane.tempGiven); n != 2 {
 		t.Fatalf("Radar mode handed in %d grids; want both hours at once (L-15.1)", n)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if n := len(d.mapPane.tempGiven); n != 1+forecastDays {
+	if n := len(d.mapModel.mapPane.tempGiven); n != 1+forecastDays {
 		t.Fatalf("Forecast mode handed in %d grids; want Now and every day's high", n)
 	}
-	for id, o := range d.mapPane.tempGiven {
+	for id, o := range d.mapModel.mapPane.tempGiven {
 		if o.During == (tuimaps.Span{}) {
 			t.Errorf("%s has no span: it would be drawn on every step", id)
 		}
@@ -201,7 +201,7 @@ func TestEveryGridIsHandedInUpFrontWithItsSpan(t *testing.T) {
 		}
 	}
 	calls := []string{}
-	d.mapPane.calls = &calls
+	d.mapModel.mapPane.calls = &calls
 	for _, key := range []struct {
 		code rune
 		mod  tea.KeyMod
@@ -214,19 +214,19 @@ func TestEveryGridIsHandedInUpFrontWithItsSpan(t *testing.T) {
 			t.Fatalf("a step handed a grid in (%s): a grid swapped in blinks until Work prepares it (U1-28)", c)
 		}
 	}
-	if d.mapPane.fcStep != 1 {
-		t.Errorf("⇧→ ⇧→ ⇧← left the step at %d; want 1, Today", d.mapPane.fcStep)
+	if d.mapModel.mapPane.fcStep != 1 {
+		t.Errorf("⇧→ ⇧→ ⇧← left the step at %d; want 1, Today", d.mapModel.mapPane.fcStep)
 	}
 	// THE STEP IS WHAT IS DRAWN: Now's 61 F and Tomorrow's high of 80 F are
 	// different frames, the library choosing by the moment the step set.
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	d = m
-	now := strings.Join(d.mapPane.lines, "\n")
+	now := strings.Join(d.mapModel.mapPane.lines, "\n")
 	for range 2 {
 		m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 		d = m
 	}
-	if strings.Join(d.mapPane.lines, "\n") == now {
+	if strings.Join(d.mapModel.mapPane.lines, "\n") == now {
 		t.Error("Tomorrow drew Now's frame: the step did not move the library's moment")
 	}
 }
@@ -236,13 +236,13 @@ func TestTheDaysFlipBetweenHighAndLow(t *testing.T) {
 	d := openTempMap(t, false, &asks)
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	d = m
-	if got := d.stepWords(); !strings.HasSuffix(got, " high") {
+	if got := d.mapModel.stepWords(d.mapEnv()); !strings.HasSuffix(got, " high") {
 		t.Errorf("Today says %q; a day draws its high by default (D-97)", got)
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
 	d = m
 	lows := 0
-	for id := range d.mapPane.tempGiven {
+	for id := range d.mapModel.mapPane.tempGiven {
 		if strings.HasSuffix(id, "/high") {
 			t.Errorf("%s still handed in after > flipped to the lows", id)
 		}
@@ -250,11 +250,11 @@ func TestTheDaysFlipBetweenHighAndLow(t *testing.T) {
 			lows++
 		}
 	}
-	if lows != forecastDays || !strings.HasSuffix(d.stepWords(), " low") {
-		t.Errorf("> gave %d lows and %q", lows, d.stepWords())
+	if lows != forecastDays || !strings.HasSuffix(d.mapModel.stepWords(d.mapEnv()), " low") {
+		t.Errorf("> gave %d lows and %q", lows, d.mapModel.stepWords(d.mapEnv()))
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
-	if got := m.stepWords(); got != "Now" {
+	if got := m.mapModel.stepWords(m.mapEnv()); got != "Now" {
 		t.Errorf("Now says %q; the switch does not touch Now", got)
 	}
 }
@@ -262,36 +262,36 @@ func TestTheDaysFlipBetweenHighAndLow(t *testing.T) {
 func TestForecastPlaybackStepsAndHoldsTheLastDay(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
-	d.mapPlayback = time.Second // at 1 s a frame the last day's 2 s hold is two steps (D-361)
+	d.mapModel.mapPlayback = time.Second // at 1 s a frame the last day's 2 s hold is two steps (D-361)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
-	if !d.mapPane.fcPlaying || cmd == nil {
+	if !d.mapModel.mapPane.fcPlaying || cmd == nil {
 		t.Fatal("space did not play the forecast")
 	}
 	tick := func() {
-		mm, _ := d.Update(forecastTickMsg{gen: d.mapPane.fcGen})
+		mm, _ := d.Update(forecastTickMsg{gen: d.mapModel.mapPane.fcGen})
 		d = mm.(Dashboard)
 	}
-	last := len(d.forecastSteps()) - 1
+	last := len(d.mapModel.forecastSteps(d.mapEnv())) - 1
 	for range last {
 		tick()
 	}
-	if d.mapPane.fcStep != last {
-		t.Fatalf("after %d ticks the step is %d; want the last", last, d.mapPane.fcStep)
+	if d.mapModel.mapPane.fcStep != last {
+		t.Fatalf("after %d ticks the step is %d; want the last", last, d.mapModel.mapPane.fcStep)
 	}
 	tick()
-	if d.mapPane.fcStep != last {
+	if d.mapModel.mapPane.fcStep != last {
 		t.Error("the last day was not held")
 	}
 	tick()
-	if d.mapPane.fcStep != 0 {
-		t.Errorf("after the hold the step is %d; want Now again", d.mapPane.fcStep)
+	if d.mapModel.mapPane.fcStep != 0 {
+		t.Errorf("after the hold the step is %d; want Now again", d.mapModel.mapPane.fcStep)
 	}
-	stale := d.mapPane.fcGen
+	stale := d.mapModel.mapPane.fcGen
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
 	mm, _ := d.Update(forecastTickMsg{gen: stale})
-	if d = mm.(Dashboard); d.mapPane.fcPlaying || d.mapPane.fcStep != 0 {
+	if d = mm.(Dashboard); d.mapModel.mapPane.fcPlaying || d.mapModel.mapPane.fcStep != 0 {
 		t.Error("a tick of a stopped play moved the step")
 	}
 }
@@ -300,29 +300,29 @@ func TestAnAlertInEffectIsAlwaysOnNowsFrame(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
 	now := d.now()
-	newest := d.mapPane.m.Loop().Now
+	newest := d.mapModel.mapPane.m.Loop().Now
 	if !newest.Before(now) {
 		t.Fatalf("the loop's newest frame %v is not before now %v: nothing to test", newest, now)
 	}
 	issued := TimedOverlay{From: now.Add(-time.Minute), Until: now.Add(time.Hour)} // after the newest frame
-	if sp := d.spanFor(issued); !sp.From.Equal(newest) {
+	if sp := d.mapModel.spanFor(issued, d.mapEnv()); !sp.From.Equal(newest) {
 		t.Errorf("an alert issued after the newest frame spans from %v; want the newest frame, now's (D-98)", sp.From)
 	}
 	older := TimedOverlay{From: newest.Add(-30 * time.Minute)}
-	if sp := d.spanFor(older); !sp.From.Equal(older.From) {
+	if sp := d.mapModel.spanFor(older, d.mapEnv()); !sp.From.Equal(older.From) {
 		t.Errorf("an alert begun mid-loop spans from %v; want its onset", sp.From)
 	}
 	later := TimedOverlay{From: now.Add(20 * time.Hour)}
-	if sp := d.spanFor(later); !sp.From.Equal(later.From) {
+	if sp := d.mapModel.spanFor(later, d.mapEnv()); !sp.From.Equal(later.From) {
 		t.Errorf("a watch for tomorrow spans from %v; want its onset kept", sp.From)
 	}
 	quake := TimedOverlay{From: now.Add(-3 * time.Hour), Happened: true}
-	if sp := d.spanFor(quake); !sp.Until.IsZero() {
+	if sp := d.mapModel.spanFor(quake, d.mapEnv()); !sp.Until.IsZero() {
 		t.Errorf("in Radar mode a quake ends at %v; want open", sp.Until)
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if sp := d.spanFor(quake); !sp.Until.Equal(d.tempAnchor()) {
+	if sp := d.mapModel.spanFor(quake, d.mapEnv()); !sp.Until.Equal(d.mapModel.tempAnchor(d.mapEnv())) {
 		t.Errorf("in Forecast mode a quake ends at %v; want Now alone (D-98)", sp.Until)
 	}
 }
@@ -336,15 +336,15 @@ func TestTemperatureOffIsHeldNotDrawn(t *testing.T) {
 	if len(asks) == 0 {
 		t.Fatal("with the map open and temperature off, it was never asked (D-99: loaded in the background)")
 	}
-	if len(d.mapPane.tempGiven) != 0 {
-		t.Fatalf("temperature off drew %d grids", len(d.mapPane.tempGiven))
+	if len(d.mapModel.mapPane.tempGiven) != 0 {
+		t.Fatalf("temperature off drew %d grids", len(d.mapModel.mapPane.tempGiven))
 	}
 	d = switchTemp(t, d)
-	if len(d.mapPane.tempGiven) == 0 {
+	if len(d.mapModel.mapPane.tempGiven) == 0 {
 		t.Fatal("switched on, the held temperature was not drawn")
 	}
-	if d = switchTemp(t, d); len(d.mapPane.tempGiven) != 0 {
-		t.Errorf("switched off, %d grids stayed", len(d.mapPane.tempGiven))
+	if d = switchTemp(t, d); len(d.mapModel.mapPane.tempGiven) != 0 {
+		t.Errorf("switched off, %d grids stayed", len(d.mapModel.mapPane.tempGiven))
 	}
 }
 
@@ -352,9 +352,9 @@ func TestTemperatureOffIsHeldNotDrawn(t *testing.T) {
 func switchTemp(t *testing.T, d Dashboard) Dashboard {
 	t.Helper()
 	d = pressCode(d, 'O', "O")
-	for i, r := range d.overlayRows() {
+	for i, r := range d.mapModel.overlayRows(d.mapEnv()) {
 		if r.key == TemperatureLayer {
-			d.mapPane.menuAt = i
+			d.mapModel.mapPane.menuAt = i
 		}
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
@@ -378,7 +378,7 @@ func TestMovingThroughTheMenuAsksNothing(t *testing.T) {
 	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
 	d = pressCode(d, 'O', "O")
 	calls := []string{}
-	d.mapPane.calls = &calls
+	d.mapModel.mapPane.calls = &calls
 	temps, radars := len(asks), len(radarAsks)
 	for range 40 {
 		m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -399,22 +399,23 @@ func TestMovingThroughTheMenuAsksNothing(t *testing.T) {
 func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	held := len(d.mapPane.radarGiven)
+	held := len(d.mapModel.mapPane.radarGiven)
 	if held == 0 {
 		t.Fatal("no loop to keep")
 	}
 	var bad MapRadar
-	for id := range d.mapPane.radarGiven {
+	for id := range d.mapModel.mapPane.radarGiven {
 		bad.Overlays = append(bad.Overlays, tuimaps.Overlay{ID: id}) // no valid time, no picture: refused
 	}
 	bad.Source = "MRMS"
-	m, _ := d.applyMapRadar(mapRadarMsg{radar: bad, region: d.mapPane.region.Name})
+	m := d
+	m.mapModel, _ = d.mapModel.applyMapRadar(mapRadarMsg{radar: bad, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = m
-	if len(d.mapPane.radarGiven) != held || len(d.mapPane.m.Overlays()) == 0 {
-		t.Errorf("a refused loop took the drawn one away: %d held", len(d.mapPane.radarGiven))
+	if len(d.mapModel.mapPane.radarGiven) != held || len(d.mapModel.mapPane.m.Overlays()) == 0 {
+		t.Errorf("a refused loop took the drawn one away: %d held", len(d.mapModel.mapPane.radarGiven))
 	}
-	if strings.Contains(d.mapPane.radarNote, "could not") {
-		t.Errorf("a refusal the listener cannot act on was said to them: %q (D-124)", d.mapPane.radarNote)
+	if strings.Contains(d.mapModel.mapPane.radarNote, "could not") {
+		t.Errorf("a refusal the listener cannot act on was said to them: %q (D-124)", d.mapModel.mapPane.radarNote)
 	}
 }
 
@@ -430,8 +431,8 @@ func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapTempNDFD || d.tempSourceLabel() != "Open-Meteo" || d.mapAsk().TempNDFD {
-		t.Errorf("→ gave %q; want Open-Meteo, in the ask", d.tempSourceLabel())
+	if d.mapModel.mapTempNDFD || d.mapModel.tempSourceLabel() != "Open-Meteo" || d.mapModel.mapAsk(d.mapEnv()).TempNDFD {
+		t.Errorf("→ gave %q; want Open-Meteo, in the ask", d.mapModel.tempSourceLabel())
 	}
 	if text := strings.Join(footerText(d), "\n"); !strings.Contains(text, "metered") { // a notice (D-237)
 		t.Errorf("Open-Meteo chosen, nothing says it is metered (D-190):\n%s", text)
@@ -441,7 +442,7 @@ func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	if got.MapTempSource != "open-meteo" {
 		t.Errorf("esc wrote %q, want open-meteo", got.MapTempSource)
 	}
-	if !mapDash(t, Config{MapTempSource: "ndfd"}).mapTempNDFD || !mapDash(t, Config{}).mapTempNDFD || mapDash(t, Config{MapTempSource: "open-meteo"}).mapTempNDFD {
+	if !mapDash(t, Config{MapTempSource: "ndfd"}).mapModel.mapTempNDFD || !mapDash(t, Config{}).mapModel.mapTempNDFD || mapDash(t, Config{MapTempSource: "open-meteo"}).mapModel.mapTempNDFD {
 		t.Error("the file's word does not open the window as chosen")
 	}
 }
@@ -451,8 +452,8 @@ func TestTheTemperatureSourceIsASetting(t *testing.T) {
 func TestAFilledStepNamesOpenMeteo(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
-	d.mapPane.temp.Filled = map[string]bool{"0/high": true}
-	badge := func() string { return ttytest.StripANSI(d.forecastBadge()) }
+	d.mapModel.mapPane.temp.Filled = map[string]bool{"0/high": true}
+	badge := func() string { return ttytest.StripANSI(d.mapModel.forecastBadge(d.mapEnv())) }
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	if d = m; !strings.Contains(badge(), "O-METEO") {
 		t.Errorf("Today, filled from Open-Meteo, has the badge %q", badge())
@@ -476,7 +477,7 @@ func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
 	d := openTempMap(t, false, &asks)
 	want := func(w string) {
 		t.Helper()
-		if got := ttytest.StripANSI(d.forecastBadge()); got != w {
+		if got := ttytest.StripANSI(d.mapModel.forecastBadge(d.mapEnv())); got != w {
 			t.Errorf("the badge is %q; want %q", got, w)
 		}
 	}
@@ -488,11 +489,11 @@ func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
 		m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 		d = m
 	}
-	day := strings.ToUpper(d.forecastSteps()[forecastDays].Span.From.Format("Mon"))
+	day := strings.ToUpper(d.mapModel.forecastSteps(d.mapEnv())[forecastDays].Span.From.Format("Mon"))
 	want(" FORECAST    NDFD    " + day + " HIGHS ")
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
 	d = m
-	d.mapPane.temp.Source = "Open-Meteo"
+	d.mapModel.mapPane.temp.Source = "Open-Meteo"
 	want(" FORECAST    O-METEO    " + day + " LOWS ")
 }
 
@@ -502,10 +503,10 @@ func TestTheTemperatureKeyReads(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 	var d Dashboard
-	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "temperature", Classes: []tuimaps.Class{
+	d.mapModel.mapPane.legend = []tuimaps.LegendEntry{{Preset: "temperature", Classes: []tuimaps.Class{
 		{Label: "59 to 68", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true},
 		{Label: "under -22", Colour: tuimaps.RGB{R: 34, B: 68}, Drawn: true}}}}
-	row := d.tempLegendRow(80)
+	row := d.mapModel.tempLegendRow(80, d.mapEnv())
 	if !strings.Contains(row, "38;2;0;0;0;48;2;240;232;144") || !strings.Contains(row, "38;2;255;255;255;48;2;34;0;68") {
 		t.Errorf("the key's words are not set to read on each band: %q", row)
 	}
@@ -518,33 +519,33 @@ func TestTheTemperatureKeyReads(t *testing.T) {
 func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMapWith(t, true, false, &asks)
-	saved := d.mapLayerChoice
+	saved := d.mapModel.mapLayerChoice
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if !d.layerOn(TemperatureLayer) || len(d.mapPane.tempGiven) == 0 {
+	if !d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) || len(d.mapModel.mapPane.tempGiven) == 0 {
 		t.Fatal("Forecast mode with temperature off drew no temperature: a blank map")
 	}
-	if _, ok := choiceOf(d.mapLayerChoice, TemperatureLayer); ok {
-		t.Errorf("the temperature Forecast mode turned on was saved: %q (D-104)", d.mapLayerChoice)
+	if _, ok := choiceOf(d.mapModel.mapLayerChoice, TemperatureLayer); ok {
+		t.Errorf("the temperature Forecast mode turned on was saved: %q (D-104)", d.mapModel.mapLayerChoice)
 	}
-	top := strings.Join(d.withModeChip(d.mapPane.lines, d.mapBodySize()), "\n")
+	top := strings.Join(d.mapModel.withModeChip(d.mapModel.mapPane.lines, d.mapModel.mapBodySize(d.mapEnv())), "\n")
 	if !strings.Contains(ttytest.StripANSI(top), "FORECAST MODE: TEMP ENABLED") {
 		t.Error("no chip says temperature was turned on")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
-	if d = m; d.mapPane.modeChip {
+	if d = m; d.mapModel.mapPane.modeChip {
 		t.Error("a key left the chip up")
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if d.layerOn(TemperatureLayer) || len(d.mapPane.tempGiven) != 0 {
+	if d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) || len(d.mapModel.mapPane.tempGiven) != 0 {
 		t.Error("back in Radar mode, the temperature Forecast mode turned on stayed on")
 	}
-	if d.mapLayerChoice != saved && strings.Contains(d.mapLayerChoice, TemperatureLayer) {
-		t.Errorf("the choice changed: %q", d.mapLayerChoice)
+	if d.mapModel.mapLayerChoice != saved && strings.Contains(d.mapModel.mapLayerChoice, TemperatureLayer) {
+		t.Errorf("the choice changed: %q", d.mapModel.mapLayerChoice)
 	}
 	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
-	if d = settleRadar(t, m, cmd); !d.mapPane.modeChip {
+	if d = settleRadar(t, m, cmd); !d.mapModel.mapPane.modeChip {
 		t.Error("into Forecast mode again, the chip did not say it turned temperature on")
 	}
 }
@@ -554,10 +555,10 @@ func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
 func TestSwitchingTheAutoTemperatureOffIsTheListeners(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMapWith(t, false, false, &asks)
-	if !d.mapPane.tempAuto || !d.layerOn(TemperatureLayer) {
+	if !d.mapModel.mapPane.tempAuto || !d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) {
 		t.Fatal("a map opened in Forecast mode with temperature off was blank (D-103)")
 	}
-	if d = switchTemp(t, d); d.layerOn(TemperatureLayer) || d.mapPane.tempAuto {
+	if d = switchTemp(t, d); d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) || d.mapModel.mapPane.tempAuto {
 		t.Error("the switch on an auto temperature, which read on, did not turn it off")
 	}
 }
@@ -570,7 +571,7 @@ func TestTheOverlaysBoxIsStyledAsSettings(t *testing.T) {
 	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	box := d.overlaysBox()
+	box := d.mapModel.overlaysBox(d.mapEnv())
 	head := strings.Split(render.Tint("§", render.Tok(render.ModalTitle)), "§")[0]
 	if !strings.Contains(box[0], head+"MAP DETAILS / OVERLAYS") {
 		t.Errorf("the title is %q", box[0])
@@ -605,7 +606,7 @@ func TestTheLoopRowInForecastMode(t *testing.T) {
 	d := openTempMap(t, false, &asks)
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m
-	row := d.loopRow(d.scrubW())
+	row := d.mapModel.loopRow(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())
 	plain := ttytest.StripANSI(row)
 	if !strings.Contains(plain, "FORECAST") || !strings.Contains(plain, "STEP 1 / 8") || !strings.Contains(plain, "PLAYING") {
 		t.Errorf("the row is %q", plain)
@@ -620,7 +621,7 @@ func TestTheLoopRowInForecastMode(t *testing.T) {
 func TestWindSharesTheMapWithTemperature(t *testing.T) {
 	var asks []MapAsk
 	count := func(d Dashboard) (temp, wind int) {
-		for id := range d.mapPane.tempGiven {
+		for id := range d.mapModel.mapPane.tempGiven {
 			switch {
 			case strings.HasPrefix(id, WindLayer+"/"):
 				wind++
@@ -649,16 +650,16 @@ func TestWindIsForecastModesMainOverlayToo(t *testing.T) {
 	d := openFieldsMap(t, true, false, true, &asks)
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m, cmd)
-	if d.mapPane.tempAuto || d.mapPane.modeChip || d.layerOn(TemperatureLayer) {
+	if d.mapModel.mapPane.tempAuto || d.mapModel.mapPane.modeChip || d.mapModel.layerOn(TemperatureLayer, d.mapEnv()) {
 		t.Error("wind was on, and Forecast mode turned temperature on as if nothing were")
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	d = m
-	if got := d.badgeStep(); got != "TODAY PEAK" {
+	if got := d.mapModel.badgeStep(d.mapEnv()); got != "TODAY PEAK" {
 		t.Errorf("the badge's step is %q; want TODAY PEAK, the day's peak wind (D-108)", got)
 	}
-	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "wind", Classes: []tuimaps.Class{{Label: "under 5", Colour: tuimaps.RGB{R: 188, G: 57, B: 130}, Drawn: true}}}}
-	if row := ttytest.StripANSI(d.tempLegendRow(80)); !strings.Contains(row, "WIND") || !strings.Contains(row, "STRONGER") {
+	d.mapModel.mapPane.legend = []tuimaps.LegendEntry{{Preset: "wind", Classes: []tuimaps.Class{{Label: "under 5", Colour: tuimaps.RGB{R: 188, G: 57, B: 130}, Drawn: true}}}}
+	if row := ttytest.StripANSI(d.mapModel.tempLegendRow(80, d.mapEnv())); !strings.Contains(row, "WIND") || !strings.Contains(row, "STRONGER") {
 		t.Errorf("the row under the map is %q; want the wind's colours", row)
 	}
 }
@@ -680,7 +681,7 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 		return n
 	}
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	if n := renders(*calls); n != 1 {
 		t.Errorf("the switch to Forecast mode drew %d times; want once", n)
@@ -688,21 +689,22 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 	d = settleRadar(t, m, cmd)
 	for _, fed := range []bool{true, false} {
 		if !fed {
-			d.mapPane.feed = nil // no feed landed yet: the step must still be drawn
+			d.mapModel.mapPane.feed = nil // no feed landed yet: the step must still be drawn
 		}
 		*calls = nil
-		d, _, _ = d.handleForecastPlayback(actMapOn)
+		d.mapModel, _, _ = d.mapModel.handleForecastPlayback(actMapOn, d.mapEnv())
 		if n := renders(*calls); n != 1 {
 			t.Errorf("a step (feed in: %v) drew %d times; want once", fed, n)
 		}
-		d.mapPane.fcPlaying = true
+		d.mapModel.mapPane.fcPlaying = true
 		*calls = nil
-		next, _ := d.applyForecastTick(forecastTickMsg{gen: d.mapPane.fcGen})
+		next := d
+		next.mapModel, _ = d.mapModel.applyForecastTick(forecastTickMsg{gen: d.mapModel.mapPane.fcGen}, d.mapEnv())
 		d = next
 		if n := renders(*calls); n != 1 {
 			t.Errorf("a playback tick (feed in: %v) drew %d times; want once", fed, n)
 		}
-		d.mapPane.fcPlaying = false
+		d.mapModel.mapPane.fcPlaying = false
 	}
 }
 
@@ -714,13 +716,13 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	if len(d.mapPane.radarGiven) == 0 {
+	if len(d.mapModel.mapPane.radarGiven) == 0 {
 		t.Fatal("no loop to reconcile")
 	}
 	calls := &[]string{}
-	d.mapPane.calls = calls
+	d.mapModel.mapPane.calls = calls
 	var same, moved MapRadar
-	for _, o := range d.mapPane.radarGiven {
+	for _, o := range d.mapModel.mapPane.radarGiven {
 		same.Overlays = append(same.Overlays, o)
 		o.ID += "/moved"
 		img := *o.Image
@@ -728,15 +730,17 @@ func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 		o.Image = &img
 		moved.Overlays = append(moved.Overlays, o)
 	}
-	same.Source, moved.Source = d.mapPane.radarSource, d.mapPane.radarSource
-	m, _ := d.applyMapRadar(mapRadarMsg{radar: same, region: d.mapPane.region.Name})
+	same.Source, moved.Source = d.mapModel.mapPane.radarSource, d.mapModel.mapPane.radarSource
+	m := d
+	m.mapModel, _ = d.mapModel.applyMapRadar(mapRadarMsg{radar: same, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = m
 	if slices.Contains(*calls, "Set") {
 		t.Errorf("an unchanged loop was handed in again: %v", *calls)
 	}
 	*calls = nil
-	d.mapPane.feed = nil // no feed yet: retime draws nothing, so the landing's own rule is what draws
-	m, _ = d.applyMapRadar(mapRadarMsg{radar: moved, region: d.mapPane.region.Name})
+	d.mapModel.mapPane.feed = nil // no feed yet: retime draws nothing, so the landing's own rule is what draws
+	m = d
+	m.mapModel, _ = d.mapModel.applyMapRadar(mapRadarMsg{radar: moved, region: d.mapModel.mapPane.region.Name}, d.mapEnv())
 	d = m
 	if !slices.Contains(*calls, "Set") || !slices.Contains(*calls, "Remove") {
 		t.Fatalf("a moved loop was not handed in and the old taken off: %v", *calls)
@@ -747,12 +751,12 @@ func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 
 	var asks []MapAsk
 	d = openTempMap(t, true, &asks)
-	if len(d.mapPane.tempGiven) == 0 {
+	if len(d.mapModel.mapPane.tempGiven) == 0 {
 		t.Fatal("no grid to reconcile")
 	}
 	calls = &[]string{}
-	d.mapPane.calls = calls
-	d = d.setTemp()
+	d.mapModel.mapPane.calls = calls
+	d.mapModel = d.mapModel.setTemp(d.mapEnv())
 	if slices.Contains(*calls, "Set") || slices.Contains(*calls, "Remove") {
 		t.Errorf("unchanged grids were handed in again or taken off: %v", *calls)
 	}
@@ -785,15 +789,15 @@ func TestASpentQuotaIsSaidOnlyWhileItMatters(t *testing.T) {
 		{"Open-Meteo answering", map[string]bool{TemperatureLayer: true}, map[string][]string{TemperatureLayer: {"O-METEO"}}, ""},
 		{"NDFD and the history", map[string]bool{TemperatureLayer: true}, map[string][]string{TemperatureLayer: {"NDFD", "RECORDED"}}, "! OPEN-METEO: Quota Exceeded; Falling back to NDFD"},
 	} {
-		d.mapLayerChoice = layerChoiceKey(tc.on)
-		d.mapPane.temp.Quota, d.mapPane.temp.Chips = quota, tc.chips
-		if got := d.quotaNoticeText(); got != tc.want {
+		d.mapModel.mapLayerChoice = layerChoiceKey(tc.on)
+		d.mapModel.mapPane.temp.Quota, d.mapModel.mapPane.temp.Chips = quota, tc.chips
+		if got := d.mapModel.quotaNoticeText(d.mapEnv()); got != tc.want {
 			t.Errorf("%s: the notice reads %q; want %q", tc.name, got, tc.want)
 		}
 	}
-	d.mapPane.temp.Quota = nil
-	d.mapLayerChoice = layerChoiceKey(map[string]bool{TemperatureLayer: true})
-	if got := d.quotaNoticeText(); got != "" {
+	d.mapModel.mapPane.temp.Quota = nil
+	d.mapModel.mapLayerChoice = layerChoiceKey(map[string]bool{TemperatureLayer: true})
+	if got := d.mapModel.quotaNoticeText(d.mapEnv()); got != "" {
 		t.Errorf("with no quota spent the notice reads %q", got)
 	}
 }
@@ -804,10 +808,10 @@ func TestASpentQuotaIsSaidOnlyWhileItMatters(t *testing.T) {
 func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	d.mapLayerChoice = layerChoiceKey(map[string]bool{TemperatureLayer: true})
-	d.mapPane.temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: d.now().Add(time.Hour)}
-	d.mapPane.temp.Chips = map[string][]string{TemperatureLayer: {"NDFD"}}
-	size := d.mapBodySize()
+	d.mapModel.mapLayerChoice = layerChoiceKey(map[string]bool{TemperatureLayer: true})
+	d.mapModel.mapPane.temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: d.now().Add(time.Hour)}
+	d.mapModel.mapPane.temp.Chips = map[string][]string{TemperatureLayer: {"NDFD"}}
+	size := d.mapModel.mapBodySize(d.mapEnv())
 	blank := make([]string, size.Rows)
 	for i := range blank {
 		blank[i] = strings.Repeat(" ", size.Cols+2*insetCols)
@@ -821,28 +825,28 @@ func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
 		}
 		return -1, -1
 	}
-	row, col := rowOf(d.withQuotaNotice(blank, size))
-	text := d.quotaNoticeText()
+	row, col := rowOf(d.mapModel.withQuotaNotice(blank, size, d.mapEnv()))
+	text := d.mapModel.quotaNoticeText(d.mapEnv())
 	if row != size.Rows-3 || col+len([]rune(text))+2 != insetCols+size.Cols {
 		t.Errorf("the notice is at row %d, column %d; want its words on row %d (its box above the credit row), ending at the right edge", row, col, size.Rows-3)
 	}
-	withRadar := d.mapHooks.MapRadar
+	withRadar := d.mapModel.mapHooks.MapRadar
 	ownHooks(&d).MapRadar = nil // no radar timeline: the controls box shows
-	box, top, _, ok := d.controlsPlace(size)
+	box, top, _, ok := d.mapModel.controlsPlace(size, d.mapEnv())
 	if !ok {
 		t.Fatal("no controls box to give way to")
 	}
-	if row, _ = rowOf(d.withQuotaNotice(blank, size)); row != top-2 {
+	if row, _ = rowOf(d.mapModel.withQuotaNotice(blank, size, d.mapEnv())); row != top-2 {
 		t.Errorf("with the controls box (rows %d-%d) the notice's words are on row %d; want %d, directly above it", top, top+len(box)-1, row, top-2)
 	}
 	ownHooks(&d).MapRadar = withRadar
 	alaska, _ := geo.Neighbour(geo.RegionContiguous, geo.North) // a region with one to its south
-	d.mapPane.region, d.mapPane.edge, d.mapPane.edgeShown = alaska, geo.South, true
-	chip, edgeRow, edgeCol, ok := d.edgeChipPlace(size)
+	d.mapModel.mapPane.region, d.mapModel.mapPane.edge, d.mapModel.mapPane.edgeShown = alaska, geo.South, true
+	chip, edgeRow, edgeCol, ok := d.mapModel.edgeChipPlace(size)
 	if !ok {
 		t.Fatal("no south edge chip to give way to")
 	}
-	row, _ = rowOf(d.withQuotaNotice(blank, size))
+	row, _ = rowOf(d.mapModel.withQuotaNotice(blank, size, d.mapEnv()))
 	meets := edgeCol+len([]rune(chip[0])) > col
 	if meets && row+1 >= edgeRow {
 		t.Errorf("the notice (row %d) meets the south edge chip (rows %d-%d) and did not give way", row, edgeRow, edgeRow+len(chip)-1)
@@ -860,7 +864,7 @@ func TestTheRainDensityIsASetting(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if !d.mapRainFull || !d.mapAsk().RainFull {
+	if !d.mapModel.mapRainFull || !d.mapModel.mapAsk(d.mapEnv()).RainFull {
 		t.Error("→ did not choose the full density, in the ask")
 	}
 	if text := strings.Join(strings.Fields(strings.Join(footerText(d), "\n")), " "); !strings.Contains(text, "Full density asks Open-Meteo") { // a notice (D-237)
@@ -871,7 +875,7 @@ func TestTheRainDensityIsASetting(t *testing.T) {
 	if got.MapRainDetail != "full" {
 		t.Errorf("esc wrote %q, want full", got.MapRainDetail)
 	}
-	if !mapDash(t, Config{MapRainDetail: "full"}).mapRainFull || mapDash(t, Config{}).mapRainFull {
+	if !mapDash(t, Config{MapRainDetail: "full"}).mapModel.mapRainFull || mapDash(t, Config{}).mapModel.mapRainFull {
 		t.Error("the file's word does not open the window as chosen")
 	}
 }
@@ -883,7 +887,7 @@ func TestUVsCityCountIsASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapUVCities)
 	body, _, _ := d.focusBody(d.opts())
 	text := strings.Join(strings.Fields(ttytest.StripANSI(strings.Join(body, "\n"))), " ")
-	if !strings.Contains(text, "UV cities -") || !strings.Contains(text, "24") || d.mapAsk().UVCities != 24 {
+	if !strings.Contains(text, "UV cities -") || !strings.Contains(text, "24") || d.mapModel.mapAsk(d.mapEnv()).UVCities != 24 {
 		t.Fatalf("the Maps tab has no UV cities row at 24, the default (D-202):\n%s", text)
 	}
 	if notes := strings.Join(strings.Fields(strings.Join(footerText(d), "\n")), " "); !strings.Contains(notes, "EPA") || !strings.Contains(notes, "an hour") {
@@ -891,20 +895,20 @@ func TestUVsCityCountIsASetting(t *testing.T) {
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapAsk().UVCities != 48 {
-		t.Errorf("→ from 24 asks for %d cities; want 48", d.mapAsk().UVCities)
+	if d.mapModel.mapAsk(d.mapEnv()).UVCities != 48 {
+		t.Errorf("→ from 24 asks for %d cities; want 48", d.mapModel.mapAsk(d.mapEnv()).UVCities)
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m
-	if d.mapAsk().UVCities != 8 {
-		t.Errorf("→ from 48 asks for %d cities; want 8, round again", d.mapAsk().UVCities)
+	if d.mapModel.mapAsk(d.mapEnv()).UVCities != 8 {
+		t.Errorf("→ from 48 asks for %d cities; want 8, round again", d.mapModel.mapAsk(d.mapEnv()).UVCities)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
 	if got.MapUVCities != 8 {
 		t.Errorf("esc wrote %d, want 8", got.MapUVCities)
 	}
-	if mapDash(t, Config{MapUVCities: 48}).mapAsk().UVCities != 48 || mapDash(t, Config{MapUVCities: 7}).mapAsk().UVCities != 24 {
+	if mapModel.mapAsk(envOf(mapDash(t, Config{MapUVCities: 48}))).UVCities != 48 || mapModel.mapAsk(envOf(mapDash(t, Config{MapUVCities: 7}))).UVCities != 24 {
 		t.Error("the file's number does not open the window as chosen, or a number not offered is not the default")
 	}
 }

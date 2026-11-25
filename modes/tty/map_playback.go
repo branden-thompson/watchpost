@@ -61,7 +61,7 @@ func forecastHoldSteps(step time.Duration) int {
 
 // cycleMapPlayback moves the speed picker, and round again; the radar's loop
 // takes it at once, Forecast mode at its next step.
-func (d Dashboard) cycleMapPlayback(forward bool) Dashboard {
-	d.mapPlayback = cycleIn(playbackChoices, itself, d.mapPlayback, forward)
-	return d.applyPlayback().uiTouched()
+func (mm mapModel) cycleMapPlayback(forward bool) (mapModel, mapWant) {
+	mm.mapPlayback = cycleIn(playbackChoices, itself, mm.mapPlayback, forward)
+	return mm.applyPlayback().wantTouched()
 }

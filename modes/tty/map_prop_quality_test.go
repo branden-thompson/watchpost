@@ -19,7 +19,7 @@ func TestOnlyTheLatestRefreshTickAsks(t *testing.T) {
 	s := &seam{answer: PropagationResult{Err: errors.New("offline")}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	first := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
+	first := propTickMsg{gen: d.mapModel.mapPane.propGen, seq: d.mapModel.mapPane.propTickSeq}
 	d, cmd = keyCmd(t, d, "U")
 	d = runProp(t, d, cmd)
 	if s.count() != 2 {
@@ -29,7 +29,7 @@ func TestOnlyTheLatestRefreshTickAsks(t *testing.T) {
 	if d = runProp(t, m.(Dashboard), cmd); s.count() != 2 {
 		t.Errorf("the tick set before U asked too: %d asks; one chain of ticks, not two", s.count())
 	}
-	m, cmd = d.Update(propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq})
+	m, cmd = d.Update(propTickMsg{gen: d.mapModel.mapPane.propGen, seq: d.mapModel.mapPane.propTickSeq})
 	if runProp(t, m.(Dashboard), cmd); s.count() != 3 {
 		t.Errorf("the latest tick asked %d in all; want a third ask", s.count())
 	}
@@ -41,8 +41,9 @@ func TestAReleasedMapDropsTheOldSessionsTick(t *testing.T) {
 	s := &seam{answer: PropagationResult{Err: errors.New("offline")}}
 	d, cmd := keyCmd(t, propDash(t, s, true), "P")
 	d = runProp(t, d, cmd)
-	stale := propTickMsg{gen: d.mapPane.propGen, seq: d.mapPane.propTickSeq}
-	d = d.toggleMap().releaseMap().toggleMap()
+	stale := propTickMsg{gen: d.mapModel.mapPane.propGen, seq: d.mapModel.mapPane.propTickSeq}
+	d = d.toggleMap()
+	d = withModel(d, d.mapModel.releaseMap()).toggleMap()
 	d, cmd = keyCmd(t, feedAndSettle(t, d), "P")
 	d = runProp(t, d, cmd)
 	asked := s.count()
@@ -57,12 +58,12 @@ func TestAReleasedMapDropsTheOldSessionsTick(t *testing.T) {
 // Propagation mode it was closed in.
 func TestAReopenedMapDrawsNoPropagationField(t *testing.T) {
 	d, _ := drawnDash(t)
-	if len(d.mapPane.propGiven) != 1 || len(d.mapPane.nightGiven) != 1 {
-		t.Fatalf("the fixture drew %d Propagation overlays and %d nights; want the field and the night", len(d.mapPane.propGiven), len(d.mapPane.nightGiven))
+	if len(d.mapModel.mapPane.propGiven) != 1 || len(d.mapModel.mapPane.nightGiven) != 1 {
+		t.Fatalf("the fixture drew %d Propagation overlays and %d nights; want the field and the night", len(d.mapModel.mapPane.propGiven), len(d.mapModel.mapPane.nightGiven))
 	}
 	d = d.toggleMap().toggleMap()
-	if d.mapMode() == modePropagation || len(d.mapPane.propGiven) != 0 || len(d.mapPane.nightGiven) != 0 {
-		t.Errorf("reopened in mode %d with %d Propagation overlays and %d nights still drawn (Day / night is off)", d.mapMode(), len(d.mapPane.propGiven), len(d.mapPane.nightGiven))
+	if d.mapModel.mapMode(d.mapEnv()) == modePropagation || len(d.mapModel.mapPane.propGiven) != 0 || len(d.mapModel.mapPane.nightGiven) != 0 {
+		t.Errorf("reopened in mode %d with %d Propagation overlays and %d nights still drawn (Day / night is off)", d.mapModel.mapMode(d.mapEnv()), len(d.mapModel.mapPane.propGiven), len(d.mapModel.mapPane.nightGiven))
 	}
 }
 
@@ -77,7 +78,7 @@ func TestThePropagationAgeMovesWithTheClock(t *testing.T) {
 	d.now = func() time.Time { return clock }
 	d, cmd := keyCmd(t, d, "P")
 	d = runProp(t, d, cmd)
-	d.mapPane.flash = "" // P's blink spent: the age alone needs the tick now, and the frame is memoised without it
+	d.mapModel.mapPane.flash = "" // P's blink spent: the age alone needs the tick now, and the frame is memoised without it
 	if !strings.Contains(ttytest.StripANSI(d.View().Content), "(data 30 min old)") {
 		t.Fatal("the fixture's grid, valid 30 min before its snapshot, is not said 30 min old")
 	}
@@ -110,12 +111,12 @@ func TestAWeatherTintFromPropagationAsksOnce(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
 	ownHooks(&d).PropagationUpdate = (&seam{answer: PropagationResult{Err: errors.New("offline")}}).update
-	d.cfg.PropagationAck = propAckVersion
+	d.mapModel.ackSeen = propAckVersion
 	d = pressMap(t, d, "P")
 	before := len(asks)
 	d = pressMap(t, menuOn(t, d, UVLayer), "space")
-	if d.mapMode() != modeForecast || !d.tintChosen(UVLayer) {
-		t.Fatalf("mode %d, UV chosen %v", d.mapMode(), d.tintChosen(UVLayer))
+	if d.mapModel.mapMode(d.mapEnv()) != modeForecast || !d.mapModel.tintChosen(UVLayer, d.mapEnv()) {
+		t.Fatalf("mode %d, UV chosen %v", d.mapModel.mapMode(d.mapEnv()), d.mapModel.tintChosen(UVLayer, d.mapEnv()))
 	}
 	if n := len(asks) - before; n != 1 {
 		t.Errorf("the tint asked the temperature %d times; want once", n)
@@ -137,10 +138,10 @@ func TestTheNoteRowsAreCountedAsDrawn(t *testing.T) {
 			e := d
 			e.cfg.ASCII = c.ascii
 			if c.instead {
-				e.mapDesc = mapDescInstead
+				e.mapModel.mapDesc = mapDescInstead
 			}
-			for _, w := range []int{40, e.mapTextW()} {
-				if got, want := e.noteRowCount(w), len(e.noteLines(w)); got != want {
+			for _, w := range []int{40, e.mapModel.mapTextW(e.mapEnv())} {
+				if got, want := e.mapModel.noteRowCount(w, e.mapEnv()), len(e.mapModel.noteLines(w, e.mapEnv())); got != want {
 					t.Errorf("%s, ASCII %v, description instead %v, width %d: %d note rows counted, %d drawn", mode, c.ascii, c.instead, w, got, want)
 				}
 			}
@@ -167,8 +168,8 @@ func TestTheSourcesBadgesSayWhatFedTheSnapshot(t *testing.T) {
 		{"foF2 from the climatology", &climatology, map[string]bool{"SWPC": false, "PYIRI": true, "IGRF-14": true}},
 	} {
 		d := propDash(t, &seam{answer: PropagationResult{Err: errors.New("offline")}}, true)
-		d.mapPane.prop, d.mapPane.propSnap = true, c.snap
-		head := d.propBlock(d.scrubW())[0]
+		d.mapModel.mapPane.prop, d.mapModel.mapPane.propSnap = true, c.snap
+		head := d.mapModel.propBlock(d.mapModel.scrubW(d.mapEnv()), d.mapEnv())[0]
 		for badge, lit := range c.lit {
 			want := chipDimmed(badge)
 			if lit {

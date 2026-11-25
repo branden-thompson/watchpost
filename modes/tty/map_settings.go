@@ -59,13 +59,13 @@ func mapDescByKey(key string) mapDescMode {
 
 // cycleMapDesc moves the description's picker: with the picture, instead of
 // it, off, and round again. Live, and written with the group on close.
-func (d Dashboard) cycleMapDesc(forward bool) Dashboard {
+func (mm mapModel) cycleMapDesc(forward bool) (mapModel, mapWant) {
 	step := 1
 	if !forward {
 		step = 2
 	}
-	d.mapDesc = (d.mapDesc + mapDescMode(step)) % 3
-	return d.uiTouched()
+	mm.mapDesc = (mm.mapDesc + mapDescMode(step)) % 3
+	return mm.wantTouched()
 }
 
 // Label is the picker's words.
@@ -100,14 +100,14 @@ var (
 var mapDetailValueW = len("Essential")
 
 // mapRow is one row of the Maps tab, its label padded to the tab's width.
-func (d Dashboard) mapRow(o render.Opts, lines []string, at int, id setupRowID, label, cell string) ([]string, int) {
-	return d.mapRowW(o, lines, at, id, label, cell, mapLabelW)
+func (mm mapModel) mapRow(o render.Opts, sv mapSettingsView, lines []string, at int, id setupRowID, label, cell string) ([]string, int) {
+	return mm.mapRowW(o, sv, lines, at, id, label, cell, mapLabelW)
 }
 
 // mapRowW is mapRow with its group's label width: a group's labels pad to its
 // widest, so its pickers line up (HUM LEAD, 2026-09-30).
-func (d Dashboard) mapRowW(o render.Opts, lines []string, at int, id setupRowID, label, cell string, labelW int) ([]string, int) {
-	focus := d.setup.focus
+func (mm mapModel) mapRowW(o render.Opts, sv mapSettingsView, lines []string, at int, id setupRowID, label, cell string, labelW int) ([]string, int) {
+	focus := sv.Focus
 	if focus == id {
 		at = len(lines)
 	}
@@ -115,47 +115,47 @@ func (d Dashboard) mapRowW(o render.Opts, lines []string, at int, id setupRowID,
 }
 
 // mapPicker is a picker's cell at the tab's value width.
-func (d Dashboard) mapPicker(o render.Opts, id setupRowID, value string) string {
-	return d.mapPickerW(o, id, value, mapValueW)
+func (mm mapModel) mapPicker(o render.Opts, sv mapSettingsView, id setupRowID, value string) string {
+	return mm.mapPickerW(o, sv, id, value, mapValueW)
 }
 
 // mapPickerW is a picker's cell at a column's own value width: each column
 // lines its arrows up within itself, and the second is no wider than its
 // longest value, or the two columns stop fitting side by side (U1-25).
-func (d Dashboard) mapPickerW(o render.Opts, id setupRowID, value string, w int) string {
-	return pickerCellW(value, newArrowChips(o), d.pickerFlashFor(id), w)
+func (mm mapModel) mapPickerW(o render.Opts, sv mapSettingsView, id setupRowID, value string, w int) string {
+	return pickerCellW(value, newArrowChips(o), sv.flashFor(id), w)
 }
 
 // mapSettingLines are the MAP group's rows (UAT-1 U1-25: the first of the
 // Maps tab's two columns): maps on or off and what the map sends, the
 // description's mode, the scale it opens at, the nearby distance, the alerts.
-func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]string, int) {
-	if !d.rowVisible(rowMapsOn) {
+func (mm mapModel) mapSettingLines(o render.Opts, sv mapSettingsView, lines []string, at int, e mapEnv) ([]string, int) {
+	if !sv.visible(rowMapsOn) {
 		return lines, at
 	}
 	state := "Enabled"
-	if d.mapsOff {
+	if mm.mapsOff {
 		state = "Disabled"
 	}
-	lines, at = d.mapRow(o, lines, at, rowMapsOn, "Maps -", d.mapPicker(o, rowMapsOn, state)) // what it contacts is the Status window's (D-75)
-	lines, at = d.mapRow(o, lines, at, rowMapDesc, "Description -", d.mapPicker(o, rowMapDesc, d.mapDesc.Label()))
-	lines, at = d.mapRow(o, lines, at, rowMapScale, "Opens at -", d.mapPicker(o, rowMapScale, d.mapScale.Label()))
-	lines, at = d.mapRow(o, lines, at, rowMapColours, "Colours -", d.mapPicker(o, rowMapColours, mapDepthLabel(d.mapDepth)))             // D-207
-	lines, at = d.mapRow(o, lines, at, rowMapPlayback, "Playback speed -", d.mapPicker(o, rowMapPlayback, playbackLabel(d.mapPlayback))) // D-361
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapsOn, "Maps -", mm.mapPicker(o, sv, rowMapsOn, state)) // what it contacts is the Status window's (D-75)
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapDesc, "Description -", mm.mapPicker(o, sv, rowMapDesc, mm.mapDesc.Label()))
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapScale, "Opens at -", mm.mapPicker(o, sv, rowMapScale, mm.mapScale.Label()))
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapColours, "Colours -", mm.mapPicker(o, sv, rowMapColours, mapDepthLabel(mm.mapDepth)))             // D-207
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapPlayback, "Playback speed -", mm.mapPicker(o, sv, rowMapPlayback, playbackLabel(mm.mapPlayback))) // D-361
 	// NO ALERTS SCOPE (D-76): the map draws every alert in view, and what it
 	// draws is switched at the map, in the Overlays menu.
-	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
-	lines, at = d.mapRow(o, lines, at, rowMapRadarSource, "Radar -", d.mapPicker(o, rowMapRadarSource, d.radarSourceLabel()))                      // D-83
-	lines, at = d.mapRow(o, lines, at, rowMapRadarAhead, "Radar ahead -", d.mapPicker(o, rowMapRadarAhead, radarAheadLabel(d.mapRadarAhead)))      // D-114
-	lines, at = d.mapRow(o, lines, at, rowMapQuakes, "Quakes -", d.mapPicker(o, rowMapQuakes, quakeFeedLabel(d.mapQuakeFeed)))                     // D-122
-	lines, at = d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))                   // D-93, D-190
-	lines, at = d.mapRow(o, lines, at, rowMapRainDetail, "Rain Day 4+ -", d.mapPicker(o, rowMapRainDetail, rainDetailLabel(d.mapRainFull)))        // D-192
-	lines, at = d.mapRow(o, lines, at, rowMapUVCities, "UV cities -", d.mapPicker(o, rowMapUVCities, strconv.Itoa(d.mapUVCities)))                 // D-202; its cost is a notice while it is chosen (D-23, D-237)
-	lines, at = d.mapRow(o, lines, at, rowMapPropRadius, "NVIS radius -", d.mapPicker(o, rowMapPropRadius, d.propRadiusLabel()))                   // D-100: the Propagation mode's near-vertical area
-	lines, at = d.mapRow(o, lines, at, rowMapPropNoise, "RX noise -", d.mapPicker(o, rowMapPropNoise, propNoiseLabel(d.mapPropNoise)))             // D-187: the reference circuit's noise
-	lines, at = d.mapRow(o, lines, at, rowMapPropRefresh, "HF refresh -", d.mapPicker(o, rowMapPropRefresh, d.propRefreshLabel()))                 // D-120: its cost a notice while it is chosen
-	lines, at = d.mapRow(o, lines, at, rowMapPropReadings, "No readings -", d.mapPicker(o, rowMapPropReadings, noReadingsLabel(d.mapPropCorrect))) // D-105: while no station readings are held
-	lines, at = d.mapRow(o, lines, at, rowMapPropStations, "HF stations -", d.mapPicker(o, rowMapPropStations, stationsLabel(d.mapPropNoGIRO)))    // D-214: GIRO's terms a notice beside it
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapNearby, "Nearby -", mm.mapPicker(o, sv, rowMapNearby, mm.nearbyLabel(e)))
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapRadarSource, "Radar -", mm.mapPicker(o, sv, rowMapRadarSource, mm.radarSourceLabel()))                      // D-83
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapRadarAhead, "Radar ahead -", mm.mapPicker(o, sv, rowMapRadarAhead, radarAheadLabel(mm.mapRadarAhead)))      // D-114
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapQuakes, "Quakes -", mm.mapPicker(o, sv, rowMapQuakes, quakeFeedLabel(mm.mapQuakeFeed)))                     // D-122
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapTempSource, "Temperature -", mm.mapPicker(o, sv, rowMapTempSource, mm.tempSourceLabel()))                   // D-93, D-190
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapRainDetail, "Rain Day 4+ -", mm.mapPicker(o, sv, rowMapRainDetail, rainDetailLabel(mm.mapRainFull)))        // D-192
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapUVCities, "UV cities -", mm.mapPicker(o, sv, rowMapUVCities, strconv.Itoa(mm.mapUVCities)))                 // D-202; its cost is a notice while it is chosen (D-23, D-237)
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapPropRadius, "NVIS radius -", mm.mapPicker(o, sv, rowMapPropRadius, mm.propRadiusLabel(e)))                  // D-100: the Propagation mode's near-vertical area
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapPropNoise, "RX noise -", mm.mapPicker(o, sv, rowMapPropNoise, propNoiseLabel(mm.mapPropNoise)))             // D-187: the reference circuit's noise
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapPropRefresh, "HF refresh -", mm.mapPicker(o, sv, rowMapPropRefresh, mm.propRefreshLabel()))                 // D-120: its cost a notice while it is chosen
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapPropReadings, "No readings -", mm.mapPicker(o, sv, rowMapPropReadings, noReadingsLabel(mm.mapPropCorrect))) // D-105: while no station readings are held
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapPropStations, "HF stations -", mm.mapPicker(o, sv, rowMapPropStations, stationsLabel(mm.mapPropNoGIRO)))    // D-214: GIRO's terms a notice beside it
 	return lines, at
 }
 
@@ -164,29 +164,29 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 // ↑↓ walk them, ←→ and space switch the one the cursor is on (HUM LEAD,
 // 2026-09-30) - and what they would cost under them. The focused line is the
 // layer under the cursor.
-func (d Dashboard) layerLines(o render.Opts) ([]string, int) {
-	if !d.rowVisible(rowMapLayers) {
+func (mm mapModel) layerLines(o render.Opts, sv mapSettingsView, e mapEnv) ([]string, int) {
+	if !sv.visible(rowMapLayers) {
 		return nil, 0
 	}
-	focused := d.setup.focus == rowMapLayers
+	focused := sv.Focus == rowMapLayers
 	labelW := 0
-	for _, l := range d.cfg.MapLayers { // the registry's (P10-02)
+	for _, l := range e.Layers { // the registry's (P10-02)
 		labelW = max(labelW, render.Width(l.Label+" -"))
 	}
 	var lines []string
 	at := 0
-	for i, l := range d.cfg.MapLayers {
-		here := focused && i == min(d.setup.layerAt, len(d.cfg.MapLayers)-1)
+	for i, l := range e.Layers {
+		here := focused && i == min(sv.LayerAt, len(e.Layers)-1)
 		if here {
 			at = len(lines)
 		}
 		state := "Disabled"
-		if d.layerOn(l.Key) {
+		if mm.layerOn(l.Key, e) {
 			state = "Enabled"
 		}
 		var flash pickerFlash
 		if here {
-			flash = d.pickerFlashFor(rowMapLayers)
+			flash = sv.flashFor(rowMapLayers)
 		}
 		lines = append(lines, "  "+setupMark(o, here)+settingLabel(render.PadTo(l.Label+" -", labelW), here)+"  "+pickerCellW(state, newArrowChips(o), flash, mapDetailValueW))
 	}
@@ -195,20 +195,20 @@ func (d Dashboard) layerLines(o render.Opts) ([]string, int) {
 
 // mapLayerLines are the MAP - DETAIL group's rows: the map's own detail as a
 // list, and the action that empties the map's data.
-func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]string, int) {
-	if !d.rowVisible(rowMapDetailLevel) {
+func (mm mapModel) mapLayerLines(o render.Opts, sv mapSettingsView, lines []string, at int) ([]string, int) {
+	if !sv.visible(rowMapDetailLevel) {
 		return lines, at
 	}
-	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail -", d.mapPickerW(o, rowMapDetailLevel, d.detailLevelShown(), mapDetailValueW))
+	lines, at = mm.mapRow(o, sv, lines, at, rowMapDetailLevel, "Detail -", mm.mapPickerW(o, sv, rowMapDetailLevel, mm.detailLevelShown(), mapDetailValueW))
 	for i, l := range mapDetailLayers() { // A ROW EACH, "← Enabled →" (U1-35)
 		state := "Disabled"
-		if d.detailOn(l.key) {
+		if mm.detailOn(l.key) {
 			state = "Enabled"
 		}
-		lines, at = d.mapRow(o, lines, at, rowMapDetailBorders+setupRowID(i), l.label+" -",
-			d.mapPickerW(o, rowMapDetailBorders+setupRowID(i), state, mapDetailValueW)+settingSupport(strings.TrimPrefix(detailShows(l), " ")))
+		lines, at = mm.mapRow(o, sv, lines, at, rowMapDetailBorders+setupRowID(i), l.label+" -",
+			mm.mapPickerW(o, sv, rowMapDetailBorders+setupRowID(i), state, mapDetailValueW)+settingSupport(strings.TrimPrefix(detailShows(l), " ")))
 	}
-	return d.mapExtraLines(o, lines, at)
+	return mm.mapExtraLines(o, sv, lines, at)
 }
 
 // belowFloorText names the size the map needs and the size it has (FR-1.4).
@@ -233,64 +233,63 @@ type mapClearedMsg struct{ r MapCleared }
 // TOUCHED HERE (PF-4): the live map lets its disk cache go first, so its
 // Purge empties memory alone, and it names the cache again when the app has
 // answered. What the live map refused is kept for the answer (IS-M5).
-func (d Dashboard) clearMapData() (Dashboard, tea.Cmd) {
-	d.mapPane.clearErr = nil
-	if m := d.mapPane.m; m != nil {
+func (mm mapModel) clearMapData() (mapModel, tea.Cmd, mapWant) {
+	mm.mapPane.clearErr = nil
+	if m := mm.mapPane.m; m != nil {
 		var off, purged error
-		d.mapPane.call("CacheRoot:off", func() { off = m.CacheRoot("", 0) })
-		d.mapPane.call("Purge", func() { _, purged = m.Purge() })
+		mm.mapPane.call("CacheRoot:off", func() { off = m.CacheRoot("", 0) })
+		mm.mapPane.call("Purge", func() { _, purged = m.Purge() })
 		if kind, ok := tuimaps.KindOf(purged); ok && kind == tuimaps.CacheRefused {
 			purged = nil // the disk was let go first: "no disk to purge" is the memory emptied alone
 		}
-		d.mapPane.clearErr, d.mapPane.diskOff = errors.Join(off, purged), off == nil
+		mm.mapPane.clearErr, mm.mapPane.diskOff = errors.Join(off, purged), off == nil
 	}
-	d.setup.note, d.setup.noteRow, d.setup.noteTone = "Clearing map data…", rowMapClear, noticeInfo
-	clear := d.mapHooks.ClearMapData
+	w := mapWant{Settings: mapSettingsWant{Note: "Clearing map data…", NoteRow: rowMapClear, NoteTone: noticeInfo, NoteSet: true, Settled: true}}
+	clear := mm.mapHooks.ClearMapData
 	if clear == nil {
-		return d.diskBack().settled(), nil
+		return mm.diskBack(), nil, w
 	}
-	return d.settled(), func() tea.Msg { return mapClearedMsg{r: clear()} }
+	return mm, func() tea.Msg { return mapClearedMsg{r: clear()} }, w
 }
 
 // diskBack names the live map's disk cache again after a clear let it go.
-func (d Dashboard) diskBack() Dashboard {
-	m, disk := d.mapPane.m, d.mapHooks.MapDisk
-	if !d.mapPane.diskOff || m == nil || disk == nil {
-		return d
+func (mm mapModel) diskBack() mapModel {
+	m, disk := mm.mapPane.m, mm.mapHooks.MapDisk
+	if !mm.mapPane.diskOff || m == nil || disk == nil {
+		return mm
 	}
 	var err error
-	d.mapPane.call("CacheRoot:on", func() { err = disk(m) })
-	d.mapPane.diskOff, d.mapPane.clearErr = false, errors.Join(d.mapPane.clearErr, err)
-	return d
+	mm.mapPane.call("CacheRoot:on", func() { err = disk(m) })
+	mm.mapPane.diskOff, mm.mapPane.clearErr = false, errors.Join(mm.mapPane.clearErr, err)
+	return mm
 }
 
 // applyMapCleared says, beside the row, what went. What could not be
 // cleared is a count and the way to the diagnostics, which are told each
 // error (IS-M8, D-124): an OS error names paths in the listener's home.
-func (d Dashboard) applyMapCleared(v mapClearedMsg) Dashboard {
-	d = d.diskBack()
-	failed := leafErrors(errors.Join(v.r.Err, d.mapPane.clearErr))
-	d.mapPane.clearErr = nil
+func (mm mapModel) applyMapCleared(v mapClearedMsg, e mapEnv) (mapModel, mapWant) {
+	mm = mm.diskBack()
+	failed := leafErrors(errors.Join(v.r.Err, mm.mapPane.clearErr))
+	mm.mapPane.clearErr = nil
 	note, tone := mapClearedNote(v.r), noticeDone
-	if partly, ok := d.partlyCleared("Clear map data", failed); ok {
+	if partly, ok := mm.partlyCleared("Clear map data", failed, e); ok {
 		note, tone = partly, noticeFail
 	}
-	d.setup.note, d.setup.noteRow, d.setup.noteTone = note, rowMapClear, tone
-	return d.settled()
+	return mm, mapWant{Settings: mapSettingsWant{Note: note, NoteRow: rowMapClear, NoteTone: tone, NoteSet: true, Settled: true}}
 }
 
 // partlyCleared is what a clear that left some behind says: a count and the
 // way to the diagnostics, which are told each error (IS-M8, D-124) - an OS
 // error names paths in the listener's home. ok is false when nothing failed.
-func (d Dashboard) partlyCleared(what string, failed []error) (string, bool) {
+func (mm mapModel) partlyCleared(what string, failed []error, e mapEnv) (string, bool) {
 	if len(failed) == 0 {
 		return "", false
 	}
 	for _, err := range failed { // each to the diagnostics (P10-02)
-		d.problem(what + ": " + err.Error())
+		mm.problem(what+": "+err.Error(), e)
 	}
 	key := "ctrl+d"
-	if keys := d.keys["debug"].Keys; len(keys) > 0 {
+	if keys := e.Keys["debug"].Keys; len(keys) > 0 {
 		key = keys[0]
 	}
 	return "Partly cleared: " + strconv.Itoa(len(failed)) + " could not be removed - see Diagnostics (" + key + ").", true
@@ -323,8 +322,8 @@ func leafErrors(err error) []error {
 
 // mapExtraLines are the maps rows' words: what the map sends, how long it
 // keeps its data, and the action that empties it (FR-9.4, FR-3.9).
-func (d Dashboard) mapExtraLines(o render.Opts, lines []string, at int) ([]string, int) {
-	focus := d.setup.focus
+func (mm mapModel) mapExtraLines(o render.Opts, sv mapSettingsView, lines []string, at int) ([]string, int) {
+	focus := sv.Focus
 	if focus == rowMapClear {
 		at = len(lines)
 	}
