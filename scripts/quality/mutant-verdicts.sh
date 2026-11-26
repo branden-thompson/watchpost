@@ -315,6 +315,12 @@ take() {
 # run.sh comes from the working tree, not the worktree, so the instrument
 # that judges is the one being edited; the mutants and the code are HEAD's.
 runsh="$root/06_docs/mutants/run.sh"
+
+# THE UNION IS NO KILLER (0.19.6 D-84). It hashes every declaration under app
+# and modes/tty, so it fails on every mutant there: at the `./...` step it read
+# a kept equivalent as CAUGHT, and would read any survivor in those trees the
+# same way. Every step leaves it out.
+export MUTANT_SKIP='^TestTheTwoTreesDeclarationsAreConserved$'
 worker() {
 	cd "$work/w$1"
 	while :; do

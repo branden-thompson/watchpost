@@ -1553,3 +1553,42 @@ re-rendered from it.
 
 **B4 in commits.** 6, the plan's 4: the instruments took a commit first (A-63) and the close one of
 its own; the batch map says so. B4 closes on this commit's `make verify-full` and the scoped sweep.
+
+## B4's closing sweep: 316 CAUGHT, 3 reports, the union left out (D-84, D-85)
+
+**The sweep** (`make mutant-scoped BATCH_BASE=7a4a10ed SCOPED_FUNCS=06_docs/perf/renames.tsv` on
+`2e451991`, 3,787 s): its baseline green; 316 of 316 CAUGHT, 0 SURVIVED, 0 NO EVIDENCE; 3 reports, so
+B4 did not close on `2e451991`.
+- **The split's carve, 2:** m386 and m441, each anchor moved from `Dashboard.applyPropFound` into
+  `mapModel.foundRecentre`, the step the split carved from it to run after the finder closes (MS-1's
+  S3), each killer the record's, as A-68 (4) expects.
+- **The union, 1:** mAA3, one of A-3's seven kept equivalents, "was SURVIVED, now CAUGHT", caught only
+  at the sweep's `./...` step by `TestTheTwoTreesDeclarationsAreConserved`. That test hashes every
+  declaration under `app` and `modes/tty`, so it fails on every mutant there. Since B0.5 it would read
+  the four kept equivalents in those trees (m16, mAA3, mAA4, mSC3) as CAUGHT, and any real survivor
+  there the same way, in the release's full verdict sweep, where no comparison reports a killer
+  changed. None of the other 315 reached that step.
+
+**The fix (D-84).** `06_docs/mutants/run.sh` takes `MUTANT_SKIP`, a pattern passed as `-skip` to the
+runs on the mutated tree, and `scripts/quality/mutant-verdicts.sh` sets it to the union at every step.
+`TestTheSweepLeavesTheUnionOut` (`cmd/watchpost`) holds the pattern to the union's name, read from the
+function, so a rename the pattern misses fails there.
+
+**Seen failing first.**
+- The guard, pointed at the committed script, fails with no `MUTANT_SKIP`; pointed at a copy whose
+  pattern names another test, it fails naming the union; on the fixed script it passes.
+- mAA3 alone through the fixed sweep (`MUTANT_ONLY=mAA3_`, on `2e451991`, 1,703 s): CAUGHT again,
+  now by `TestTheTreesKeepWhatTheCompilerDecided` (`tools/gcprobe`), caught only against `./...`.
+  The whole suite run on mAA3 in a scratch worktree fails exactly two tests, the union and that one:
+  "FAIL inlining modes/tty | Dashboard.openSetup | nextRow: 0, against 1 at baseline", and the same
+  of `stepRow`, the calls the mutant deletes.
+
+**The compiler's baselines stay a killer (D-85).** mAA3 is CAUGHT by gcprobe's tree test, no longer a
+kept equivalent that survives; six do. Its header, the comment on
+`TestTheWindowOpensOnARowThisSurfaceDraws` and the Makefile's note on the scoped sweep say so. The
+sweep run after the fix still reports it as "was SURVIVED, now CAUGHT", against 0.19.5's record,
+and D-85 is that report's row.
+
+**B4 in commits.** 7, the plan's 4: the instruments took a commit first (A-63), the close one of its
+own (A-68), and the sweep's fix one more (D-84); the batch map says so. B4 closes on the scoped sweep
+run on this commit.

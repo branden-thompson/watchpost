@@ -4,6 +4,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
+	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -45,6 +48,26 @@ func TestTheSweepRefusesInputsItCannotHonour(t *testing.T) {
 		if !strings.Contains(string(combined), c.want) {
 			t.Errorf("%s: the sweep said %q; want it to say %q", c.name, strings.TrimSpace(string(combined)), c.want)
 		}
+	}
+}
+
+// TestTheSweepLeavesTheUnionOut is 0.19.6 D-84: the union fails on every
+// mutant under app and modes/tty, so a catch of its says only that the source
+// changed. The sweep's MUTANT_SKIP must name it, by the name the function has,
+// so a rename that the pattern misses fails here.
+func TestTheSweepLeavesTheUnionOut(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", sweepScript))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`(?m)^export MUTANT_SKIP='([^']+)'$`).FindSubmatch(raw)
+	if m == nil {
+		t.Fatalf("%s sets no MUTANT_SKIP, so the union can catch a mutant", sweepScript)
+	}
+	full := runtime.FuncForPC(reflect.ValueOf(TestTheTwoTreesDeclarationsAreConserved).Pointer()).Name()
+	name := full[strings.LastIndex(full, ".")+1:]
+	if !regexp.MustCompile(string(m[1])).MatchString(name) {
+		t.Fatalf("%s skips %q, which does not match the union's name %s", sweepScript, m[1], name)
 	}
 }
 

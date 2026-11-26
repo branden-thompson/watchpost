@@ -487,8 +487,8 @@ mutant-verdicts:
 # and re-home maps, old<TAB>new per line.
 #
 # THE COMPARATOR IS THE VERDICT, not the sweep's exit: the sweep exits 1 when
-# any mutant survives, and the baseline's seven kept equivalents survive by
-# ruling. A survivor that was caught, a catch that went to another test, and
+# any mutant survives, and six kept equivalents survive by ruling (mAA3, the
+# seventh, caught by the compiler's baselines, 0.19.6 D-85). A survivor that was caught, a catch that went to another test, and
 # NO EVIDENCE are each a changed class, which the comparator fails.
 #
 # IT NEVER PROMOTES: a partial run is not the release's record, and

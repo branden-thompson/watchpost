@@ -1633,8 +1633,10 @@ each one's best mention (0.19.6 D-50).
 | D-83 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | W8 (radar), before any radar code: IEM's composite covers only the lower 48 (its colour table published and e… |
 | D-83 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Response headers at run time (round 2, N-11) |
 | D-84 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d84.md` | THE LINE-UP IS PLANNED BEFORE IT IS BROADCAST |
+| D-84 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4's closing sweep (make mutant-scoped BATCH_BASE=7a4a10ed SCOPED_FUNCS=06_docs/perf/renames.tsv on 2e451991,… |
 | D-84 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | W8.4, before its code: FR-5.3 makes a frame valid only if its time is advertised and its image is not empty; … |
 | D-84 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The DISCOVER gate: approve DISCOVER exit for watchpost 0.19.0, go-ionomaps and go-tuiMaps v0.3.0, and the thr… |
+| D-85 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-84's fix, its first proof. mAA3 alone through the fixed sweep (MUTANT_ONLY=mAA3_, on 2e451991) reads CAUGHT… |
 | D-85 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-1, U2-2, HUM LEAD direction: "We should preload the radar before we show it - right now it's blinkin… |
 | D-85 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-80's audio-output-device Setting, re-asked with PLAN's facts: oto v3.5.0 has no device choice (oto/v3 conte… |
 | D-86 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d86.md` | THE CONSOLE'S COLOURS, AND WHY REGISTERING A PAIR IS NOT FREE |
@@ -3036,11 +3038,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:161` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:161` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:163` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:163` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:161` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:163` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

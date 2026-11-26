@@ -12,7 +12,7 @@ set -u
 mutant=$1; shift
 pkgs=${*:-./...}
 
-# TWO OPT-IN KNOBS, BOTH OFF BY DEFAULT, so a bare `run.sh` is the same tool it
+# OPT-IN KNOBS, EACH OFF BY DEFAULT, so a bare `run.sh` is the same tool it
 # has always been and the harness's own gated properties still hold.
 #
 # MUTANT_BASELINE=assumed skips the clean-tree test run. THE CALLER IS ASSERTING
@@ -35,11 +35,16 @@ pkgs=${*:-./...}
 # sweep passes the test that caught this mutant last time. A catch is checked
 # exactly as an unscoped one is. A SURVIVED under a scope only says the named
 # test no longer catches it, so the sweep runs the whole package next.
+#
+# MUTANT_SKIP=<pattern> leaves out the tests it names on the mutated tree: the
+# sweep passes the tests whose failure on a mutant says only that the source
+# changed, which every mutant does (0.19.6 D-84).
 baseline=${MUTANT_BASELINE:-run}
 raceflag=""
 [ "${MUTANT_RACE:-0}" = "1" ] && raceflag="-race"
 scope=""
 [ -n "${MUTANT_RUN:-}" ] && scope="-run ${MUTANT_RUN}"
+[ -n "${MUTANT_SKIP:-}" ] && scope="$scope -skip ${MUTANT_SKIP}"
 root=$(git rev-parse --show-toplevel)
 cd "$root" || exit 2
 

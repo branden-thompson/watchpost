@@ -126,8 +126,9 @@ func TestNoSettingsGroupIsDrawnEmpty(t *testing.T) {
 // on tab.  A focus on a hidden row is a window whose keys appear dead.
 // The window opens on a row this surface draws. A window whose focus starts
 // off screen swallows its first keystroke. Every surface draws every row today
-// (0.18.0 D-70), so this cannot fail until a row is hidden again: mAA3 survives
-// as an equivalent mutant (0.19.5 A-24) and becomes catchable then.
+// (0.18.0 D-70), so this cannot fail until a row is hidden again: mAA3 is
+// equivalent in behaviour (0.19.5 A-24), caught only by the compiler's
+// baselines (0.19.6 D-85), and becomes catchable here then.
 func TestTheWindowOpensOnARowThisSurfaceDraws(t *testing.T) {
 	d := dash(t).(Dashboard)
 	d.surface = SurfaceBroadcaster
