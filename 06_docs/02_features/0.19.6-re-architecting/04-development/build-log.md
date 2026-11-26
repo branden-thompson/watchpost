@@ -1592,3 +1592,19 @@ and D-85 is that report's row.
 **B4 in commits.** 7, the plan's 4: the instruments took a commit first (A-63), the close one of its
 own (A-68), and the sweep's fix one more (D-84); the batch map says so. B4 closes on the scoped sweep
 run on this commit.
+
+## B4 closed: the sweep, its three reports, the union left out (D-84, D-85)
+
+**The sweep, on the fix.** `make mutant-scoped BATCH_BASE=7a4a10ed SCOPED_FUNCS=06_docs/perf/renames.tsv`
+on `54473be3`, 5,184 s: its baseline green; 319 of 319 CAUGHT, none SURVIVED, none NO EVIDENCE. The
+three more than on `2e451991` are the `Makefile`'s mutants, m378, m673 and m674, derived because the fix
+edited its note; each is caught by the record's killer. Three reports, each ruled:
+- **The split's carve, 2:** m386 and m441, each anchor in `mapModel.foundRecentre`, carved from
+  `Dashboard.applyPropFound` (A-68 (4)), each killer the record's.
+- **The compiler's baselines, 1:** mAA3, "was SURVIVED, now CAUGHT", by
+  `TestTheTreesKeepWhatTheCompilerDecided` against `./...`, as D-85 rules; the union caught nothing.
+
+**B4 closed, 2026-11-26.** `make verify-full` on the closing tree, committed as `2e451991`: every gate
+green, the whole corpus judged, 5,904 s. The sweep's fix, `54473be3`, on `make verify` (4,668 s), and
+the scoped sweep on it as above. `make p10` on `54473be3`: 0 live, 0 unmatched, 0 unratified, the
+mirror unchanged at 176 rows. B4 in commits: 7, the plan's 4 (the batch map).

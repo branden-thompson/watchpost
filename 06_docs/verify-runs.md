@@ -334,3 +334,4 @@ says exactly what passed.
 | 2026-11-26T01:35:42Z | 71482d5a | 95b9987952a4 | verify-full | FAILED (exit 2) | 1305 |
 | 2026-11-26T03:18:40Z | 71482d5a | a6b1f69551aa | verify-full | green | 5904 |
 | 2026-11-26T13:42:23Z | 2e451991 | 5aa1f302bda1 | verify | green | 4668 |
+| 2026-11-26T15:27:59Z | 54473be3 | 069e1f7a2f94 | verify-docs | green | 652 |
