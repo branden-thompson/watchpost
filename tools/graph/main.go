@@ -14,7 +14,9 @@
 //     the map's files, that the map's files read;
 //   - MS-7: the test functions that reach the map's unexported code under 2b,
 //     their helpers' reach included, split into C3 (moves with the code) and
-//     C4 (cannot be served) by the committed allowlist (0.19.6 D-43);
+//     C4 (cannot be served) by the committed allowlist (0.19.6 D-43) and the
+//     seam's own root names, each with the allowed names it stands for
+//     (0.19.6 A-67);
 //   - `app`'s unexported crossings: uses of an unexported object whose file
 //     and the object's are planned for different packages (the planned map);
 //   - the deck-only test files (design AP-7): the app objects each reaches,
@@ -83,6 +85,7 @@ func run(args []string, stdout, stderr *out) int {
 const (
 	crossingsMS = "06_docs/02_features/0.19.6-re-architecting/03-architecture-design/design-data/MS/crossings-MS.tsv"
 	allowMS     = "06_docs/graph/ms7-allow.tsv"
+	seamMS      = "06_docs/graph/ms7-seam-B4.tsv"
 	plannedApp  = "app/testdata/sharedlock/planned.tsv"
 )
 
@@ -142,6 +145,13 @@ func measure(ix *index) ([]figure, *ms7, []string, error) {
 	allow, err := readSet(filepath.Join(ix.inputs, allowMS))
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	seam, err := readSet(filepath.Join(ix.inputs, seamMS))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	for name := range seam { // bounded by the file (P10-02)
+		allow[name] = true // a seam name is the path to the model or what the Env carries, as the names it stands for were
 	}
 	planned, err := readPlanned(filepath.Join(ix.inputs, plannedApp))
 	if err != nil {

@@ -65,6 +65,7 @@ func Run() tty.Dashboard { return tty.Dashboard{Cfg: helper()} }
 	"app/support_test.go":        "package app\n\nfunc viaTheRoot() int { return Run().Cfg + helper() }\n",
 	crossingsMS:                  "direction\tsymbol\tkind\tdeclaring_file\tdisposition\tnote\ntty->mapview\tmapInner\tfunc\tmodes/tty/map_draw.go\tMOVES\tplanted\n",
 	allowMS:                      "# planted\nDashboard\nDashboard.frame\n",
+	seamMS:                       "# planted: no seam name\n",
 	plannedApp:                   "# planted\nfile\tapp/app.go\tapp\nfile\tapp/helper.go\tdeck\n",
 }
 
@@ -148,6 +149,28 @@ func TestTheFiguresOnAPlantedTree(t *testing.T) {
 	}
 	if len(crossed) != 1 || !strings.Contains(crossed[0], "helper") {
 		t.Errorf("crossings %v; want app.go's use of helper, planned for another package", crossed)
+	}
+}
+
+// TestASeamNameCountsAsTheNamesItStandsFor is 0.19.6 A-67 on the planted
+// module: a root name on the seam's list is allowed as the allowlist's names
+// are, so the test that reaches it alone outside the allowlist is C3.
+func TestASeamNameCountsAsTheNamesItStandsFor(t *testing.T) {
+	dir := plantedTree(t)
+	if err := os.WriteFile(filepath.Join(dir, seamMS), []byte("# planted\nDashboard.width\tDashboard\tplanted\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ix, err := load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ix.inputs = ix.dir
+	_, m, _, err := measure(ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c3, c4 := m.count("C3"), m.count("C4"); c3 != 2 || c4 != 0 {
+		t.Errorf("with the seam naming Dashboard.width: C3 %d, C4 %d; want 2 and 0", c3, c4)
 	}
 }
 

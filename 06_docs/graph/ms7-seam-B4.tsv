@@ -1,0 +1,12 @@
+# graph: the seam's own root names (0.19.6 A-67, D-43): each new since e57afeaf, the path to the map's
+# model or what its Env carries, standing for the allowlist's names its callers reached before B4.
+# Each counts as those names do; a test reaching a root name outside both lists is C4.
+# name	stands_for	why
+Dashboard.mapModel	Dashboard	the path to the model: its fields were promoted through Dashboard (D-81)
+Dashboard.mapEnv	Dashboard.opts Dashboard.now Dashboard.modal Dashboard.width Dashboard.height Dashboard.snap Dashboard.selected	the Env, built from the reads the map made of the root (A-31)
+Dashboard.applyMapWant	Dashboard.close Dashboard.Update	the root applying what the map asks: the close and the steps its methods made in place
+Dashboard.withMap	Dashboard	the root applying a Settings answer the map's method returns: the second half of that method, made in place before
+Config.Map	Config.NewMap Config.MapFeed Config.MapRadar Config.FindPlace Config.PlaceNear Config.PropagationUpdate	the hooks, held once (D-77)
+Config.FrameTimed	Config.Timed	the Router's ear, renamed so a stale write fails to compile (A-65)
+mapModalOf	modalMap modalPropAck modalPropChart modalPropFind modalPropFreq	the root's windows as the map's (D-79)
+mapModal.modal	modalMap modalPropAck modalPropChart modalPropFind modalPropFreq	the map's windows as the root's (D-79)

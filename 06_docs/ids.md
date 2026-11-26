@@ -1629,6 +1629,7 @@ each one's best mention (0.19.6 D-50).
 | D-82 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-1 U1-45, HUM LEAD direction: the cost warning's words under the map (FR-9.2) |
 | D-82 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Reading order (round 2, Docs Q4) |
 | D-83 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d83.md` | THE LIVE CARD SHOWS THE READ, AND THE WORDS WERE ALREADY THERE |
+| D-83 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | 2b's residual (A-33, D-22, D-43). MS-7 re-measured on 04d48c50 by B0.12's tool, the allowlist read with the s… |
 | D-83 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | W8 (radar), before any radar code: IEM's composite covers only the lower 48 (its colour table published and e… |
 | D-83 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Response headers at run time (round 2, N-11) |
 | D-84 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d84.md` | THE LINE-UP IS PLANNED BEFORE IT IS BROADCAST |
@@ -2431,6 +2432,7 @@ each one's best mention (0.19.6 D-50).
 | A-65 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The record's remediation (batch 36; BUILD red team B-F2, B-F4, B-F5, D-F1, D-F2, D-F5, D-F11, D-F12, D-F13, C… |
 | A-66 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4.3 as built: the map's model, its fields, its methods and the seam's values (design MS-1, MS-2, MS-4, MS-5,… |
 | A-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.1 (batch 37; D-205, D-206, D-213, D-214, D-216; BUILD red team L-F2, C-5, … |
+| A-67 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4.4 as built: the hook audit and MS-7 re-measured (design MS-7; A-31, A-33, D-22, D-43, D-83). (1) The audit… |
 | A-67 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Propagation mode's words (batch 38; D-210, D-211; BUILD red team AX-1, AX-2, AX-4 to AX-13): (1) the cent… |
 | A-68 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's code findings (batch 39; BUILD red team C-1 to C-4, L-F3, P-1, P-5, P-6, I-2, I-3, I-4, I-6)… |
 | A-69 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-tuiMaps v0.3.0-rc.2 (batch 40; D-206, D-207, D-216; BUILD red team AX-14, D-F8, C-15, I-7): (… |
@@ -3033,11 +3035,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:160` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:160` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:161` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:161` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:160` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:161` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

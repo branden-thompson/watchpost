@@ -1490,3 +1490,41 @@ from the Env, where A-31 has 2b's `MemoKey` choices part take none.
 | mutants | 169 files | 162 re-pointed, 7 new; the table |
 | goldens | `model-from-config.golden` (+2), `union-decls.txt` | `ackSeen` among the fields built from the `Config`; 505 declarations new or edited, 439 gone or edited |
 | docs | `where-things-happen.md`, `doc.go` | the map's open and its keys through the seam's adapters; `observer_map.go`'s row |
+
+## Before B4: the hook audit and MS-7 re-measured (A-67; D-83)
+
+**The audit.** Design MS-7 left one thing unverified: that no test copies a model and then writes a
+hook, which would show in both copies once the hooks are one pointer. On `04d48c50` the writes after
+construction are 38 lines in 19 test files, each through `ownHooks` on a local `Dashboard`, each
+replacing B4.2's `d.cfg.X =` on the same value. At `e57afeaf` `Dashboard.cfg` was a value, so each
+write reached that copy and the copies taken after it; `ownHooks` gives the value hooks of its own,
+which keeps the same reach. None is affected. The acknowledgement's six writes are `ackSeen`, a value
+field since B4.3, and no production code writes a hook after `NewDashboard`.
+
+**The re-measure.** B0.12's tool read C4 as 416: the allowlist predates the seam, so a test reaching
+the model through `d.mapModel` and `d.mapEnv()` counted as reaching the root. D-43 has the list
+re-keyed through the move. `06_docs/graph/ms7-seam-B4.tsv` lists the seam's eight new root names, each
+with the allowed names it stands for, and the tool reads it beside the allowlist; its planted test
+was seen failing with the list ignored. Every baseline test keeps its class, 288 C3 and 120 C4; the
+24 tests added since are 9 C3 and 15 C4. C4 is 135.
+
+**Against D-22.** Three readers took disjoint thirds of the 135, the shared helpers judged once, and
+each unserved claim was checked against the code and go-tuimaps v0.3.2's API. 69 are set up through
+production entry points, 24 read through MS-6's planned API, 33 asserted as drawn, 9 unserved
+(`06_docs/graph/ms7-c4-B4.tsv`). 22 verdicts carry a mark for a run to confirm, chiefly harness
+filters that widen from one reply type to the 18 `Answers` takes. The 9: six read the library-call
+log or the views drawn, from fields marked "tests only"; one the service-area circle handed to the
+library; one the raw role table; one the map's reply types by name. **D-83:** they split at the
+package line in B8, the map's half in `mapview` with what it reads, a static guard on the join.
+
+**For the pilot.** MS-6 has no method for `mapActions` or `mapMinBody`, both read by the root in
+production, and lists `HelpRows` without the keys and ASCII flag its caller passes. `mapPane.changed`
+has no production reader.
+
+**The changed-line table.**
+
+| Kind | Lines | What |
+|---|---|---|
+| instruments | `tools/graph/main.go`, `main_test.go` | the seam's list read beside the allowlist; its planted test |
+| data | `06_docs/graph/ms7-seam-B4.tsv`, `ms7-c4-B4.tsv` | the eight seam names; the 135 C4 tests' classes |
+| docs | `rulings.md`, `implementation-plan.md`, this section | A-67, D-83; B8's first item names the 9 splits |

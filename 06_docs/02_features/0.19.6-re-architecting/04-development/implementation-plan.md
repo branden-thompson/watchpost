@@ -366,7 +366,10 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 
 ## B8: the map's 2b and the controls, three commits
 
-1. **The straddling tests re-wired in place** onto the API that survives (D-22, as ruled before B5).
+1. **The straddling tests re-wired in place** onto the API that survives (D-22, as ruled before B5):
+   B4.4's 135 by `06_docs/graph/ms7-c4-B4.tsv`'s classes, and the 9 unserved split at the package line,
+   the map's half in `mapview` with the instruments it reads, a static guard that the root reaches the
+   map only through MS-6's drawing methods (D-83).
    The root's memo guard already calls the unchanged engine twice, on `Dashboard` with the model
    excused and then on the model, each perturbed model put back into a copy (A-31; B4.3, D-81); D-23's
    rows hold.
