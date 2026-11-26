@@ -1528,3 +1528,28 @@ has no production reader.
 | instruments | `tools/graph/main.go`, `main_test.go` | the seam's list read beside the allowlist; its planted test |
 | data | `06_docs/graph/ms7-seam-B4.tsv`, `ms7-c4-B4.tsv` | the eight seam names; the 135 C4 tests' classes |
 | docs | `rulings.md`, `implementation-plan.md`, this section | A-67, D-83; B8's first item names the 9 splits |
+
+## B4's close: the inventory, the plan's tests held, the sweep's inputs (A-68)
+
+**The inventory (D-36).** `make test-inventory INVENTORY_ACCEPT=06_docs/testinv/accept-B3.tsv`
+against B0's baseline, on `71482d5a`: every one of the 2,006 plain, 2,006 property and 2,005 race
+tests and subtests kept with its outcome. 24 new in each mode, B3's seven and B4's seventeen: the
+split sites' and the Overlays guards' (B4.1), the hooks' (B4.2), the seam's and the PgDn test
+(B4.3). B4 moved no test between packages, so it adds no accept file. No test removed.
+
+**The plan's tests held (A-37).** B4 joins `landedBatches`; every test its section names is declared.
+
+**The sweep's inputs (A-68).** `BATCH_BASE=7a4a10ed`, B3's closed commit, which derives 316
+mutants. No `SCOPED_PATHS`: B4 moved no file whole, and the two it created have no old path.
+`SCOPED_FUNCS` is `06_docs/perf/renames.tsv`. The reports expected are the anchors the split carved
+into new functions, those `timing.go` gave to `map_timing.go`, m386's corrected killer, and the seven
+new mMS mutants, each to be CAUGHT.
+
+**The as-built page (A-68).** The first `make verify-full` on this close failed in `-race` after
+1,305 s (`verify-runs.md`): `TestTheAsBuiltMapIsKeptInStep` reads this section's heading as B4 landed,
+and `as-built-packages.md` still drew B0 to B3. The page now draws B4: the map's model in place in
+`modes/tty`, reading the Observer only through its Env and answering with a Want; `architecture-atlas.html`
+re-rendered from it.
+
+**B4 in commits.** 6, the plan's 4: the instruments took a commit first (A-63) and the close one of
+its own; the batch map says so. B4 closes on this commit's `make verify-full` and the scoped sweep.

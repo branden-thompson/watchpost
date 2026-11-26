@@ -113,7 +113,7 @@ code{font-family:var(--mono);font-size:.92em}
 </pre></div></article></section><section class="level" id="0.19.6-re-architecting"><header class="lvl"><h2>The packages of modes/tty and app</h2></header><article class="dia" id="0.19.6-re-architecting-0"><div class="meta"><h3>The packages, and what imports what</h3><p class="file"><code>06_docs/02_features/0.19.6-re-architecting/03-architecture-design/as-built-packages.md</code></p><p class="lead">Each solid arrow is an import by non-test code; each dotted one, an import by tests alone. An internal package sits under the tree that owns it, so only that tree&#39;s packages can import it. <code>ttytest</code> and <code>apptest</code> are test support, which <code>make lint-imports</code> keeps to test files.</p></div><div class="canvas"><pre class="mermaid">flowchart TB
   CMD[&#34;cmd/watchpost — the binary&#34;] --&gt; APP
   APP[&#34;app — the composition root: the pipelines, the station, the deck, the map&#39;s data&#34;] --&gt; TTY
-  TTY[&#34;modes/tty — the Router and the Observer (Dashboard),&lt;br/&gt;with the console&#39;s card window and request window&#34;] --&gt; CONSOLE
+  TTY[&#34;modes/tty — the Router and the Observer (Dashboard),&lt;br/&gt;with the console&#39;s card window and request window,&lt;br/&gt;and the map&#39;s model in place (mapModel, 0.19.6 B4)&#34;] --&gt; CONSOLE
   TTY --&gt; FRAME
   APP -- &#34;the console&#39;s messages&#34; --&gt; CONSOLE
   CONSOLE[&#34;modes/tty/console — the Broadcaster console: New(Opening),&lt;br/&gt;the messages Scoped names, the Mirror, the getters (0.19.6 B3)&#34;] --&gt; FRAME

@@ -331,3 +331,5 @@ says exactly what passed.
 | 2026-11-25T22:05:32Z | 8bc9c575 | ebba81a25f28 | verify | FAILED (exit 2) | 4727 |
 | 2026-11-25T23:38:48Z | 8bc9c575 | 3b18ceab83e5 | verify | green | 5086 |
 | 2026-11-26T00:40:18Z | 04d48c50 | 9585ade03dc2 | verify | green | 1897 |
+| 2026-11-26T01:35:42Z | 71482d5a | 95b9987952a4 | verify-full | FAILED (exit 2) | 1305 |
+| 2026-11-26T03:18:40Z | 71482d5a | a6b1f69551aa | verify-full | green | 5904 |

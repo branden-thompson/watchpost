@@ -2434,6 +2434,7 @@ each one's best mention (0.19.6 D-50).
 | A-66 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.1 (batch 37; D-205, D-206, D-213, D-214, D-216; BUILD red team L-F2, C-5, … |
 | A-67 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4.4 as built: the hook audit and MS-7 re-measured (design MS-7; A-31, A-33, D-22, D-43, D-83). (1) The audit… |
 | A-67 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Propagation mode's words (batch 38; D-210, D-211; BUILD red team AX-1, AX-2, AX-4 to AX-13): (1) the cent… |
+| A-68 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4's close, and its sweep's inputs (D-30, D-36, D-51; A-62, A-66). (1) The inventory: make test-inventory INV… |
 | A-68 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's code findings (batch 39; BUILD red team C-1 to C-4, L-F3, P-1, P-5, P-6, I-2, I-3, I-4, I-6)… |
 | A-69 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-tuiMaps v0.3.0-rc.2 (batch 40; D-206, D-207, D-216; BUILD red team AX-14, D-F8, C-15, I-7): (… |
 | A-70 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The answers package and the found target (batch 41; D-212, D-204; BUILD red team L-F1, B-F1, L-F8): (1) platf… |

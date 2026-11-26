@@ -151,6 +151,8 @@ var wholeFileClaims = []wholeFileClaim{
 	{"A-20", "map_model.go"}, {"A-20", "map_timing.go"}, {"A-20", "observer_map.go"},
 	// 0.19.6 A-66 records B4.3 as built: the files it created, split or gave a row, each whole
 	{"A-66", "observer_map.go"}, {"A-66", "modes/tty/observer_map.go"}, {"A-66", "map_timing.go"}, {"A-66", "timing.go"}, {"A-66", "doc.go"}, {"A-66", "window_keys.go"},
+	// 0.19.6 A-68 names the files B4 created and the one it split, for its sweep's inputs, each whole
+	{"A-68", "map_timing.go"}, {"A-68", "observer_map.go"}, {"A-68", "timing.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

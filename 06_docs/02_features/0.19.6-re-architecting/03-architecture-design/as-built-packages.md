@@ -4,7 +4,7 @@ date: 2026-11-22
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — B0–B3. Each batch's build log entry says what it moved."
+status: "LIVE — B0–B4. Each batch's build log entry says what it moved."
 ---
 
 # As built: the packages of modes/tty and app
@@ -24,7 +24,7 @@ internal package sits under the tree that owns it, so only that tree's packages 
 flowchart TB
   CMD["cmd/watchpost — the binary"] --> APP
   APP["app — the composition root: the pipelines, the station, the deck, the map's data"] --> TTY
-  TTY["modes/tty — the Router and the Observer (Dashboard),<br/>with the console's card window and request window"] --> CONSOLE
+  TTY["modes/tty — the Router and the Observer (Dashboard),<br/>with the console's card window and request window,<br/>and the map's model in place (mapModel, 0.19.6 B4)"] --> CONSOLE
   TTY --> FRAME
   APP -- "the console's messages" --> CONSOLE
   CONSOLE["modes/tty/console — the Broadcaster console: New(Opening),<br/>the messages Scoped names, the Mirror, the getters (0.19.6 B3)"] --> FRAME
@@ -44,6 +44,11 @@ flowchart TB
   `WithRecent` and its getters; `modes/tty` imports it, so the compiler refuses the other direction.
   The Observer's window for a console card stays in the root, `card_window.go`, drawing what the
   console hands it.
+- **The map's model reads the Observer only through its Env.** `Dashboard.mapEnv` builds a `mapEnv`
+  for each call, plain values and the clock, and the model answers with a `mapWant` that
+  `Dashboard.applyMapWant` applies; the root's adapters (`observer_map.go`) are the one place the two
+  meet. The model holds the map's hooks once, as `Config.Map` handed them in. It is still in
+  `modes/tty`, so nothing but the review holds the direction until 2b moves it out (B8).
 - **The kit reads no surface's model.** `frame` takes what it draws as parameters, from the
   published snapshot (`platform/snapshot`) and the drawing layer (`platform/render`); both surfaces
   import it, so the compiler refuses the other direction. Its declared inputs are in its `doc.go`.
