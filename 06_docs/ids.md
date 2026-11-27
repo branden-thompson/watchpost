@@ -1640,6 +1640,7 @@ each one's best mention (0.19.6 D-50).
 | D-85 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-1, U2-2, HUM LEAD direction: "We should preload the radar before we show it - right now it's blinkin… |
 | D-85 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-80's audio-output-device Setting, re-asked with PLAN's facts: oto v3.5.0 has no device choice (oto/v3 conte… |
 | D-86 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d86.md` | THE CONSOLE'S COLOURS, AND WHY REGISTERING A PAIR IS NOT FREE |
+| D-86 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B2 to B4's wall time (D-28). make bench-pair on 31bca85f against e57afeaf fails: 7 benchmarks slower in both … |
 | D-86 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-3, HUM LEAD direction: the loop needs controls and a picture of where it is. Amends D-61's step keys |
 | D-86 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Scoring NRL's refits (D-43): install Python 3.12 with Homebrew to run PyIRI 0.1.x in PLAN's dry run, or score… |
 | D-87 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d88.md:22` | Mentioned: The second sentence is what made the first one load-bearing. D-87 turned the card into a manifest |
@@ -3038,11 +3039,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:163` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:163` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:164` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:164` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:163` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:164` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

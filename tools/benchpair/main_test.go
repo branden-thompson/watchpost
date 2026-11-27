@@ -93,6 +93,20 @@ func TestThePairsAreJudgedByD28(t *testing.T) {
 	}
 }
 
+// TestTheArmsRunInTurnAndAlone is 0.19.6 D-86: the second pair runs the
+// tree first, so a drift through the run slows a different arm in each pair,
+// and each arm runs its packages one at a time, so no two packages' benchmarks
+// share the machine.
+func TestTheArmsRunInTurnAndAlone(t *testing.T) {
+	if pairArms != [2][2]string{{"base", "new"}, {"new", "base"}} {
+		t.Errorf("the pairs run %v; want the base first, then the tree first", pairArms)
+	}
+	args := strings.Join(armArgs(10, []string{"./a", "./b"}), " ")
+	if !strings.HasPrefix(args, "test -p 1 ") || !strings.HasSuffix(args, " -count 10 ./a ./b") {
+		t.Errorf("an arm runs go %s; want its packages one at a time (-p 1), -count 10, then the packages", args)
+	}
+}
+
 // must is a value with its error dropped, for planted files the test wrote.
 func must(b []byte, err error) []byte {
 	if err != nil {

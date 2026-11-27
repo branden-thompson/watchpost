@@ -7,7 +7,12 @@
 // WHY PAIRED. A laptop's wall time moves with its temperature and whatever
 // else runs; a figure recorded once and compared later measures the machine.
 // The two arms of a pair run minutes apart on the same machine, and a
-// slowdown counts only when a second pair repeats it.
+// slowdown counts only when a second pair repeats it. The second pair runs its
+// arms in the other order, so a drift through the run cannot repeat (0.19.6 D-86).
+//
+// IT MEASURES THE PERFORMANCE CORES. It is the one heavy run started at `nice`
+// alone, never under `taskpolicy -b`: on the efficiency cores a frame took 3.5
+// times as long and two runs of the same commit differed by up to 23 % (0.19.6 D-86).
 //
 // WHY THE PACKAGE IS IGNORED. A move changes a benchmark's package and not its
 // name, so the arms are paired by name (benchstat -ignore pkg). A name that
@@ -19,8 +24,8 @@
 //	go run ./tools/benchpair run -base <commit> [-count 10] [-out <dir>] <packages>...
 //	go run ./tools/benchpair judge <base1.txt> <new1.txt> <base2.txt> <new2.txt>
 //
-// run checks the base out into a worktree under -out, runs base, tree, base,
-// tree, each `go test -run '^$' -bench . -benchmem -count N`, then judges.
+// run checks the base out into a worktree under -out, runs base, tree, tree,
+// base, each `go test -p 1 -run '^$' -bench . -benchmem -count N`, then judges.
 // It is local and HUM LEAD-run on a quiet machine, never a gate in CI.
 package main
 
@@ -121,24 +126,41 @@ func runPairs(args []string, o *out) int {
 			o.say("benchpair: git worktree remove %s: %v: %s", tree, err, b)
 		}
 	}()
-	var files []string
-	for pair := 1; pair <= 2; pair++ { // 0.19.6 D-28's two pairs (P10-02)
-		for _, arm := range []struct{ name, dir string }{{"base", tree}, {"new", "."}} { // the pair's two arms (P10-02)
-			f := filepath.Join(*dir, fmt.Sprintf("%s%d.txt", arm.name, pair))
-			o.say("benchpair: pair %d, %s arm, %s", pair, arm.name, f)
-			b, err := command(arm.dir, "go", append([]string{"test", "-run", "^$", "-bench", ".", "-benchmem", "-count", strconv.Itoa(*count)}, pkgs...)...)
+	dirOf := map[string]string{"base": tree, "new": "."}
+	for pair, arms := range pairArms { // 0.19.6 D-28's two pairs (P10-02)
+		for _, name := range arms { // the pair's two arms (P10-02)
+			f := filepath.Join(*dir, fmt.Sprintf("%s%d.txt", name, pair+1))
+			o.say("benchpair: pair %d, %s arm, %s", pair+1, name, f)
+			b, err := command(dirOf[name], "go", armArgs(*count, pkgs)...)
 			if werr := os.WriteFile(f, b, 0o644); werr != nil {
 				o.say("benchpair: %v", werr)
 				return 1
 			}
 			if err != nil {
-				o.say("benchpair: the %s arm failed: %v; its output is in %s", arm.name, err, f)
+				o.say("benchpair: the %s arm failed: %v; its output is in %s", name, err, f)
 				return 1
 			}
-			files = append(files, f)
 		}
 	}
+	var files []string
+	for _, f := range []string{"base1", "new1", "base2", "new2"} { // judgeFiles' order (P10-02)
+		files = append(files, filepath.Join(*dir, f+".txt"))
+	}
 	return judgeFiles(files, o)
+}
+
+// pairArms is the order each pair's arms run in: the base first in pair 1, the
+// tree first in pair 2 (0.19.6 D-86). A machine that drifts through the run
+// slows the second arm of each, the tree in one pair and the base in the other,
+// so a drift fails one pair at most and 0.19.6 D-28's rule asks both.
+var pairArms = [2][2]string{{"base", "new"}, {"new", "base"}}
+
+// armArgs is one arm's go test: every benchmark, -count times, with its
+// packages run one at a time (-p 1, 0.19.6 D-86). go test runs package binaries
+// in parallel by default, and two packages' benchmarks at once share the
+// machine they are timing.
+func armArgs(count int, pkgs []string) []string {
+	return append([]string{"test", "-p", "1", "-run", "^$", "-bench", ".", "-benchmem", "-count", strconv.Itoa(count)}, pkgs...)
 }
 
 // command runs a program in dir and returns its combined output.

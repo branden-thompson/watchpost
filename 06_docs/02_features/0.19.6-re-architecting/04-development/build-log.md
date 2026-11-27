@@ -1608,3 +1608,31 @@ edited its note; each is caught by the record's killer. Three reports, each rule
 green, the whole corpus judged, 5,904 s. The sweep's fix, `54473be3`, on `make verify` (4,668 s), and
 the scoped sweep on it as above. `make p10` on `54473be3`: 0 live, 0 unmatched, 0 unratified, the
 mirror unchanged at 176 rows. B4 in commits: 7, the plan's 4 (the batch map).
+
+## Before B5: the paired wall time, its arms in turn and alone (D-86)
+
+**The first run.** `make bench-pair` on `31bca85f` against `e57afeaf`, under the standing
+`taskpolicy -b` throttle, failed D-28: 7 benchmarks slower in both pairs, by 3 to 18 %. Six of them
+(`Key`, `Parse27k`, `Overlay`, `KitDisplayWidth_styledRow` and both `LocationTable`s) are in
+`platform/snapshot`, `platform/render` and `domains/fire/hms`, whose production code is the same at
+both commits. The A/A comparison, `base1` against `base2`, the same commit, moved 18 of 28 benchmarks
+significantly, by -23 % to +14 %. On the efficiency cores a frame took about 3.5 times as long as on
+the performance cores; the tree's arm ran after the base's in both pairs; and the session's
+`GOFLAGS=-p=2` ran two packages' benchmarks at once.
+
+**The seventh, alone.** `ConsoleFrame_Miss` is in code B2 and B3 moved. Its two test binaries, built
+once, run alternately for 12 rounds in ABBA order at `nice` alone, `-count 2` each, n = 24 an arm:
+1.89 % faster on the tree (p = 0.000); the controls `ConsoleFrame` and `Key` unchanged; allocations
+the same.
+
+**The fix (D-86).** `tools/benchpair` runs pair 1 base then tree and pair 2 tree then base, so a
+drift through the run slows the second arm of each and fails one pair at most; each arm's
+`go test` takes `-p 1`. `make bench-pair` starts at `nice -n 19` alone, the one heavy run outside
+`taskpolicy -b`; the Makefile's note and the plan's throttle line say so.
+`TestTheArmsRunInTurnAndAlone` holds both: seen failing with pair 2 in the old order, and again with
+`-p 1` taken out.
+
+**The first gate failed** in `lint-authoring` after 1,595 s (`verify-runs.md`): `pairArms`'s comment cited
+D-28 without its release (AP-CITE-01); it reads "0.19.6 D-28" now.
+
+**The re-run** on this commit judges B2 to B4 on all 28 benchmarks.

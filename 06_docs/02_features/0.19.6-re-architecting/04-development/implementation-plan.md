@@ -73,7 +73,8 @@ listed re-recordings is a regression, never a ruling candidate (A-29).
    - `make verify-full` at the batch's close, on its last commit: the whole mutant corpus (D-38). A
      batch is not closed, and nothing merges, without it.
    - Every heavy run at a low priority, on the efficiency cores: `taskpolicy -b nice -n 19` with
-     `GOFLAGS=-p=2` and `GOMAXPROCS=4` (D-37 to D-39, the 2026-11-16 overheating).
+     `GOFLAGS=-p=2` and `GOMAXPROCS=4` (D-37 to D-39, the 2026-11-16 overheating). The one exception
+     is `make bench-pair`, at `nice -n 19` alone, since it measures the performance cores (D-86).
 6. **The scoped sweep** (C-12, A-11, A-30), `make mutant-scoped` (D-30), run locally (D-39). Its list is derived: mutants
    in a moving file, mutants whose last killer's file moves, mutants whose enclosing function's body
    hash changed, and mutants whose last killer has a row in the changed-line table. It runs with A-3's

@@ -660,12 +660,14 @@ quality-bench:
 	go test $(BENCH_PKGS) -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
 
 # The paired comparison D-28 judges a code batch by: the base commit checked
-# out in a worktree under dist, then base, tree, base, tree, each every
-# benchmark in BENCH_PKGS at -count 10, compared by the pinned benchstat. A
-# benchmark both pairs show significantly slower by 2 % or more fails, and so
-# does a base benchmark with no pair; the result goes to the HUM LEAD. Local,
-# HUM LEAD-run on a quiet machine, never in CI: a hosted runner's neighbours
-# are not a quiet machine.
+# out in a worktree under dist, then base, tree, tree, base, each every
+# benchmark in BENCH_PKGS at -count 10, its packages one at a time, compared by
+# the pinned benchstat. A benchmark both pairs show significantly slower by 2 %
+# or more fails, and so does a base benchmark with no pair; the result goes to
+# the HUM LEAD. Local, on a quiet machine, never in CI: a hosted runner's
+# neighbours are not a quiet machine. It starts at `nice` alone, the one heavy
+# run never under `taskpolicy -b`, because it measures the performance cores
+# (0.19.6 D-86).
 BENCH_BASE ?= e57afeaf
 bench-pair:
 	go run ./tools/benchpair run -base $(BENCH_BASE) -out $(DIST)/benchpair $(BENCH_PKGS)
