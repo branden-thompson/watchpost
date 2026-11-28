@@ -109,7 +109,7 @@ func (st setupState) classMuted(key string) bool {
 }
 
 // classKeyOf is the tone-class key a row mutes.
-func classKeyOf(id setupRowID) string { return setupTable()[id].class }
+func classKeyOf(id setupRowID) string { return setupRowOf(id).class }
 
 // toneClassLabels maps each class key to its label, from the list the app
 // supplied. A class the app did not name falls back to its key rather than

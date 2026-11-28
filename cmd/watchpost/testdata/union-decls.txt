@@ -828,7 +828,7 @@ func (Dashboard).castApplyCmd bb00c844688a
 func (Dashboard).castForSave ea9b76e9b593
 func (Dashboard).castLines b31fce1685c4
 func (Dashboard).castNote 3e313dd8c24d
-func (Dashboard).castNoticeSlot 183d18d5c03a
+func (Dashboard).castNoticeSlot 5cae32d1ece7
 func (Dashboard).castTouched 1ba4937e8daa
 func (Dashboard).chooseDebug 588a31102a6f
 func (Dashboard).chooseRelayFault a81c71e8069d
@@ -848,7 +848,7 @@ func (Dashboard).controlRow eebdde2bb406
 func (Dashboard).currentDefault e2194f376224
 func (Dashboard).currentTransmitter f15f4e947767
 func (Dashboard).currentlyRows 4fb26eb2a492
-func (Dashboard).cycleFocused bacf9bbed160
+func (Dashboard).cycleFocused bd2b49d6fdb0
 func (Dashboard).cycleHistoryRow 77ca00b95330
 func (Dashboard).cyclePicker e62c8714b042
 func (Dashboard).cycleReduceMotion 8dc5594e32af
@@ -869,7 +869,7 @@ func (Dashboard).dropPrompt b52376cb9fbc
 func (Dashboard).fallThroughRelayFault e24b9e07929c
 func (Dashboard).fireBoldMW e551e6c22a30
 func (Dashboard).firmsHealth 0a19ce5ec221
-func (Dashboard).firstRowOfTab 308ecd50d73f
+func (Dashboard).firstRowOfTab 9e93e4cb081c
 func (Dashboard).fitPriority 8b1eecfaa71c
 func (Dashboard).flashed 1da9743134f4
 func (Dashboard).floatModal 3bcb98408350
@@ -939,7 +939,7 @@ func (Dashboard).mapKey 86049f7738ee
 func (Dashboard).mapLayersNoticeSlots b91c8b2fc73d
 func (Dashboard).mapModalKey dc1f4b705005
 func (Dashboard).mapNoticeSlots 658c94d9cd4a
-func (Dashboard).mapSettings 7cd6970d6ecc
+func (Dashboard).mapSettings 498f52aad78e
 func (Dashboard).mapShown dc449adcffef
 func (Dashboard).mapWindow 6cf3f217094a
 func (Dashboard).mapWords b9f4a523571d
@@ -959,7 +959,7 @@ func (Dashboard).moveTarget 067d36618b85
 func (Dashboard).narrowHead ae1604bdbb8b
 func (Dashboard).numPriority 6eb78a99b2f3
 func (Dashboard).numRecent 93ba136b844c
-func (Dashboard).onFocusedTab ae3dc3c9d3bc
+func (Dashboard).onFocusedTab 2fde822ff0b3
 func (Dashboard).onTick dc4f5e7b895f
 func (Dashboard).open e27d54467511
 func (Dashboard).openDiagnostics 08bfdd6cf4a5
@@ -1022,7 +1022,7 @@ func (Dashboard).routeMap 726d7f7789f5
 func (Dashboard).routeWindowKey b1dca7e1752b
 func (Dashboard).row efda231fd4d2
 func (Dashboard).rowTakesArrows baeb6f08aaa5
-func (Dashboard).rowTakesLeftRight c0f158751d04
+func (Dashboard).rowTakesLeftRight 3d006878f7c3
 func (Dashboard).rowVisible 28936adcbdc5
 func (Dashboard).saveRadioCmd f73a2a1ca41e
 func (Dashboard).seismicLookbackDays 5e0ed2597462
@@ -1036,10 +1036,10 @@ func (Dashboard).settled ee2877134afd
 func (Dashboard).setupAdvance 178e263f325f
 func (Dashboard).setupAlertKey 2ae48fdc8705
 func (Dashboard).setupAlertLines aa0040eb8e96
-func (Dashboard).setupBlock 5bad1b5f89ca
+func (Dashboard).setupBlock 4d5dc46d46f8
 func (Dashboard).setupBlocks f5f5c261245b
 func (Dashboard).setupBody b004a5567a2d
-func (Dashboard).setupChips e867e1ef1099
+func (Dashboard).setupChips bea3a2464055
 func (Dashboard).setupFinishCmd 00c2bc9e18c7
 func (Dashboard).setupKeyKey f7410702eb5c
 func (Dashboard).setupKeyLines c9ee682d1be8
@@ -1050,14 +1050,14 @@ func (Dashboard).setupMaxWidth fc7b6122d961
 func (Dashboard).setupNotices f1f9ac7be6ce
 func (Dashboard).setupPage ea7b14274780
 func (Dashboard).setupPreview 999e26a94be3
-func (Dashboard).setupRowKey 11b532b84821
+func (Dashboard).setupRowKey 2a2ec363821c
 func (Dashboard).setupRowText e66321652350
 func (Dashboard).setupSave 2f149bffbdb1
 func (Dashboard).setupServiceKey fbf1f7fe0c8d
 func (Dashboard).setupServiceLines 662cb2075f6a
-func (Dashboard).setupSpace 7b941d2563b1
+func (Dashboard).setupSpace 742500b7162c
 func (Dashboard).setupSuggest 00081dc462d3
-func (Dashboard).setupTab 01ba034583e7
+func (Dashboard).setupTab 97d668ab01e7
 func (Dashboard).setupTabRows 24eb3a8fb2ae
 func (Dashboard).setupTransmitterLines b3e540a88128
 func (Dashboard).setupWidth 2a0c94bc7bf7
@@ -1552,7 +1552,7 @@ func (mapModel).keepWordsPlace cba6b85bf7ae
 func (mapModel).layerAnswerWords 0d4d34ebb296
 func (mapModel).layerChoices 0880150ab268
 func (mapModel).layerLabel a380a89c1ff2
-func (mapModel).layerLines 28b74564ac46
+func (mapModel).layerLines 425b53fc4408
 func (mapModel).layerOn d100f264b5d0
 func (mapModel).layerWords fdbf45e5d106
 func (mapModel).legendClasses 83a1361f6d48
@@ -1572,7 +1572,7 @@ func (mapModel).mapDepthHint a1bc45e1a8c4
 func (mapModel).mapExtraLines 482a67c38a9e
 func (mapModel).mapFeedCmd c0a7a422624a
 func (mapModel).mapFits 04edabc558b3
-func (mapModel).mapLayerLines a248347397a8
+func (mapModel).mapLayerLines 258b8ebb6b17
 func (mapModel).mapMode 405367b6ad3d
 func (mapModel).mapNotesNow 6620607b9d02
 func (mapModel).mapPanicked 66b45d875f0b
@@ -1584,7 +1584,7 @@ func (mapModel).mapPrefArrow 8d77ab5226a2
 func (mapModel).mapRole 566b16a10594
 func (mapModel).mapRow bef31c348307
 func (mapModel).mapRowW 44f57661bf1c
-func (mapModel).mapSettingLines 9a6ead2545b7
+func (mapModel).mapSettingLines 219468a8bc06
 func (mapModel).mapStatusLine 865060794ed2
 func (mapModel).mapStatusText 7692149b9bb7
 func (mapModel).mapTextW 13c8a192d417
@@ -1836,7 +1836,6 @@ func (mapScaleMode).Key 83de6b9cd279
 func (mapScaleMode).Label 368f114c3a49
 func (mapScaleMode).zoom ccda55f87116
 func (mapSettingsView).flashFor 1da5ce325f78
-func (mapSettingsView).visible bc4f4a6c6161
 func (mapWant).and 532fb45b379f
 func (mapWorkers).begin e14476b23792
 func (mapWorkers).cmd 82fd48416765
@@ -2255,7 +2254,7 @@ func choicesOf 92508cdf50cb
 func chooseNearest 543f053140cc
 func chosenOn 85eff2f73060
 func citiesFrom 921446dee328
-func classKeyOf e80e63465cfb
+func classKeyOf 08cfa530c7d1
 func classRowOrder 2a9a2d5fb3ca
 func clipToWidth 1412b9449e2b
 func clockFrom 5f8eb641535a
@@ -2336,7 +2335,7 @@ func endOnHangUp 526e598467de
 func endpointCells dddb5bee4fa8
 func endpointMark 991e9f1e233a
 func endpointShape e543c731917b
-func enterSaves 2b00344084c9
+func enterSaves 544cf77870f8
 func envWatchlistDwell 56619cc6949d
 func eraseRune ee2f1cf27b64
 func errKind a6b609ee14dc
@@ -2741,7 +2740,7 @@ func resolveAlertAreas 34a1d7262c8e
 func resolveHook 30d3b24acb2e
 func resolveQuery 20bdb31e295c
 func restoreRecent 1af271d3dd39
-func roleOf d2424c796110
+func roleOf b71379cf374f
 func roleState 791c90d8ec97
 func roleVoiceOf 42e53764a584
 func roundWords 7ec20e2f3ba5
@@ -2810,6 +2809,7 @@ func setupGroup 318b5639f64f
 func setupGroupTitle f41975a117cf
 func setupGroups a76554839c07
 func setupMark b8a6caa1c8a8
+func setupRowOf 0862c22284bc
 func setupTable 30fccdcd2171
 func setupTabs a9c979ec39cc
 func severeRailed cb8a0fb24cd6
@@ -2940,7 +2940,7 @@ func uvPeak ef5d8e6bc774
 func uvPoints df68d4aefa4e
 func viewAreas 4903e6a667ad
 func viewWidthKm bc1c727896ea
-func visibleRowOfGroup b11eeac01fdc
+func visibleRowOfGroup 8386ee05274d
 func vizFor b0010ae24a19
 func voiceDir 8defe53e3f18
 func warningText dc974b87d6bc
@@ -3163,7 +3163,7 @@ type mapRadarMsg 12d1dc733a78
 type mapReleaseMsg b37b9cef0014
 type mapRole d283b6e6ba30
 type mapScaleMode d4fc1366f3f3
-type mapSettingsView 36777cf696be
+type mapSettingsView 2120f1460e3d
 type mapSettingsWant 582a10daf63b
 type mapSource 23bb7de9c069
 type mapStation e451e0793f27
@@ -3384,6 +3384,7 @@ var radarAheadChoices 661a40d37f08
 var rateTable a82dde930f01
 var reachLimitWords f3d950acafe8
 var scaleWords 779a3953e964
+var setupRows 6859dde36fb8
 var spokenCoordinates 5b36c50983d1
 var spokenFrequency 9a77618f3b15
 var spokenRules ad78949f7bab

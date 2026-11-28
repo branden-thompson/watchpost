@@ -152,12 +152,20 @@ func (mm mapModel) windowLines(e mapEnv) []string {
 
 // mapSettingsView is what the map's Settings rows read of the Settings
 // window (0.19.6 design MS-4): its focus, the layers row's cursor, the
-// focused chip's blink as of the call, and the map rows shown.
+// focused chip's blink as of the call, and whether each of the map's three
+// groups is shown, read from the row that opens it.
+//
+// A FIELD FOR EACH ROW THE MAP ASKS ABOUT, not a mask of all its rows: the
+// window's width builds this for every group of every tab, and asking all 31
+// rows costs the Settings window's redraw 6 % for three answers (0.19.6
+// D-87). A row the map has not asked about has no field to read.
 type mapSettingsView struct {
-	Focus   setupRowID
-	LayerAt int
-	Flash   pickerFlash // the focused row's chip blinking now, or flashNone
-	Visible uint64      // bit id-rowMapsOn set for each of the map's rows the window shows
+	Focus            setupRowID
+	LayerAt          int
+	Flash            pickerFlash // the focused row's chip blinking now, or flashNone
+	MapsOnShown      bool        // rowMapsOn, which opens the MAP group
+	LayersShown      bool        // rowMapLayers, the MAP - LAYERS group's one row
+	DetailLevelShown bool        // rowMapDetailLevel, which opens the MAP - DETAIL group
 }
 
 // flashFor is row id's chip blinking: only the focused row's can be.
@@ -166,12 +174,6 @@ func (v mapSettingsView) flashFor(id setupRowID) pickerFlash {
 		return flashNone
 	}
 	return v.Flash
-}
-
-// visible is whether the Settings window shows the map's row id.
-func (v mapSettingsView) visible(id setupRowID) bool {
-	at := id - rowMapsOn
-	return at >= 0 && at < 64 && v.Visible&(1<<uint(at)) != 0
 }
 
 // mapStep is what the map does once the root has acted on its mapWant

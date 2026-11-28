@@ -337,3 +337,5 @@ says exactly what passed.
 | 2026-11-26T15:27:59Z | 54473be3 | 069e1f7a2f94 | verify-docs | green | 652 |
 | 2026-11-27T16:48:44Z | 31bca85f | d429ec44dd12 | verify | FAILED (exit 2) | 1595 |
 | 2026-11-27T17:20:18Z | 31bca85f | 43392c7dfa03 | verify | green | 1838 |
+| 2026-11-28T00:30:26Z | 61d93b7e | 7cc40069abd2 | verify | FAILED (exit 2) | 1373 |
+| 2026-11-28T01:43:51Z | 61d93b7e | 83a04a830b00 | verify | green | 4364 |

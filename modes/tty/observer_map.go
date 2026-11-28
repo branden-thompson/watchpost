@@ -62,13 +62,10 @@ func (w mapModal) modal() modal {
 
 // mapSettings is what the map's Settings rows read of the Settings window.
 func (d Dashboard) mapSettings() mapSettingsView {
-	var shown uint64
-	for id := rowMapsOn; id <= rowMapLayers; id++ { // the map's rows, bounded by the table (P10-02)
-		if d.rowVisible(id) {
-			shown |= 1 << uint(id-rowMapsOn)
-		}
+	return mapSettingsView{
+		Focus: d.setup.focus, LayerAt: d.setup.layerAt, Flash: d.pickerFlashFor(d.setup.focus),
+		MapsOnShown: d.rowVisible(rowMapsOn), LayersShown: d.rowVisible(rowMapLayers), DetailLevelShown: d.rowVisible(rowMapDetailLevel),
 	}
-	return mapSettingsView{Focus: d.setup.focus, LayerAt: d.setup.layerAt, Flash: d.pickerFlashFor(d.setup.focus), Visible: shown}
 }
 
 // applyMapWant does what the map asked, and then the map's own step and what

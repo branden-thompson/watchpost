@@ -332,20 +332,23 @@ the functions a branch changed since its merge-base with `main`.
 | `P10-03` dynamic memory | (allocation after start-up, in C) | not applicable to Go | ruled out by the harness, with its rationale |
 | `P10-04` small functions | a function's length and branching | at most 60 lines and 40 statements; cyclomatic complexity under 15 | split into named steps. Comment lines are not counted against the 60, as the specimen below shows |
 | `P10-05` invariant density | checks per changed function, per package | 2.0, or a floor the HUM LEAD ratified for the package (`FLOOR x.xx`, held by `tools/p10floor`) | `invariant.Check(ok, …)` whose arguments make no call (`len` and `cap` aside), so `ok := !t.Before(x)` comes first; and a guard, `if <call-free condition> { return … }`. A check is added where it protects a real state, never for the count (0.19.5 D-27) |
-| `P10-06` minimal scope | package-level variables, and stores never read | none | a constructor function returning the value (`setupTable`, below); a variable declared where it is used |
+| `P10-06` minimal scope | package-level variables, and stores never read | none | a constructor function returning the value (`setupTable`, below); a variable declared where it is used; a table read on a hot path, built once by its constructor and never written or addressed, with a test that holds it so (`setupRows`, below) |
 | `P10-07` checked returns | an ignored error, an unused parameter or result | none | handle the error, or discard it explicitly with `_ =` and a reason on the line |
 | `P10-08` directives | `//go:linkname` and cgo; `//go:build` and `//go:generate` | the first two banned; the second two listed | a ratified exemption per build or generate directive |
 | `P10-09` pointer discipline | `unsafe`; `reflect`; dereference depth | `unsafe` banned, `reflect` banned unless justified, depth at most 1 | a value or a single pointer |
 | `P10-10` zero warnings | any other analyser's warning | none | rewrite the code until the tool has nothing to say |
 
 **A specimen: `setupTable` (`modes/tty/setup_rows.go`).**
-- **P10-06.** It is a function returning the Settings table, not a package variable. A
-  package-level table would be state any code could reassign, and each caller wants its own copy.
+- **P10-06.** It is a function building the Settings table. The package reads one copy of
+  it, `setupRows`, built once and read in place: a frame asks the table about hundreds of rows,
+  and a 4 KB copy for each was a fifth of the Settings window's redraw (0.19.6 D-88). Nothing
+  assigns through `setupRows` or takes its address, which `TestTheSettingsTableIsNeverWritten`
+  holds; `make p10` reports no finding on it.
 - **P10-04.** Its body is one statement, a keyed composite literal of 57 rows, one per line (0.19.5
   Q6.4). Its body runs 101 lines (103 with its signature and closing brace): 59 of code and 34 of
   comments. P10 reports nothing on it, although
   batch 19 changed it, so the comments are not counted against the 60 (measured 2026-11-07). A
   few more rows reach the limit.
 - **The route at the limit.** Split the table by Settings group into named builders, or ask the HUM
-  LEAD to ratify the literal as one table. Moving rows into a package variable is not a route: it
-  trades P10-04 for P10-06.
+  LEAD to ratify the literal as one table. Moving the rows themselves into a package variable's
+  literal is not a route: it trades P10-04 for P10-06.

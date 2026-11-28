@@ -3,6 +3,6 @@ import pathlib
 # is shown.
 # Killed by TestTheLayersRowTogglesAndSaves and TestSetupGoldenEveryTab.
 p = pathlib.Path('modes/tty/observer_map.go'); s = p.read_text()
-old = '\t\t\tshown |= 1 << uint(id-rowMapsOn)\n'
+old = '\t\tMapsOnShown: d.rowVisible(rowMapsOn), LayersShown: d.rowVisible(rowMapLayers), DetailLevelShown: d.rowVisible(rowMapDetailLevel),\n'
 assert s.count(old) == 1, 'mMS5'
-p.write_text(s.replace(old, '\t\t\t_ = id\n', 1))
+p.write_text(s.replace(old, '\t\tMapsOnShown: false, LayersShown: false, DetailLevelShown: false,\n', 1))

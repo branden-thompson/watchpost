@@ -57,11 +57,11 @@ func tabOfGroup(g setupGroupID) setupTab {
 }
 
 // setupTab is the tab the window shows: the focused row's.
-func (d Dashboard) setupTab() setupTab { return tabOfGroup(setupTable()[d.setup.focus].group) }
+func (d Dashboard) setupTab() setupTab { return tabOfGroup(setupRowOf(d.setup.focus).group) }
 
 // onFocusedTab reports whether a row is on the tab shown.
 func (d Dashboard) onFocusedTab(id setupRowID) bool {
-	return tabOfGroup(setupTable()[id].group) == d.setupTab()
+	return tabOfGroup(setupRowOf(id).group) == d.setupTab()
 }
 
 // shownOnSurface is a row the surface draws on some tab: every row, on every
@@ -87,7 +87,7 @@ func (d Dashboard) tabsShown() []setupTab {
 // firstRowOfTab is a tab's first row on this surface.
 func (d Dashboard) firstRowOfTab(t setupTab) (setupRowID, bool) {
 	for id := setupRowID(0); id < setupRowCount; id++ { // bounded by the table (P10-02)
-		if tabOfGroup(setupTable()[id].group) == t && d.shownOnSurface(id) {
+		if tabOfGroup(setupRowOf(id).group) == t && d.shownOnSurface(id) {
 			return id, true
 		}
 	}
@@ -110,7 +110,7 @@ func (d Dashboard) stepTab(step int) setupRowID {
 // rowTakesLeftRight reports whether the focused row operates with the arrows
 // (a picker, a toggle), which then keeps them (D-62: "the one that just works").
 func (d Dashboard) rowTakesLeftRight() bool {
-	row := setupTable()[d.setup.focus]
+	row := setupRowOf(d.setup.focus)
 	if d.setup.focus == rowMapLayers {
 		return len(d.cfg.MapLayers) > 0 // ←→ switch the layer under the cursor, as every picker does
 	}

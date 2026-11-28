@@ -226,9 +226,8 @@ type setupRow struct {
 	class string
 }
 
-// setupTable is the table. It is built rather than declared as a package var
-// because a package-level table would be mutable process-wide state (P10-06)
-// and every caller wants its own copy anyway; it is a table of small structs.
+// setupTable builds the table: setupRows holds the one the package reads, and
+// a test that wants a table of its own builds one here.
 func setupTable() [setupRowCount]setupRow {
 	return [setupRowCount]setupRow{
 		// THE DEFAULT LOCATION IS THE LISTENER'S (D-18 row 1). The station's
@@ -333,6 +332,15 @@ func setupTable() [setupRowCount]setupRow {
 	}
 }
 
+// setupRows is the Settings table, built once and read in place: written
+// nowhere and never addressed, which TestTheSettingsTableIsNeverWritten holds
+// (0.19.6 D-88). A frame asks it about hundreds of rows, and building a copy
+// of its 4 KB for each was a fifth of the Settings window's redraw.
+var setupRows = setupTable()
+
+// setupRowOf is row id of the Settings table.
+func setupRowOf(id setupRowID) setupRow { return setupRows[id] }
+
 // The role keys, as the registry spells them. They are duplicated here as
 // STRINGS because modes/tty may not import domains/radio/cast
 // (make lint-imports); TestSetupRoleKeysMatchTheRegistry in app pins them, so
@@ -401,9 +409,8 @@ func firstOfGroup(g setupGroupID) setupRowID {
 // zero value, so "found rowLocation" and "found nothing" are indistinguishable
 // without it.
 func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowID, bool) {
-	table := setupTable()
 	for id := setupRowID(0); id < setupRowCount; id++ { // bounded by the table (P10-02)
-		if table[id].group == g && visible(id) {
+		if setupRows[id].group == g && visible(id) {
 			return id, true
 		}
 	}
@@ -466,7 +473,7 @@ func stepRow(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID
 //
 // With this rule the DATA flow is: type a location, enter, type a key, enter,
 // enter to save.
-func enterSaves(cur setupRowID) bool { return setupTable()[cur].kind != rowInput }
+func enterSaves(cur setupRowID) bool { return setupRowOf(cur).kind != rowInput }
 
 // setupMark and settingLabel are the shared list-focus pattern
 // (platform/render/list.go), which is also where the reason it differs from the

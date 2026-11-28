@@ -332,7 +332,7 @@ func (d Dashboard) setupRowText(key tea.KeyPressMsg) (Dashboard, tea.Cmd) {
 // ceiling (P10-04) — and because "which keys move the focus" and "what this
 // particular row does with text" are two different questions.
 func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
-	picker := setupTable()[d.setup.focus].picker
+	picker := setupRowOf(d.setup.focus).picker
 	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
 		mm, cmd, w := d.mapModel.clearMapData()
 		return d.withMap(mm, w), cmd, true
@@ -360,7 +360,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 			return d.settled(), nil, true
 		}
 	case "space":
-		if setupTable()[d.setup.focus].kind == rowInput {
+		if setupRowOf(d.setup.focus).kind == rowInput {
 			return d, nil, false // a text field takes the space as text
 		}
 		return d.setupSpace(), nil, true
@@ -377,7 +377,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (Dashboard, tea.Cmd, bool) {
 			return m, nil, true
 		}
 	case "p":
-		if picker && setupTable()[d.setup.focus].group == groupCast { // only a voice previews (0.19.5 D-33)
+		if picker && setupRowOf(d.setup.focus).group == groupCast { // only a voice previews (0.19.5 D-33)
 			m, cmd := d.setupPreview()
 			return m, cmd, true
 		}
@@ -404,7 +404,7 @@ func (d Dashboard) cycleFocused(forward bool) (Dashboard, bool) {
 	if mm, w, ok := d.mapModel.mapPrefArrow(forward, d.setup.focus, d.setup.layerAt, d.mapEnv()); ok {
 		return d.withMap(mm, w), true
 	}
-	row := setupTable()[d.setup.focus]
+	row := setupRowOf(d.setup.focus)
 	switch {
 	case d.setup.focus == rowReduceMotion:
 		return d.cycleReduceMotion(forward).flashed(forward), true
@@ -538,7 +538,7 @@ func (d Dashboard) setupSpace() Dashboard {
 	case rowMapDesc:
 		return d.withMap(d.mapModel.cycleMapDesc(true))
 	default:
-		switch setupTable()[id].kind {
+		switch setupRowOf(id).kind {
 		case rowToggle:
 			d = d.toggleClass(id)
 		}

@@ -70,7 +70,7 @@ func castLabel(id setupRowID) string {
 }
 
 // roleOf is the cast role key a row assigns.
-func roleOf(id setupRowID) string { return setupTable()[id].role }
+func roleOf(id setupRowID) string { return setupRowOf(id).role }
 
 // castLines draws the group: five rows, each a thing a listener hears and the
 // voice that reads it.

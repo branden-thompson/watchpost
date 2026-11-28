@@ -1636,3 +1636,60 @@ drift through the run slows the second arm of each and fails one pair at most; e
 D-28 without its release (AP-CITE-01); it reads "0.19.6 D-28" now.
 
 **The re-run** on this commit judges B2 to B4 on all 28 benchmarks.
+
+## Before B5: the Settings window's redraw, its seam and its table (D-87 to D-89)
+
+**The re-run.** `make bench-pair` on `61d93b7e` against `e57afeaf`, at `nice` alone, D-86's form:
+the A/A comparisons within 1 to 4 %; one benchmark fails, `Setup_133x44_Miss`, +7.22 % and +6.34 %
+with the arms in opposite orders, its allocations the same.
+
+**The seam (D-87).** `Dashboard.mapSettings` asked `rowVisible` of all 31 of the map's rows each
+time it was built, and `setupBlock` built it for each of the three map groups the window measures;
+the map reads three. Run four ways interleaved, n = 24: HEAD +5.97 %, the three rows asked +1.73 %,
+the view built once a frame as well +1.82 %. `mapSettingsView` now carries `MapsOnShown`,
+`LayersShown` and `DetailLevelShown` in place of the mask, so a new read needs a new field. mMS5 is
+re-pointed to the same fault, the three answers false; `TestTheLayersRowTogglesAndSaves` and
+`TestSetupGoldenEveryTab` fail on it and pass restored.
+
+**The hunt (D-88).** Bisected, interleaved, n = 20 to 24: B2's close and B3's unchanged against
+`e57afeaf`; B4.1, tests only, unchanged against B3; B4.2 +2.03 %. Moving `mapModel` to the end of
+`Dashboard` changed nothing (+1.14 % against the tree's +1.26 %), and the compiler's inlining on the
+Settings rows is the same on both sides of B4.2. A profile diff of B4.1 against B4.2, 20,000
+iterations each, puts it in `setupTable`: 16 instructions at the same alignment in both, copying a
+4,104-byte static table into each caller, which the frame asks hundreds of times. `setupTable` alone
+is 2.28 % slower in B4.2's binary; the table's source sits 40 bytes past a 64-byte line in both fast
+builds and 8 in both slow ones. The residual was where the linker put the table.
+
+**The table (D-88).** `setupRows` is the table built once at package level and read in place;
+`setupRowOf` reads a row, and `visibleRowOfGroup` walks it by index; `setupTable` builds a copy for
+the tests that want one. `TestTheSettingsTableIsNeverWritten` reads every file of the package for
+an assignment through it, a step of it, or its address: its control plants six and finds six, and a
+write planted in `setup_tabs.go` failed it by line. The code standards' P10-06 specimen says so.
+`make p10` reports no finding on the table.
+
+**The floor (D-89).** `make p10` found `tools/benchpair` at 0.50 over 14 functions, under its 0.54
+over 13: D-86's `armArgs`, whose inputs `runPairs` refuses already. D-86's commit was made without
+`make p10`. The row is re-ratified at 0.50 over 14 and the mirror regenerated.
+
+**As built (A-69).** gcprobe saw four new escape sites, `castForSave`'s map and `mutedClassKeys`'
+slice now inlined into `castApplyCmd`, `setupFinishCmd` and two method wrappers, their own keys
+kept: seven rows of the reviewed list under D-82's "moved". A Settings miss allocates 4,631 times
+against 4,639 at `e57afeaf`. The union's golden is re-captured, 41 lines. Re-pointed: mMS5, m799
+and mAA4, each the same fault on its line.
+
+**The pins that fell (D-28).** `make alloc-budget` holds 50 pins, 4 fallen. Two are this change's:
+"Settings 133x44 miss", 4,619 allocations and 998,496 bytes against 4,625 and 999,504, and
+"Settings 80x24 miss", 3,029 and 413,792 against 3,035 and 414,800. Two fell at B4.2 and B4's record
+did not say so; run at B2's close, B3's, and B4.2, they hold, hold, and fall. "layout navigation
+key", 7,136 bytes against 7,392, and "publish no-change frame 133x44", 81,961 against 82,215, each
+the same count of allocations: B4.2 took the map's hooks out of the Config, and the Dashboard fell
+from 6,584 bytes to 6,472, so a Dashboard on the heap takes Go's 6,528-byte size class where it took
+the 6,784, 256 bytes less each.
+
+**The first gate failed** in `race` after 1,373 s (`verify-runs.md`): `TestNoStructuralRuleScansOnlyItsOwnDirectory`
+found the guard reading its own directory by `filepath.Glob`; it walks `declset.SourcePaths` and `TestPaths`
+from `modes/tty` now, the tree's scope (TG-2).
+The second gate, on that fix: `make verify` green, 4,364 s.
+
+**The timing**, before the re-run: `Setup_133x44_Miss` with the table read in place, against
+`e57afeaf`, interleaved, n = 24: -23.29 %; `Setup_133x44` and `Setup_80x24` unchanged.

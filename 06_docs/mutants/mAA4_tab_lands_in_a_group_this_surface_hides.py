@@ -12,7 +12,7 @@ import pathlib
 # every row, so it survives. Kept, not retired: if a surface hides a row again,
 # TestTheKeyboardNeverFocusesAHiddenRow can catch it.
 p = pathlib.Path("modes/tty/setup_tabs.go"); s = p.read_text()
-old = "if tabOfGroup(setupTable()[id].group) == t && d.shownOnSurface(id) {"
-new = "if tabOfGroup(setupTable()[id].group) == t {"
+old = "if tabOfGroup(setupRowOf(id).group) == t && d.shownOnSurface(id) {"
+new = "if tabOfGroup(setupRowOf(id).group) == t {"
 assert old in s, "mAA4"
 p.write_text(s.replace(old, new, 1))

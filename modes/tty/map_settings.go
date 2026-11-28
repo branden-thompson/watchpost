@@ -130,7 +130,7 @@ func (mm mapModel) mapPickerW(o render.Opts, sv mapSettingsView, id setupRowID, 
 // Maps tab's two columns): maps on or off and what the map sends, the
 // description's mode, the scale it opens at, the nearby distance, the alerts.
 func (mm mapModel) mapSettingLines(o render.Opts, sv mapSettingsView, lines []string, at int, e mapEnv) ([]string, int) {
-	if !sv.visible(rowMapsOn) {
+	if !sv.MapsOnShown {
 		return lines, at
 	}
 	state := "Enabled"
@@ -165,7 +165,7 @@ func (mm mapModel) mapSettingLines(o render.Opts, sv mapSettingsView, lines []st
 // 2026-09-30) - and what they would cost under them. The focused line is the
 // layer under the cursor.
 func (mm mapModel) layerLines(o render.Opts, sv mapSettingsView, e mapEnv) ([]string, int) {
-	if !sv.visible(rowMapLayers) {
+	if !sv.LayersShown {
 		return nil, 0
 	}
 	focused := sv.Focus == rowMapLayers
@@ -196,7 +196,7 @@ func (mm mapModel) layerLines(o render.Opts, sv mapSettingsView, e mapEnv) ([]st
 // mapLayerLines are the MAP - DETAIL group's rows: the map's own detail as a
 // list, and the action that empties the map's data.
 func (mm mapModel) mapLayerLines(o render.Opts, sv mapSettingsView, lines []string, at int) ([]string, int) {
-	if !sv.visible(rowMapDetailLevel) {
+	if !sv.DetailLevelShown {
 		return lines, at
 	}
 	lines, at = mm.mapRow(o, sv, lines, at, rowMapDetailLevel, "Detail -", mm.mapPickerW(o, sv, rowMapDetailLevel, mm.detailLevelShown(), mapDetailValueW))

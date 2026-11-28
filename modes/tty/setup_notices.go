@@ -196,7 +196,7 @@ func (d Dashboard) outcomeSlot(label, fact string, row setupRowID, outcome strin
 func (d Dashboard) castNoticeSlot() noticeSlot {
 	focus := d.setup.focus
 	n := settingsNotice{label: "Voice"}
-	if setupTable()[focus].group == groupCast {
+	if setupRowOf(focus).group == groupCast {
 		n.text = d.castNote(focus)
 		if name := d.setup.cast.Names[roleOf(focus)]; name != "" && !d.voiceInstalled(name) {
 			n.tone = noticeWarn

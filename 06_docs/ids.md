@@ -1644,12 +1644,15 @@ each one's best mention (0.19.6 D-50).
 | D-86 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-3, HUM LEAD direction: the loop needs controls and a picture of where it is. Amends D-61's step keys |
 | D-86 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | Scoring NRL's refits (D-43): install Python 3.12 with Homebrew to run PyIRI 0.1.x in PLAN's dry run, or score… |
 | D-87 | 0.16.0 | `0.16.0-broadcaster-ui/02-analysis/rulings-d88.md:22` | Mentioned: The second sentence is what made the first one load-bearing. D-87 turned the card into a manifest |
+| D-87 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | make bench-pair in D-86's form on 61d93b7e against e57afeaf, its A/A noise about 1 %, fails one benchmark: Se… |
 | D-87 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-4, HUM LEAD direction. Amends D-63's "open on every open" |
 | D-87 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN Q-1 (go-ionomaps R-5.3; D-39, D-51): with 40 live stations, the hourly update plus the rotation probe ma… |
 | D-88 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/v3-table-layout-plan.md` | the card window. 0 Full Read / 1 Read / Manage / A Details are the same window with better labels |
+| D-88 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-87's hunt: the last 1.7 % on Setup_133x44_Miss. Bisected, interleaved, n = 24: B2 and B3 unchanged, B4.1 (t… |
 | D-88 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-5, HUM LEAD direction: radar stuck at "loading" over Chicago and New York. Diagnosed live: the libra… |
 | D-88 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | PLAN Q-2 (PM-E2; D-47): D-RAP runs only on GOES X-ray and proton flux (its product page), so it covers NOAA's… |
 | D-89 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/v3-table-layout-plan.md:101` | Mentioned: 4 the top LIVE NOW / RELAY BED table, the STATION AIR row and its elapsed timer, and the gain spli… |
+| D-89 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | make p10 fails on one row: tools/benchpair's P10-05 density is 0.50 over 14 changed functions, under the 0.54… |
 | D-89 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-6, HUM LEAD direction: the area under the map, drawn as a mock - after the credit row, "RADAR LEGEND… |
 | D-89 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | How the UAT sitting for M2, M5 and M5b is held (07-readiness/uat-protocol.md): (A) live, the real binary on l… |
 | D-90 | 0.16.0 | `0.16.0-broadcaster-ui/03-architecture-design/v3-table-layout-plan.md` | the relay selection; the RELAY BED row is still ←/→ |
@@ -2439,6 +2442,7 @@ each one's best mention (0.19.6 D-50).
 | A-67 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The Propagation mode's words (batch 38; D-210, D-211; BUILD red team AX-1, AX-2, AX-4 to AX-13): (1) the cent… |
 | A-68 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B4's close, and its sweep's inputs (D-30, D-36, D-51; A-62, A-66). (1) The inventory: make test-inventory INV… |
 | A-68 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's code findings (batch 39; BUILD red team C-1 to C-4, L-F3, P-1, P-5, P-6, I-2, I-3, I-4, I-6)… |
+| A-69 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-87's and D-88's change, as built (D-82, A-66). (1) 06_docs/perf/excused-B4.tsv gains seven rows under D-82'… |
 | A-69 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-tuiMaps v0.3.0-rc.2 (batch 40; D-206, D-207, D-216; BUILD red team AX-14, D-F8, C-15, I-7): (… |
 | A-70 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The answers package and the found target (batch 41; D-212, D-204; BUILD red team L-F1, B-F1, L-F8): (1) platf… |
 | A-71 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's remaining code findings (batch 42; BUILD red team L-F9, C-6, C-12, H-9, I-8): (1) one horizo… |
@@ -3039,11 +3043,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:164` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:164` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:167` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:167` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:164` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:167` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

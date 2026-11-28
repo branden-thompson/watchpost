@@ -162,7 +162,7 @@ func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus set
 // geometry the renderer produced rather than a second guess at it.
 func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	focus := d.setup.focus
-	b := setupBlock{lines: []string{"", setupGroup(setupGroupTitle(g)), ""}, focused: setupTable()[focus].group == g}
+	b := setupBlock{lines: []string{"", setupGroup(setupGroupTitle(g)), ""}, focused: setupRowOf(focus).group == g}
 	at := len(b.lines)
 	switch g {
 	case groupData:
@@ -408,13 +408,13 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	// OP-4: with one keyboard rule, `space` operates most of the window's rows
 	// and the mock's chip row names it nowhere. It is named here, and only
 	// where it does something.
-	switch setupTable()[d.setup.focus].kind {
+	switch setupRowOf(d.setup.focus).kind {
 	case rowRadio:
 		segs = append(segs, o.KeyCap("space")+" Select")
 	case rowCheck:
 		segs = append(segs, o.KeyCap("space")+" Toggle")
 	}
-	if setupTable()[d.setup.focus].picker {
+	if setupRowOf(d.setup.focus).picker {
 		// OP-1: the mock's chip row does not name the key that changes a voice.
 		//
 		// The THEME picker names no preview key, because ←→ already preview it:
@@ -433,7 +433,7 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	// there; the typed DATA rows still need enter, and esc still discards them.
 	// A chip that said Cancel over an auto-saving group would be lying.
 	closeLabel := "Cancel"
-	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupLayers || g == groupMapLayers {
+	if g := setupRowOf(d.setup.focus).group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupLayers || g == groupMapLayers {
 		closeLabel = "Close"
 	}
 	if d.cfg.FirstRun && d.setup.ref != nil {
