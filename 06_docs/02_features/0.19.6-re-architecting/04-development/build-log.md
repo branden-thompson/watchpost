@@ -1693,3 +1693,11 @@ The second gate, on that fix: `make verify` green, 4,364 s.
 
 **The timing**, before the re-run: `Setup_133x44_Miss` with the table read in place, against
 `e57afeaf`, interleaved, n = 24: -23.29 %; `Setup_133x44` and `Setup_80x24` unchanged.
+
+**The re-run**, on `f8d8d093` (D-86's form, `nice -n 19` alone, GOMAXPROCS=4): `make bench-pair` OK,
+28 benchmarks paired twice against `e57afeaf`, none slower by 2 % or more in both pairs.
+`Setup_133x44_Miss` -22.97 % and -22.18 %. The arm run first reads about 1 % slower in either pair
+(pair 1 has the tree ahead on most rows, pair 2 the base), the order D-86's two pairs cancel; the
+single-pair moves above 2 % (`Key` +6.97 % then unchanged, `Parse27k` -3.23 % then +3.65 %,
+`DisplayWidth_styledRow` +4.42 % then -1.19 %, `TimeToToneStart` unchanged then +4.18 %) each
+reverse or vanish in the other. D-87's hunt is closed: B2 to B4 hold the timing on all 28.
