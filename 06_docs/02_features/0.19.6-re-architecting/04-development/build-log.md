@@ -1814,3 +1814,22 @@ counts the index's loads in every non-test file under `app`, and `apptest.IndexF
 The test support is refused a non-test importer, so its load never reaches the binary: the count
 leaves `internal/apptest/` out, and a load planted in `run/shared.go` still fails it.
 The second gate, on that fix: `make verify` green, 2,477 s.
+
+## B5's close: the inventory, the plan's tests held, the sweep's inputs (A-72)
+
+**The inventory (D-36).** `make test-inventory INVENTORY_ACCEPT=06_docs/testinv/accept-B3.tsv`
+against B0's baseline, on `b6df7e17`: every one of the 2,006 plain, 2,006 property and 2,005 race
+tests and subtests kept with its outcome. 25 new in each mode, B4's close's 24 and D-88's
+`TestTheSettingsTableIsNeverWritten`. B5 moved no test between packages, so it adds no accept file.
+No test removed.
+
+**The plan's tests held (A-37).** B5 joins `landedBatches`; every test its section names is declared.
+
+**The sweep's inputs (A-72).** `BATCH_BASE=31bca85f`, B4's closed commit, which takes in the work
+before B5 too (D-86 to D-89). `SCOPED_PATHS` is `06_docs/mutants/scoped-paths-B5.tsv`, `every.go` and
+the race pair, the files moved whole; `SCOPED_FUNCS` is `06_docs/perf/renames.tsv`, with the prep's
+seven `app` lines. No report is expected: no mutant sits on a moved file, and the three D-87 and D-88
+re-pointed keep their functions and their killers (A-69).
+
+**B5 in commits.** 3, the plan's 2: the close took one of its own, as B4's did (A-68); the batch map
+says so. B5 closes on this commit's `make verify-full` and the scoped sweep.

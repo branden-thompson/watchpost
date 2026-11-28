@@ -12,7 +12,7 @@ import (
 // landedBatches are 0.19.6's batches whose commits have landed. A batch adds
 // itself here in its closing commit, and from then on every test its plan
 // section names must exist.
-var landedBatches = []string{"B0", "B1", "B2", "B3", "B4"}
+var landedBatches = []string{"B0", "B1", "B2", "B3", "B4", "B5"}
 
 // planPath is 0.19.6's implementation plan.
 const planPath = "06_docs/02_features/0.19.6-re-architecting/04-development/implementation-plan.md"

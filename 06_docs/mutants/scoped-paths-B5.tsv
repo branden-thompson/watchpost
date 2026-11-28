@@ -1,0 +1,7 @@
+# 0.19.6 B5's whole-file moves since B4's close (31bca85f), old<TAB>new, for the scoped sweep's
+# SCOPED_PATHS (0.19.6 A-55, A-72). moves.tsv is gcprobe's, by package; this map names files. A file
+# the batch created has no old path: run/shared.go's helpers are the prep's cut, carried by name in
+# renames.tsv.
+app/every.go	app/internal/run/every.go
+app/race_test.go	app/internal/apptest/race.go
+app/norace_test.go	app/internal/apptest/norace.go

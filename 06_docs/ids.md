@@ -2452,6 +2452,7 @@ each one's best mention (0.19.6 D-50).
 | A-70 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The answers package and the found target (batch 41; D-212, D-204; BUILD red team L-F1, B-F1, L-F8): (1) platf… |
 | A-71 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B5's move, as built (design AP-5, AP-9). (1) git mv of five files: every.go and run_shared.go to app/internal… |
 | A-71 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's remaining code findings (batch 42; BUILD red team L-F9, C-6, C-12, H-9, I-8): (1) one horizo… |
+| A-72 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B5's close and its sweep's inputs (A-55, A-68). BATCH_BASE=31bca85f, B4's closed commit, so the sweep also ju… |
 | A-72 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The answers' figures (batch 43; BUILD red team P-4): (1) FR-1.17 says what was measured, on an Apple M5 Pro: … |
 | A-73 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.2 (batch 44; D-222; go-ionomaps A-23): (1) the re-pin, the checklist run w… |
 | A-74 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The M1/M4 instrument (batch 45; W10.3; D-208, D-218 to D-221): (1) its name and place, tools/reachscore, a Go… |
