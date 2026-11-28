@@ -14,6 +14,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
@@ -274,7 +275,7 @@ func (s *schedule) carry(ev lineup.Event) {
 // tick tells the Director the time until the station stops.
 func (s *schedule) tick(ctx context.Context) {
 	defer close(s.ticks)
-	EveryTick(ctx, scheduleTick, func(now time.Time) {
+	run.EveryTick(ctx, scheduleTick, func(now time.Time) {
 		s.pump.send(ctx, lineup.Tick{Now: now})
 	})
 }

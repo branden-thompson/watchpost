@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/spectrum"
@@ -150,7 +151,7 @@ func newRadioDeck(p *tea.Program, client *httpx.Client, provider *nws.Provider, 
 		return nil
 	}
 	d := &radioDeck{program: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir(), limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
-	d.engine, err = player.New(&player.OtoOutput{}, UserAgent, d.onStatus)
+	d.engine, err = player.New(&player.OtoOutput{}, run.UserAgent, d.onStatus)
 	if err != nil {
 		return nil
 	}
@@ -1238,7 +1239,7 @@ func radioDebugPath() string {
 	if !ok || v == "" {
 		return ""
 	}
-	dir := UserCacheSubdir("debug")
+	dir := run.UserCacheSubdir("debug")
 	if dir == "" {
 		return ""
 	}

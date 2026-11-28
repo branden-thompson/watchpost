@@ -31,6 +31,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
@@ -79,7 +80,7 @@ func tickerRadiusState(mi int) (*atomic.Int64, func(int)) {
 	v.Store(int64(mi))
 	return v, func(m int) {
 		v.Store(int64(m))
-		_ = SavePreference(func(c *config.Config) { c.TickerRadiusMi = m })
+		_ = run.SavePreference(func(c *config.Config) { c.TickerRadiusMi = m })
 	}
 }
 
@@ -175,7 +176,7 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 		sources: []globalfeed.Source{globalfeed.NewUSGS(client, ""), globalfeed.NewNHC(client, ""), globalfeed.NewNWS(client, "")},
 		watch:   watch,
 		nearest: nearestMetro(idx),
-		seen:    loadSeen(UserCacheSubdir("ticker"), tickerSeenWindow),
+		seen:    loadSeen(run.UserCacheSubdir("ticker"), tickerSeenWindow),
 		alerts:  newAlertStore(),
 		muted:   prefs.muted,
 		radius:  prefs.radius, clockPref: prefs.clock,

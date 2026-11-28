@@ -1,4 +1,4 @@
-package app
+package run
 
 // every.go — the one clock-driven loop in the app.
 

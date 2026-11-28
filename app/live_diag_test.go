@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
@@ -32,7 +33,7 @@ func TestLiveRelayDiagnoseLocation(t *testing.T) {
 	if len(parts) > 2 {
 		same = parts[2]
 	}
-	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 5, MaxRetries: 1})
+	c, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, RatePerSec: 5, MaxRetries: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +54,7 @@ func TestLiveRelayDiagnoseLocation(t *testing.T) {
 		for _, m := range st.Mounts {
 			pctx, pcancel := context.WithTimeout(ctx, 8*time.Second)
 			req, _ := http.NewRequestWithContext(pctx, http.MethodGet, m.URL, nil)
-			req.Header.Set("User-Agent", UserAgent)
+			req.Header.Set("User-Agent", run.UserAgent)
 			req.Header.Set("Icy-MetaData", "1")
 			start := time.Now()
 			resp, err := client.Do(req)

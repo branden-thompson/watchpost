@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -75,10 +76,10 @@ func TestResolveHookReportsABrokenResolverOnEveryQuery(t *testing.T) {
 }
 
 func TestCacheDirBuilderIsUnderTheOSCacheDir(t *testing.T) {
-	if dir := UserCacheSubdir("http"); dir != "" && !strings.Contains(filepath.ToSlash(dir), "/watchpost/http") {
+	if dir := run.UserCacheSubdir("http"); dir != "" && !strings.Contains(filepath.ToSlash(dir), "/watchpost/http") {
 		t.Fatalf("the HTTP cache lives at <os cache>/watchpost/http, got %s", dir)
 	}
-	if CacheDir() != UserCacheSubdir("http") || voiceDir() != UserCacheSubdir("piper") {
+	if run.CacheDir() != run.UserCacheSubdir("http") || voiceDir() != run.UserCacheSubdir("piper") {
 		t.Fatal("cacheDir and voiceDir are the one builder's outputs")
 	}
 }

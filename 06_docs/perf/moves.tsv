@@ -6,3 +6,4 @@
 # move commit adds its lines.
 modes/tty	modes/tty/internal/frame
 modes/tty	modes/tty/console
+app	app/internal/run

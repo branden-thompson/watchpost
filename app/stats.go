@@ -14,6 +14,7 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
 	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
@@ -180,8 +181,8 @@ func runtimeCounts() (goroutines, threads, fds int) {
 // counters per pipeline, and the last dump's outcome.
 func (lp *livePipelines) ttyStats() tty.Stats {
 	src := lp.sources()
-	st := tty.Stats{Requests: RequestStatsOf(src.clients)}
-	st.MapRequests = httpx.MergeRequestStats(RequestStatsOf(lp.mapClients), lp.tiles.stats(), lp.propagation.requestStats()) // D-150: the radar's, the temperature's and the tiles'; D-169: the propagation client's
+	st := tty.Stats{Requests: run.RequestStatsOf(src.clients)}
+	st.MapRequests = httpx.MergeRequestStats(run.RequestStatsOf(lp.mapClients), lp.tiles.stats(), lp.propagation.requestStats()) // D-150: the radar's, the temperature's and the tiles'; D-169: the propagation client's
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		if pub != nil {
 			st.Pipelines[i] = pub.stats()
@@ -209,7 +210,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 // after lp is built, so this is read on demand, never cached).
 func (lp *livePipelines) sources() diagSources {
 	src := diagSources{clients: lp.clients, weather: lp.weather, tides: lp.tides, deck: lp.deck, timings: lp.timings, propagation: &lp.propagation, history: lp.historyStore(),
-		cacheDir: CacheDir(), profilesDir: UserCacheSubdir("profiles"), voicesDir: voiceDir()}
+		cacheDir: run.CacheDir(), profilesDir: run.UserCacheSubdir("profiles"), voicesDir: voiceDir()}
 	for _, pr := range lp.fire {
 		if h, ok := pr.(*hms.Provider); ok {
 			src.hms = h

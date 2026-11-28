@@ -21,6 +21,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/severe"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -436,7 +437,7 @@ func (s *severeDeck) AlertKeysWithin(lat, lon, radiusMi float64) map[string]bool
 }
 
 // LaneRows is a copy of those rows, for the ticker's cycle.
-func (s *severeDeck) LaneRows() []severe.Row { return LockedCopy(&s.mu, &s.laneRows) }
+func (s *severeDeck) LaneRows() []severe.Row { return run.LockedCopy(&s.mu, &s.laneRows) }
 
 // indexKey fingerprints the row set — each row's key, times, location, path
 // and the cheap scalars a same-id revision changes (a USGS magnitude update,

@@ -28,6 +28,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radar"
@@ -196,7 +197,7 @@ func (lp *livePipelines) startHistory(ctx context.Context, keep tty.HistoryReten
 		case <-time.After(start):
 		}
 		h.pass(ctx, time.Now())
-		EveryTick(ctx, historyEvery, func(now time.Time) { h.pass(ctx, now) })
+		run.EveryTick(ctx, historyEvery, func(now time.Time) { h.pass(ctx, now) })
 	}()
 }
 

@@ -1,9 +1,8 @@
-package app
+package apptest
 
-// apptest_helpers_test.go — the pure helpers the app tree's tests share, under
-// the names app/internal/apptest exports them by (0.19.6 design AP-9, A-24):
-// the config file, the poll, the places, the offline client and the NWS
-// fixtures. None reads the package's own state.
+// helpers.go — the pure helpers the app tree's tests share (0.19.6 design
+// AP-9, A-24): the config file, the poll, the places, the offline client and
+// the NWS fixtures. None reads a package's own state.
 
 import (
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -83,12 +83,12 @@ func IndexForTest(t *testing.T) *geodata.Index {
 // NWS fixtures for a seam that needs a location to exist — and no unit test
 // reaches api.weather.gov. The cache is memory-only on purpose: a disk tier
 // starts a writer goroutine that outlives the test and races the removal of
-// t.TempDir(), which is F-102's mechanism.
+// t.TempDir(), which is 0.16.0 F-102's mechanism.
 func OfflineClient(t *testing.T, upstream http.Handler) (*httpx.Client, string) {
 	t.Helper()
 	srv := httptest.NewServer(upstream)
 	t.Cleanup(srv.Close)
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 1000, MaxRetries: 1})
+	client, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, RatePerSec: 1000, MaxRetries: 1})
 	if err != nil {
 		t.Fatalf("client: %v", err)
 	}

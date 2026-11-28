@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -35,4 +36,4 @@ func (p *mapProblems) note(what string) {
 }
 
 // last is a copy of the problems held.
-func (p *mapProblems) last() []string { return LockedCopy(&p.mu, &p.held) }
+func (p *mapProblems) last() []string { return run.LockedCopy(&p.mu, &p.held) }

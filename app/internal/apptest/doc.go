@@ -3,11 +3,13 @@
 // import it; scripts/lint-imports.sh refuses a non-test importer, so nothing
 // here reaches the binary.
 //
-// It holds the TestMain ground every package under app stands on. The pure
-// test helpers arrive with the packages that need them (0.19.6 B5).
+// It holds the TestMain ground every package under app stands on, and the
+// pure helpers their tests share (0.19.6 design AP-9).
 //
 // The files, by what they own. TestEveryFileIsInItsPackagesMap holds every
 // non-test file in this package to a row.
 //
-//	`main.go`   Main, the TestMain ground every package under app calls
+//	`main.go`                  Main, the TestMain ground every package under app calls
+//	`helpers.go`               the config file, the poll, the places, the offline client, the NWS fixtures
+//	`race.go`, `norace.go`     RaceSlowdown and RaceEnabled, with the race detector and without
 package apptest

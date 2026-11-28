@@ -12,6 +12,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -22,7 +23,7 @@ import (
 // The package already has an Oceanside(); these are the two the resolution
 // tests compare, so the SECOND-entry case is a real one.
 var (
-	refOceanside = Oceanside()
+	refOceanside = apptest.Oceanside()
 	refBonsall   = snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.2887, Lon: -117.2253, TZ: "America/Los_Angeles"}
 )
 
@@ -35,7 +36,7 @@ var (
 // route around, which it does.
 func offlineProviders(t *testing.T) (*httpx.Client, *nws.Provider, *synth.Products) {
 	t.Helper()
-	client, base := OfflineClient(t, NWSFixtures(t))
+	client, base := apptest.OfflineClient(t, apptest.NWSFixtures(t))
 	return client, nws.New(client, base), synth.NewProducts(client, base)
 }
 

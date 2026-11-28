@@ -3,6 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"context"
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"os"
 	"path/filepath"
@@ -103,7 +104,7 @@ func TestNarrateEventDecidesAtThePress(t *testing.T) {
 	}
 	lp.deck = &radioDeck{} // attached later, as attachRadio does
 	hook("k1")
-	WaitUntil(t, "the read", func() bool { lp.reader.mu.Lock(); defer lp.reader.mu.Unlock(); return !lp.reader.busy })
+	apptest.WaitUntil(t, "the read", func() bool { lp.reader.mu.Lock(); defer lp.reader.mu.Unlock(); return !lp.reader.busy })
 	if len(reads) != 1 {
 		t.Fatalf("a deck: the read runs, got %v", reads)
 	}

@@ -1666,9 +1666,11 @@ each one's best mention (0.19.6 D-50).
 | D-91 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | D-73's threshold against published practice (07-readiness/dry-run.md): +10 dB in 2.5 kHz sits inside the publ… |
 | D-92 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p4.5-build-log.md` | a settings row belongs to a surface |
 | D-92 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p5-p6-build-log.md` | a settings row belongs to a SURFACE — the console's rows are not Observer's |
+| D-92 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B5's move puts RaceSlowdown and RaceEnabled in apptest, as design AP-9 does, so the race pair is non-test cod… |
 | D-92 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | UAT-2 U2-10, HUM LEAD direction: the radar's badge, larger. Amends D-83's chip |
 | D-92 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | What M2, M5 and M5b grade against (their definitions, locked at D-7/D-8/D-9, say "correctly per M1's/M4's ref… |
 | D-93 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p4-build-log.md:34` | Mentioned: P4.5 — the mock's layout Ran twice. D-59..D-92 built the layout from mock v2; the HUM LEAD then su… |
+| D-93 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | D-31 puts each new package's density row to the HUM LEAD. app/internal/run reads 0.50 across 6 changed functi… |
 | D-93 | 0.18.0 | `observer-maps/02-analysis/rulings.md` | F-182, HUM LEAD direction to enable the Temperature overlay for UAT ("Now it's time enable the Temperature ma… |
 | D-93 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | UAT targets (D-49), graded against watchpost's own answer (D-92); intake proposed M2 only (8 of 10, each with… |
 | D-94 | 0.16.0 | `0.16.0-broadcaster-ui/04-development/p4.5-build-log.md:40` | Mentioned: D-93/D-94 the console is told the station's pool; the running order becomes a table through Observ… |
@@ -2448,6 +2450,7 @@ each one's best mention (0.19.6 D-50).
 | A-69 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-tuiMaps v0.3.0-rc.2 (batch 40; D-206, D-207, D-216; BUILD red team AX-14, D-F8, C-15, I-7): (… |
 | A-70 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B5's prep, in place (design AP-5, AP-9; A-24). (1) The run's seven shared helpers in app/run_shared.go beside… |
 | A-70 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The answers package and the found target (batch 41; D-212, D-204; BUILD red team L-F1, B-F1, L-F8): (1) platf… |
+| A-71 | 0.19.6 | `0.19.6-re-architecting/02-analysis/rulings.md` | B5's move, as built (design AP-5, AP-9). (1) git mv of five files: every.go and run_shared.go to app/internal… |
 | A-71 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The BUILD exit's remaining code findings (batch 42; BUILD red team L-F9, C-6, C-12, H-9, I-8): (1) one horizo… |
 | A-72 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | The answers' figures (batch 43; BUILD red team P-4): (1) FR-1.17 says what was measured, on an Apple M5 Pro: … |
 | A-73 | 0.19.0 | `propagation-overlays/02-analysis/rulings.md` | watchpost on go-ionomaps v0.1.0-rc.2 (batch 44; D-222; go-ionomaps A-23): (1) the re-pin, the checklist run w… |
@@ -3046,11 +3049,11 @@ each one's best mention (0.19.6 D-50).
 
 | ID | Release | Where | Subject |
 |---|---|---|---|
-| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:169` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
-| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:169` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F3 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:171` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F4 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:171` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F5 | 0.9.0 | `multi-voice-support/08-reports/red-team-build-round3.md:210` | Mentioned: S-4 config.Path() accepts a relative XDG_CONFIG_HOME — the exact failure S-F5 already fixed for th… |
 | S-F6 | 0.9.0 | `multi-voice-support/08-reports/red-team-plan-director.md:13` | Mentioned: plaintext.Line escape stripping, S-F6) and the 0600/0700 seen-store are untouched; the only new |
-| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:169` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
+| S-F8 | 0.9.0 | `0.19.6-re-architecting/02-analysis/rulings.md:171` | Mentioned: A-47 2026-11-20 D-50's families, as built (B1.6). (1) PD-, S- and a UAT round's U1-, U2- join tool… |
 | S-F9 | 0.9.0 | `propagation-overlays/02-analysis/rulings.md:461` | Mentioned: A-64 2026-10-17 F-216's choices (batch 35): (1) every workflow's actions re-pinned by commit to re… |
 | S-F10 | 0.9.0 | `watchpost-performance-quality-pass/02-analysis/lens-L4-caching-memoization.md:45` | Mentioned: L4-F1 UNBOUNDED The disk tier is never pruned and carries a dead-format graveyard: 1,376 files / 1… |
 

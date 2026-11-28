@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
@@ -56,7 +57,7 @@ func ReportOnceWithStats(ctx context.Context, query string) (*snapshot.Snapshot,
 	if err != nil {
 		return nil, none, err
 	}
-	return snap, RequestStatsOf([]*httpx.Client{client, tidesClient}), nil
+	return snap, run.RequestStatsOf([]*httpx.Client{client, tidesClient}), nil
 }
 
 // reportFetch runs every kind through every provider that serves it and
@@ -118,14 +119,14 @@ func newDataClient(maxRetries int) (*httpx.Client, error) {
 // directory, plain http by relay policy, has its own client
 // (directoryClientConfig).
 func dataClientConfig(maxRetries int) httpx.Config {
-	return httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: maxRetries, CacheDir: CacheDir(), RefusePrivate: true, HTTPSOnly: true}
+	return httpx.Config{UserAgent: run.UserAgent, RatePerSec: 30, MaxRetries: maxRetries, CacheDir: run.CacheDir(), RefusePrivate: true, HTTPSOnly: true}
 }
 
 // directoryClientConfig is the radio relay directory's client (D-276): http
 // allowed - weatherUSA's directory is plain http (domains/radio/stream) - and
 // a private address refused, the proxy the environment names excepted.
 func directoryClientConfig() httpx.Config {
-	return httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: CacheDir(), RefusePrivate: true}
+	return httpx.Config{UserAgent: run.UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: run.CacheDir(), RefusePrivate: true}
 }
 
 // staleWarnings appends obs_stale warnings for observations older than 2h

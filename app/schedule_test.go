@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/lineup"
@@ -130,7 +131,7 @@ func TestEveryTickRunsUntilTheContextEnds(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		EveryTick(ctx, time.Millisecond, func(time.Time) { runs.Add(1) })
+		run.EveryTick(ctx, time.Millisecond, func(time.Time) { runs.Add(1) })
 	}()
 	for deadline := time.Now().Add(2 * time.Second); runs.Load() < 3; {
 		if time.Now().After(deadline) {
@@ -161,7 +162,7 @@ func TestEveryTickRefusesANonPositiveInterval(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			EveryTick(context.Background(), d, func(time.Time) {
+			run.EveryTick(context.Background(), d, func(time.Time) {
 				t.Errorf("EveryTick(%v) ran its function", d)
 			})
 		}()

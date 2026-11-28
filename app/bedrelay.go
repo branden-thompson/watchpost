@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
@@ -172,7 +173,7 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	lp.mu.Unlock()
 
 	return func() tea.Msg {
-		_ = SavePreference(func(cfg *config.Config) { cfg.Broadcaster.BedRelay = call }) // kept (D-214); a failed write keeps the session's choice
+		_ = run.SavePreference(func(cfg *config.Config) { cfg.Broadcaster.BedRelay = call }) // kept (D-214); a failed write keeps the session's choice
 		// The console is told what it landed on. The Director publishes what
 		// the bed is CARRYING; this is what the operator has SELECTED, which is
 		// a different fact until they cut to it.

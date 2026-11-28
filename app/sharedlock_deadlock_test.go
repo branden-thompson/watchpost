@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/platform/sched"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -117,7 +118,7 @@ func TestCommitAndStopAllFinishUnderTheSharedLock(t *testing.T) {
 		lp.stopAll()
 		close(done)
 	}()
-	watchStalls(t, done, &steps, deadlockBound*RaceSlowdown)
+	watchStalls(t, done, &steps, deadlockBound*apptest.RaceSlowdown)
 }
 
 // watchStalls waits for done, failing with every goroutine's stack when the

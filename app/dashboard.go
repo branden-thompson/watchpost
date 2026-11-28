@@ -17,6 +17,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
@@ -69,10 +70,10 @@ func newLivePipelines(ctx context.Context, cfg config.Config, client *httpx.Clie
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
 		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
 		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
-	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
+	if rs, rc, err := overClient(radar.NewClient, run.UserAgent, radarSourcesOver); err == nil {
 		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc)
 	}
-	if ts, tc, err := overClient(newTempClient, UserAgent, tempSourcesOver); err == nil {
+	if ts, tc, err := overClient(newTempClient, run.UserAgent, tempSourcesOver); err == nil {
 		lp.temp, lp.mapClients = ts, append(lp.mapClients, tc)
 	}
 	return lp
@@ -100,7 +101,7 @@ func RunDashboard(version string, opt Options) error {
 	keyOverrides := toKeyMap(cfg.Keys)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stopSay, swept, unswept := sayChildren(UserCacheSubdir("say-children"), synth.SystemProcs{}) // orphans ended, this run's children held and ended at exit (FR-9.1, FR-9.2)
+	stopSay, swept, unswept := sayChildren(run.UserCacheSubdir("say-children"), synth.SystemProcs{}) // orphans ended, this run's children held and ended at exit (FR-9.1, FR-9.2)
 	defer stopSay()
 
 	applyThemes(cfg.Theme) // built-ins + user theme files; persisted choice (UAT 53)
@@ -479,7 +480,7 @@ func (lp *livePipelines) mapConfig(c *tty.Config, cfg config.Config) tty.Hooks {
 // savePropagationAck keeps the version of the acknowledgement seen (0.19.0
 // A-9).
 func savePropagationAck(version int) error {
-	return SavePreference(func(cfg *config.Config) { cfg.PropagationAck = version })
+	return run.SavePreference(func(cfg *config.Config) { cfg.PropagationAck = version })
 }
 
 // attachMaps readies the map's side of the run: the diagnostics, the tiles'
@@ -524,7 +525,7 @@ func (lp *livePipelines) attachDeck(ctx context.Context, p *tea.Program, deck *r
 // attachDiagnostics builds the dump and its triggers (quality pass Q0):
 // SIGUSR1 on Unix, and the opt-in loopback server everywhere.
 func (lp *livePipelines) attachDiagnostics(ctx context.Context, start time.Time) {
-	lp.dump = newDumper(UserCacheSubdir("profiles"), start, lp.sources, lp.ttyStats)
+	lp.dump = newDumper(run.UserCacheSubdir("profiles"), start, lp.sources, lp.ttyStats)
 	startDumpTrigger(ctx, lp.dump)
 	startDebugProfiles(lp.dump)
 }
@@ -601,7 +602,7 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 // holds it: https only, and no dial to a private address but the proxy the
 // environment names (D-270).
 func coopsClientConfig() httpx.Config {
-	return httpx.Config{UserAgent: UserAgent, RatePerSec: coopsRatePerSec, MaxRetries: 1, CacheDir: CacheDir(),
+	return httpx.Config{UserAgent: run.UserAgent, RatePerSec: coopsRatePerSec, MaxRetries: 1, CacheDir: run.CacheDir(),
 		RefusePrivate: true, HTTPSOnly: true}
 }
 
@@ -627,7 +628,7 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 	deck.persistMode = saveRadioMode                                                                                                                  // UAT 97: [m] is a saved preference, like the voice
 	model = model.WithRadio(deck).WithRadioMode(mode).WithSpectrum(deck.Spectrum).WithVoices(deck.Voices, deck.VoiceName(), func(name string) error { // UAT 84 / 92 / 97
 		deck.SetVoice(name)
-		if err := SavePreference(func(cfg *config.Config) { cfg.Voice = name }); err != nil {
+		if err := run.SavePreference(func(cfg *config.Config) { cfg.Voice = name }); err != nil {
 			return err
 		}
 		// A saved root is a cast change: re-validate and re-resolve from the
@@ -695,7 +696,7 @@ func saveTones(deck *radioDeck, t cast.Tones) error {
 	if deck != nil {
 		deck.setTones(t)
 	}
-	return SavePreference(func(cfg *config.Config) {
+	return run.SavePreference(func(cfg *config.Config) {
 		cfg.Radio.Tones = config.Tones{Mode: t.Mode, Muted: t.Muted}
 		// Save is the one owner of the ticker_muted mirror; nothing here writes it.
 	})
@@ -703,7 +704,7 @@ func saveTones(deck *radioDeck, t cast.Tones) error {
 
 // saveRadioMode persists the [m] source pick (UAT 97).
 func saveRadioMode(mode tty.RadioMode) error {
-	return SavePreference(func(cfg *config.Config) { cfg.Radio.Mode = mode.Key() })
+	return run.SavePreference(func(cfg *config.Config) { cfg.Radio.Mode = mode.Key() })
 }
 
 // keptRadio gives the deck and the panel the radio's kept choices (D-214):
@@ -723,7 +724,7 @@ const defaultVolume = 55
 
 // saveRadioPrefs keeps the radio panel's choices (D-214).
 func saveRadioPrefs(p tty.RadioPrefs) error {
-	return SavePreference(func(cfg *config.Config) {
+	return run.SavePreference(func(cfg *config.Config) {
 		vol := p.Volume
 		cfg.Radio.Volume, cfg.Radio.Repeat, cfg.Radio.Visualizer = &vol, p.Repeat.Key(), p.Viz
 	})
@@ -1163,7 +1164,7 @@ func (lp *livePipelines) relayLang() string {
 // setting a preference, not asking for an interruption.
 func (lp *livePipelines) setRelayLang() func(string) {
 	return func(lang string) {
-		_ = SavePreference(func(cfg *config.Config) { cfg.Radio.RelayLang = lang }) // kept (D-214); a failed write keeps the session's choice
+		_ = run.SavePreference(func(cfg *config.Config) { cfg.Radio.RelayLang = lang }) // kept (D-214); a failed write keeps the session's choice
 		if lp.deck == nil {
 			return
 		}
@@ -1182,7 +1183,7 @@ func (lp *livePipelines) setRelayLang() func(string) {
 // this asks it to do that again with the new value.
 func (lp *livePipelines) setRelayDwell() func(time.Duration) {
 	return func(d time.Duration) {
-		_ = SavePreference(func(cfg *config.Config) { cfg.Radio.RelayDwell = d.String() }) // kept (D-214); a failed write keeps the session's choice
+		_ = run.SavePreference(func(cfg *config.Config) { cfg.Radio.RelayDwell = d.String() }) // kept (D-214); a failed write keeps the session's choice
 		if lp.deck == nil {
 			return
 		}

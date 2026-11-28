@@ -1,4 +1,3 @@
-const UserAgent
 const aheadRetry
 const aheadSoon
 const aheadTimeout
@@ -576,16 +575,10 @@ func (stationRecorder).incident
 func (stationRecorder).observation
 func (stationRecorder).record
 func (stationRecorder).tide
-func CacheDir
-func EveryTick
-func LockedCopy
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
-func RequestStatsOf
 func RunDashboard
-func SavePreference
-func UserCacheSubdir
 func abbreviateHome
 func aboutWarnings
 func addAlerts

@@ -12,6 +12,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -86,7 +87,7 @@ func TestThePoolReachesTheConsoleHomeFirst(t *testing.T) {
 
 // AND A STATION WITH NO EPICENTRE OFFERS NOTHING, rather than the whole country.
 func TestAStationWithNoTransmitterPublishesAnEmptyPool(t *testing.T) {
-	lp := &livePipelines{idx: IndexForTest(t)}
+	lp := &livePipelines{idx: apptest.IndexForTest(t)}
 	lp.setStation(stationFrom(config.Config{}))
 
 	var got []console.StationAreaMsg

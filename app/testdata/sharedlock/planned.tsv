@@ -1,6 +1,12 @@
 # the planned package of each app file and each livePipelines method (0.19.6 A-23, design AP); a method row overrides its file
 file	app/internal/apptest/doc.go	apptest
+file	app/internal/apptest/helpers.go	apptest
 file	app/internal/apptest/main.go	apptest
+file	app/internal/apptest/norace.go	apptest
+file	app/internal/apptest/race.go	apptest
+file	app/internal/run/doc.go	run
+file	app/internal/run/every.go	run
+file	app/internal/run/shared.go	run
 file	app/air_boundary.go	deck
 file	app/airscope.go	deck
 file	app/alert_store.go	deck
@@ -20,7 +26,6 @@ file	app/dump_unix.go	app
 file	app/dump_windows.go	app
 file	app/endpoints.go	app
 file	app/eventrecord.go	mapdata
-file	app/every.go	run
 file	app/executors.go	deck
 file	app/fire.go	app
 file	app/framelog.go	mapdata
@@ -62,7 +67,6 @@ file	app/refs.go	app
 file	app/release.go	app
 file	app/resolve.go	app
 file	app/rotation_script.go	deck
-file	app/run_shared.go	run
 file	app/saychildren.go	app
 file	app/schedule.go	deck
 file	app/seen_store.go	deck

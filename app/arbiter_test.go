@@ -3,6 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"context"
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"strings"
 	"sync"
@@ -112,7 +113,7 @@ func TestArbiterBreakingSuspendsAndResumesARead(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("the read never finished")
 	}
-	WaitUntil(t, "the read's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
+	apptest.WaitUntil(t, "the read's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
 	if got := v.got(); got != "duck,speak:read-line,pause,aside:breaking-line,resume,restore" {
 		t.Fatalf("one restore, at the very end: %s", got)
 	}
@@ -139,7 +140,7 @@ func TestArbiterALineRenderedUnderSuspensionWaitsForTheAir(t *testing.T) {
 		close(breakingDone)
 	}()
 	<-breakingDone
-	WaitUntil(t, "the read's line and release", func() bool { return strings.HasSuffix(v.got(), "restore") })
+	apptest.WaitUntil(t, "the read's line and release", func() bool { return strings.HasSuffix(v.got(), "restore") })
 	if got := v.got(); got != "duck,pause,aside:breaking-line,resume,speak:read-line,restore" {
 		t.Fatalf("…and its line plays only after: %s", got)
 	}
@@ -194,7 +195,7 @@ func TestArbiterQueuesBehindAHigherClassAndInOrder(t *testing.T) {
 				s.line(name)
 			})
 		}(name)
-		WaitUntil(t, "arrival order", func() bool { n.mu.Lock(); defer n.mu.Unlock(); return len(n.waiting) == i+1 }) // queued before the next arrives
+		apptest.WaitUntil(t, "arrival order", func() bool { n.mu.Lock(); defer n.mu.Unlock(); return len(n.waiting) == i+1 }) // queued before the next arrives
 	}
 	if got := v.got(); got != "duck,aside:breaking" {
 		t.Fatalf("reads must wait for the takeover: %s", got)
@@ -371,12 +372,12 @@ func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 	go func() {
 		readDone <- n.Run(ctx, narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) { s.line("read"); s.hold(time.Hour) })
 	}()
-	WaitUntil(t, "the read's hold", func() bool { return sleeps.Load() == 1 })
+	apptest.WaitUntil(t, "the read's hold", func() bool { return sleeps.Load() == 1 })
 	onAir, release := make(chan struct{}), make(chan struct{})
 	go n.Run(context.Background(), narrateBreaking, cast.Breaking, true, func(ctx context.Context, s *speaker) { s.line("breaking"); close(onAir); <-release })
 	<-onAir
 	close(gate) // the read's step ends: its next air wait PARKS (suspended)
-	WaitUntil(t, "the read parked", func() bool {
+	apptest.WaitUntil(t, "the read parked", func() bool {
 		n.mu.Lock()
 		defer n.mu.Unlock()
 		return len(n.suspended) == 1 && n.suspended[0].suspended
@@ -392,7 +393,7 @@ func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 		t.Fatalf("the parked read never woke on its cancel: %s", v.got())
 	}
 	close(release)
-	WaitUntil(t, "the takeover's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
+	apptest.WaitUntil(t, "the takeover's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
 	if got := v.got(); strings.Contains(got, "resume") || !strings.Contains(got, ",discard,") || strings.Count(got, "restore") != 1 {
 		t.Fatalf("discarded, never resumed, one restore: %s", got)
 	}

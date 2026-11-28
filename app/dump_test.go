@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -164,7 +165,7 @@ func TestPublisherCountsPublishesAndFoldedTriggers(t *testing.T) {
 	// after its run — and a loaded runner (ubuntu CI under -race, PR #4) can
 	// have a second one in flight when the first is done. Wait for the sum,
 	// not for the first publish.
-	WaitUntil(t, "three triggers published or folded", func() bool {
+	apptest.WaitUntil(t, "three triggers published or folded", func() bool {
 		st := pb.stats()
 		return st.Publishes+st.Folded == 3
 	})

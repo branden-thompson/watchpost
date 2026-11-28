@@ -20,9 +20,8 @@
 //
 //	`app.go`, `dashboard.go`, `refs.go`,        the one-shot report, RunDashboard's wiring, location
 //	`resolve.go`, `setup.go`, `themes.go`,      refs and the resolver, Setup's save, themes,
-//	`shared.go`, `run_shared.go`, `every.go`,   the shared owners, what one run shares and the
-//	`lazymemo.go`, `hangup.go`, `hostfacts.go`, one clock-driven loop, the memo, shutdown, the
-//	`release.go`                                host's facts and the release check
+//	`shared.go`, `lazymemo.go`, `hangup.go`,    the shared owners, the memo, shutdown, the host's
+//	`hostfacts.go`, `release.go`                facts and the release check
 //	`pipelines.go`, `stationrecord.go`,         the pipelines and the publisher, the station's
 //	`eventrecord.go`, `history.go`, `uvknown.go` feeds, and what history records
 //	`fire.go`, `marine.go`, `seismic.go`,       the providers' wiring by family, and where each

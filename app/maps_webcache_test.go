@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -24,7 +25,7 @@ func TestClearingEmptiesTheMapsWebCache(t *testing.T) {
 	}))
 	defer srv.Close()
 	dir := t.TempDir()
-	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, CacheDir: dir})
+	c, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, CacheDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,7 @@ func TestClearingEmptiesTheMapsWebCache(t *testing.T) {
 	if _, ok := c.Cached(u); ok {
 		t.Error("the entry is still in memory")
 	}
-	later, err := httpx.New(httpx.Config{UserAgent: UserAgent, CacheDir: dir})
+	later, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, CacheDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func TestTheTemperatureClientKeepsItsAnswersOnDisk(t *testing.T) {
 	if !strings.HasPrefix(mapHTTPDir(), home) {
 		t.Fatalf("the directory %q is not under the test's home", mapHTTPDir())
 	}
-	if _, err := newTempClient(UserAgent); err != nil {
+	if _, err := newTempClient(run.UserAgent); err != nil {
 		t.Fatal(err)
 	}
 	if info, err := os.Stat(mapHTTPDir()); err != nil || !info.IsDir() {

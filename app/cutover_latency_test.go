@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -54,7 +55,7 @@ func bonsall() snapshot.LocationRef {
 // a measurement.
 func cardBuildClient(t testing.TB) *httpx.Client {
 	t.Helper()
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
+	client, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
 	if err != nil {
 		t.Fatalf("client: %v", err)
 	}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"runtime"
 	"sync/atomic"
@@ -120,7 +121,7 @@ func BenchmarkTimeToToneStart(b *testing.B) {
 // (PB-8); the count is deterministic, so it is held now. Each run builds its
 // deck outside the window, as the benchmark builds it with the timer stopped.
 func TestTimeToToneAllocBudget(t *testing.T) {
-	if RaceEnabled {
+	if apptest.RaceEnabled {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
 	}
 	fresh := breakingFixture()

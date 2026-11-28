@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -30,7 +31,7 @@ func TestLiveRelayMountsPlayOnBothRelays(t *testing.T) {
 	if os.Getenv("WATCHPOST_LIVE") != "1" {
 		t.Skip("set WATCHPOST_LIVE=1 to read the real relay directories and open one mount per relay")
 	}
-	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 5, MaxRetries: 1})
+	c, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, RatePerSec: 5, MaxRetries: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +92,7 @@ func TestLiveRelayMountsPlayOnBothRelays(t *testing.T) {
 
 // readMount opens one mount and reads 64 KB of audio through the player.
 func readMount(ctx context.Context, m stream.Mount, t *testing.T) error {
-	s, err := player.Open(ctx, UserAgent, m.URL)
+	s, err := player.Open(ctx, run.UserAgent, m.URL)
 	if err != nil {
 		t.Logf("  %s %s: %v", m.Callsign, m.URL, err)
 		return err

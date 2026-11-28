@@ -3,6 +3,7 @@ package app
 import (
 	"testing"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/platform/config"
 )
@@ -13,7 +14,7 @@ import (
 // without playing it. A list that moves under the selection keeps the relay,
 // not the position.
 func TestTheBedRelayPickIsKeptByItsCallsign(t *testing.T) {
-	WithConfigFile(t)
+	apptest.WithConfigFile(t)
 	lp := bedPipelines(t)
 	relays := lp.bedRelays()
 	if len(relays) < 3 {

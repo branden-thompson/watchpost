@@ -3,6 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"context"
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"os"
 	"path/filepath"
@@ -97,7 +98,7 @@ func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
 	if cfg.Maps != "off" || cfg.MapDescription != "instead" {
 		t.Errorf("the window is handed %q %q", cfg.Maps, cfg.MapDescription)
 	}
-	WithConfigFile(t)
+	apptest.WithConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", Clock: "24h", Maps: "off", MapDescription: "off"}); err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +233,7 @@ func TestTheMapsTabReachesTheWindowAndTheFile(t *testing.T) {
 	if cfg.MapScale != "region" || cfg.MapNearbyKm != 5 || cfg.MapLayerChoice["alert"] {
 		t.Errorf("the window is handed %q %d %v", cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayerChoice)
 	}
-	WithConfigFile(t)
+	apptest.WithConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapScale: "county", MapNearbyKm: 25, MapLayers: map[string]bool{"alert": false}}); err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +274,7 @@ func (closerFunc) View() tea.View                      { return tea.NewView("") 
 // earlier build wrote with map_alert_scope loads without an unknown key
 // reported, and the next Settings save lets the key go.
 func TestTheRetiredAlertScopeLeavesTheFile(t *testing.T) {
-	WriteConfigFile(t, "units = \"imperial\"\nmap_alert_scope = \"station\"\n")
+	apptest.WriteConfigFile(t, "units = \"imperial\"\nmap_alert_scope = \"station\"\n")
 	if got, err := config.Load(); err != nil || len(got.Unknown) != 0 {
 		t.Fatalf("the file loads with unknown keys %v (%v)", got.Unknown, err)
 	}

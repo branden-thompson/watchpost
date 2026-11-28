@@ -85,6 +85,7 @@ The main packages. `platform/` has 24; the rest are small helpers, each with a p
 |---|---|
 | `cmd/watchpost` | the command line: flags, the one-shot reports, and the dashboard's start |
 | `app/` | the composition root: the PRIORITY and RECENT pipelines (`app/pipelines.go`), the ticker (`app/ticker.go`), the radio deck (`app/radio.go`), the arbiter (`app/arbiter.go`), MasterControl (`app/mastercontrol.go`), the schedule and its executors (`app/schedule.go`, `app/executors.go`), the map's builders and feeds (`app/maps.go`, `app/maplayers.go`), the history recorder (`app/history.go`) |
+| `app/internal/run` | what one run shares across app's packages: the user agent, the cache directories, the preference save, the one clock-driven loop (`EveryTick`), the locked copy and the merged request counts |
 | `domains/` | one folder per source family, each a `snapshot.Provider` or a source a pipeline asks; see the diagram |
 | `platform/snapshot` | the data contract every reader consumes, and the assembler that merges the fragments |
 | `platform/report` | what a location report can be made of: the report kinds, each one row in `all()`, and the only place a kind is described |

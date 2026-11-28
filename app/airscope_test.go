@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/severe"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -99,14 +100,14 @@ func TestTheDecksFenceFollowsTheScope(t *testing.T) {
 // far does this station reach" can disagree, and then the console's transmitter
 // and the listener's default location blur into one.
 func TestTheRailAndThePoolShareOneServiceArea(t *testing.T) {
-	lp := &livePipelines{idx: IndexForTest(t)}
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
+	lp := &livePipelines{idx: apptest.IndexForTest(t)}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{apptest.BonsallCfg}}))
 	lp.owner.set(tty.SurfaceBroadcaster)
 	got := scopeFor(&lp.owner, func() airScope { return airScope{} }, lp.currentStation)
 	if got.radiusMi != config.DefaultServiceRadiusMi {
 		t.Errorf("the rail is fenced at the station's service radius; got %v", got.radiusMi)
 	}
-	if got.lat != BonsallCfg.Lat || got.lon != BonsallCfg.Lon {
+	if got.lat != apptest.BonsallCfg.Lat || got.lon != apptest.BonsallCfg.Lon {
 		t.Errorf("and measured from its transmitter; got %v,%v", got.lat, got.lon)
 	}
 }

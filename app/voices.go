@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -118,7 +119,7 @@ func (d *radioDeck) piperSpec() synth.VoiceSpec {
 func (d *radioDeck) installVoice(spec synth.VoiceSpec, report func(string)) (synth.Install, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
-	inst, err := synth.EnsureVoice(ctx, d.voiceDir, spec, UserAgent, func(what string, done, total int64) {
+	inst, err := synth.EnsureVoice(ctx, d.voiceDir, spec, run.UserAgent, func(what string, done, total int64) {
 		pct := 0
 		if total > 0 {
 			pct = int(done * 100 / total)
@@ -335,4 +336,4 @@ func (d *radioDeck) defaultVoice() string {
 
 // voiceDir is where Piper and its voice live: the OS cache dir (they are
 // re-downloadable, pinned artifacts).
-func voiceDir() string { return UserCacheSubdir("piper") }
+func voiceDir() string { return run.UserCacheSubdir("piper") }

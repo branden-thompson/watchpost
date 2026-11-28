@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/player"
@@ -56,7 +57,7 @@ func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	// These five tests are about the Director's advance and the duck. The host's
 	// voice catalogue is not the subject, so it is pinned rather than inherited.
 	asPlatform(t, "darwin")
-	client, base := OfflineClient(t, http.NotFoundHandler())
+	client, base := apptest.OfflineClient(t, http.NotFoundHandler())
 	res, err := stream.NewResolver(stream.NewDirectory(client, base, base))
 	if err != nil {
 		t.Fatalf("resolver: %v", err)

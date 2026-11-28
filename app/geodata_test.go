@@ -24,6 +24,12 @@ func TestGeodataLoadsOncePerEntryPoint(t *testing.T) {
 	}
 	callers := map[string]int{}
 	for _, p := range paths {
+		// The test support loads its own index for the tests that ask
+		// (apptest.IndexForTest); make lint-imports refuses it a non-test
+		// importer, so its load never reaches the binary (0.19.6 B5).
+		if strings.HasPrefix(filepath.ToSlash(p), "internal/apptest/") {
+			continue
+		}
 		src, err := os.ReadFile(p)
 		if err != nil {
 			t.Fatal(err)

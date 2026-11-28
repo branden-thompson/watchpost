@@ -154,6 +154,8 @@ var wholeFileClaims = []wholeFileClaim{
 	// 0.19.6 A-68 names the files B4 created and the one it split, for its sweep's inputs, each whole
 	{"A-68", "map_timing.go"}, {"A-68", "observer_map.go"}, {"A-68", "timing.go"},
 	{"A-70", "app/run_shared.go"}, {"A-70", "app/every.go"}, {"A-70", "app/apptest_helpers_test.go"}, {"A-70", "apptest_race_test.go"}, {"A-70", "apptest_norace_test.go"}, {"A-70", "app/schedule_test.go"},
+	{"D-92", "app/internal/apptest/race.go"}, {"D-92", "app/internal/apptest/norace.go"}, {"D-92", "app/dump_unix.go"}, {"D-92", "app/dump_windows.go"},
+	{"A-71", "every.go"}, {"A-71", "run_shared.go"}, {"A-71", "shared.go"}, {"A-71", "helpers.go"}, {"A-71", "race.go"}, {"A-71", "norace.go"}, {"A-71", "doc.go"},
 }
 
 // unlinedRefs are the ruling rows that name a Go file without its line or a

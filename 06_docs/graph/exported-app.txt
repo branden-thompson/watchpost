@@ -1,17 +1,10 @@
 # the exported surface of app (0.19.6 B0.12, M5): exported top-level names and exported types' methods;
 # a batch adds its new packages' entry points here; TestTheRootsExportOnlyWhatIsListed
-const UserAgent
-func CacheDir
 func CastReport.ToneSummary
-func EveryTick
-func LockedCopy
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
-func RequestStatsOf
 func RunDashboard
-func SavePreference
-func UserCacheSubdir
 type CastReport
 type CastRow
 type Gauge

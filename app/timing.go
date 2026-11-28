@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/modes/tty"
 )
 
@@ -78,5 +79,5 @@ func (l *timingLog) last() []timingRecord {
 	if l == nil {
 		return nil
 	}
-	return LockedCopy(&l.mu, &l.held)
+	return run.LockedCopy(&l.mu, &l.held)
 }

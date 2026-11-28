@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/platform/config"
@@ -62,7 +63,7 @@ func TestApplySetupRerunPreservesCustomizations(t *testing.T) {
 	if err := config.Save(existing); err != nil {
 		t.Fatal(err)
 	}
-	if err := applySetup(Oceanside(), ""); err != nil {
+	if err := applySetup(apptest.Oceanside(), ""); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := config.Load()
@@ -93,7 +94,7 @@ func TestApplySetupRerunPreservesCustomizations(t *testing.T) {
 func TestApplySetupStoresAWellFormedFIRMSKeyOnly(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	key := "0123456789abcdef0123456789ABCDEF"
-	if err := applySetup(Oceanside(), " "+key+" "); err != nil {
+	if err := applySetup(apptest.Oceanside(), " "+key+" "); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := config.Load()
@@ -103,7 +104,7 @@ func TestApplySetupStoresAWellFormedFIRMSKeyOnly(t *testing.T) {
 	if cfg.Providers["firms"].Key != key {
 		t.Fatalf("key stored trimmed: %q", cfg.Providers["firms"].Key)
 	}
-	err = applySetup(Oceanside(), "not-a-map-key")
+	err = applySetup(apptest.Oceanside(), "not-a-map-key")
 	if err == nil || !strings.Contains(err.Error(), "32 hex") || strings.Contains(err.Error(), "not-a-map-key") {
 		t.Fatalf("a malformed key is refused with the shape, never echoed: %v", err)
 	}
@@ -143,7 +144,7 @@ var oldDefault = config.Location{Label: "El Cajon, CA", Zip: "92020", Lat: 32.79
 
 // TestSetupKeepsTwoPlacesThatShareCoordinatesButNotAZip: two ZIPs are two places.
 func TestSetupKeepsTwoPlacesThatShareCoordinatesButNotAZip(t *testing.T) {
-	got := setupOver(t, Oceanside(), oldDefault,
+	got := setupOver(t, apptest.Oceanside(), oldDefault,
 		config.Location{Label: "Camp Pendleton, CA", Zip: "92055", Lat: 33.24, Lon: -117.29})
 	if got != "Oceanside, CA|Camp Pendleton, CA" {
 		t.Errorf("a place with its own ZIP at the default's coordinates was dropped: %s", got)
@@ -153,7 +154,7 @@ func TestSetupKeepsTwoPlacesThatShareCoordinatesButNotAZip(t *testing.T) {
 // TestSetupKeepsAZiplessEntryBesideTheNewDefault: a ZIP-less place is keyed by
 // its coordinates, the new default by its ZIP, so they are two places.
 func TestSetupKeepsAZiplessEntryBesideTheNewDefault(t *testing.T) {
-	got := setupOver(t, Oceanside(), oldDefault,
+	got := setupOver(t, apptest.Oceanside(), oldDefault,
 		config.Location{Label: "The Pier", Lat: 33.24, Lon: -117.29})
 	if got != "Oceanside, CA|The Pier" {
 		t.Errorf("a ZIP-less place at the default's coordinates was dropped: %s", got)

@@ -116,14 +116,17 @@ code{font-family:var(--mono);font-size:.92em}
   TTY[&#34;modes/tty — the Router and the Observer (Dashboard),&lt;br/&gt;with the console&#39;s card window and request window,&lt;br/&gt;and the map&#39;s model in place (mapModel, 0.19.6 B4)&#34;] --&gt; CONSOLE
   TTY --&gt; FRAME
   APP -- &#34;the console&#39;s messages&#34; --&gt; CONSOLE
+  APP --&gt; RUN
+  RUN[&#34;app/internal/run — what one run shares: the user agent, the cache directories,&lt;br/&gt;the preference save, EveryTick, the locked copy, the request counts (0.19.6 B5)&#34;]
   CONSOLE[&#34;modes/tty/console — the Broadcaster console: New(Opening),&lt;br/&gt;the messages Scoped names, the Mirror, the getters (0.19.6 B3)&#34;] --&gt; FRAME
   FRAME[&#34;modes/tty/internal/frame — what both surfaces draw the same way:&lt;br/&gt;the masthead, the location row, the cursor, the shimmer&#39;s tick,&lt;br/&gt;the memo counters, the text helpers (0.19.6 B2)&#34;]
   TTYT[&#34;modes/tty/internal/ttytest — test support: Main, the memo guards&#39; engine&lt;br/&gt;(PerturbEach, Field), the helpers and the fixtures the tree&#39;s tests share&lt;br/&gt;(0.19.6 B0, B2, B3)&#34;]
-  APPT[&#34;app/internal/apptest — test support: Main and the run&#39;s own directories (0.19.6 B0)&#34;]
+  APPT[&#34;app/internal/apptest — test support: Main and the run&#39;s own directories,&lt;br/&gt;the pure helpers and the race pair the tree&#39;s tests share (0.19.6 B0, B5)&#34;]
   TTYT -. &#34;imported by modes/tty&#39;s tests&#34; .-&gt; TTY
   TTYT -. &#34;and by frame&#39;s&#34; .-&gt; FRAME
   TTYT -. &#34;and by the console&#39;s&#34; .-&gt; CONSOLE
   APPT -. &#34;imported by app&#39;s tests&#34; .-&gt; APP
+  APPT --&gt; RUN
 </pre></div></article></section><section class="level" id="0.16.0-broadcaster-ui"><header class="lvl"><h2>The Broadcaster: the air and the deck</h2></header><article class="dia" id="0.16.0-broadcaster-ui-0"><div class="meta"><h3>1. One deck, one air</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>Both surfaces run through the SAME deck, on purpose</strong> (HUM LEAD, 2026-09-12): both do synth reads and relay streams, so two decks would be duplicated code and two things that could play at once. The Director arbitrates the rotation in BOTH modes; MasterControl gates the deck from the air.</p></div><div class="canvas"><pre class="mermaid">flowchart TB
   OBS[&#34;OBSERVER&lt;br/&gt;the operator&#39;s own listening&#34;]
   BC[&#34;BROADCASTER&lt;br/&gt;the station&#39;s line-up&#34;]

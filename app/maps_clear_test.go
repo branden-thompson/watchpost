@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/uv"
@@ -25,7 +26,7 @@ func TestClearingForgetsTheTidesAndTheUVCities(t *testing.T) {
 		_, _ = w.Write([]byte(`{"predictions":[{"t":"2026-10-05 16:01","v":"1.193","type":"H"}]}`))
 	}))
 	defer srv.Close()
-	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, CacheDir: t.TempDir()})
+	c, err := httpx.New(httpx.Config{UserAgent: run.UserAgent, CacheDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

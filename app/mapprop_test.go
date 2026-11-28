@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/propagation"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
@@ -315,8 +316,8 @@ func TestTheAppsEndStopsAnUpdateAndKeepsItsState(t *testing.T) {
 		t.Fatal("control: the burst ended before the app's end")
 	}
 	appEnd()
-	if !svc.Settle(settleBound * RaceSlowdown) {
-		t.Fatalf("the burst outlived the app's end by more than %v", settleBound*RaceSlowdown)
+	if !svc.Settle(settleBound * apptest.RaceSlowdown) {
+		t.Fatalf("the burst outlived the app's end by more than %v", settleBound*apptest.RaceSlowdown)
 	}
 	<-out
 	again := &replayGetter{replay: replay, asking: make(chan struct{})}

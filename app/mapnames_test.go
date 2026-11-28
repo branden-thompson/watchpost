@@ -8,6 +8,7 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
@@ -82,7 +83,7 @@ func TestTheDetailAndTheNamerReachTheWindow(t *testing.T) {
 	if name, country := cfg.Map.PlaceNear(35.5, 139.5); name == "" || country == "" {
 		t.Error("the window is not handed the world's namer")
 	}
-	WithConfigFile(t)
+	apptest.WithConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}); err != nil {
 		t.Fatal(err)
 	}

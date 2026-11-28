@@ -42,6 +42,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
@@ -113,7 +114,7 @@ func newDeckTrace(t *testing.T) *deckTrace {
 		http.NotFound(w, nil)
 	}))
 	t.Cleanup(srv.Close)
-	client, base := OfflineClient(t, http.NotFoundHandler())
+	client, base := apptest.OfflineClient(t, http.NotFoundHandler())
 	res, err := stream.NewResolver(stream.NewDirectory(client, base, base))
 	if err != nil {
 		t.Fatalf("resolver: %v", err)
@@ -136,8 +137,8 @@ func newDeckTrace(t *testing.T) *deckTrace {
 		t.Fatal(err)
 	}
 	places := tracePlaces()
-	lp := &livePipelines{idx: IndexForTest(t), relayTable: tbl}
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
+	lp := &livePipelines{idx: apptest.IndexForTest(t), relayTable: tbl}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{apptest.BonsallCfg}}))
 	lp.bedRadiusMi = config.DefaultBedRadiusMi
 	lp.setWatch(places)
 	lp.bedStations = traceBed(lp, tbl, srv.URL)
@@ -522,7 +523,7 @@ func (dt *deckTrace) settle(key string, urls []string, retune bool, fails, hits 
 // await polls a condition the deck's goroutine makes true, and fails the trace
 // if it does not within the bound (times the race build's slowdown).
 func (dt *deckTrace) await(what string, ok func() bool) {
-	end := time.Now().Add(10 * time.Second * RaceSlowdown)
+	end := time.Now().Add(10 * time.Second * apptest.RaceSlowdown)
 	for !ok() { // bounded by the deadline (P10-02)
 		if time.Now().After(end) {
 			dt.t.Fatalf("%s did not finish: the record would be of a partial act", what)

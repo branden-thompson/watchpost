@@ -1,6 +1,6 @@
 //go:build race
 
-package app
+package apptest
 
 // RaceSlowdown is how much longer work takes under the race detector, for
 // the timings a test holds to a product bound: a burst cut at the app's end

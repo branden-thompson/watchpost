@@ -9,6 +9,7 @@ import (
 
 	ionomaps "github.com/branden-thompson/go-ionomaps"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/propagation"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
@@ -34,7 +35,7 @@ func propagationClientConfig() httpx.PlainConfig {
 			caps[h] = int64(s.MaxBytes)
 		}
 	}
-	return httpx.PlainConfig{UserAgent: UserAgent, MaxBodyBytes: propagationBodyBytes, MaxBodyByHost: caps, RefusePrivate: true, HTTPSOnly: true}
+	return httpx.PlainConfig{UserAgent: run.UserAgent, MaxBodyBytes: propagationBodyBytes, MaxBodyByHost: caps, RefusePrivate: true, HTTPSOnly: true}
 }
 
 // newPropagationService is how the service is made over its client; a test

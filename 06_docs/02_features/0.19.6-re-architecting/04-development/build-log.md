@@ -1753,3 +1753,64 @@ to drawing B5 before the move has drawn it, so it is headed as B3's and B4's pre
 `app/testdata/sharedlock/planned.tsv` placed no `run_shared.go`, and places it in `run` beside
 `every.go`; A-70 named six files as wholes, now `wholeFileClaims` as A-66's and A-68's are.
 The second gate, on those fixes: `make verify` green, 2,355 s.
+
+## B5's move: the run's helpers and the test support in their packages (D-92, D-93; A-71)
+
+**The move (A-71).** Five files `git mv`'d whole: `app/every.go` and `app/run_shared.go` to
+`app/internal/run` (`every.go`, `shared.go`), and the shared test helpers and the race pair to
+`app/internal/apptest` (`helpers.go`, `race.go`, `norace.go`), each with its package clause; `run`
+gains a `doc.go` that maps its two files, and `apptest`'s and `app`'s maps follow. The qualifiers
+are the compiler's own list: each name the build reported undefined was qualified at its position,
+55 `run.` and 78 `apptest.` sites in 44 of `app`'s files, 15 of them non-test, each gaining the
+import; `apptest.OfflineClient` reads `run.UserAgent`. `go vet ./...` is clean, and under
+`-tags race` for `app`. `run` imports nothing under `app`; `apptest` imports `run`.
+
+**The comment pass (A-33).** The moved code's four bare citations take their releases: `0.9.0 AI-1`
+and `0.9.0 UAT 71`, from the first commit; `0.16.0 F-102`, the release that opened it; and
+`0.15.0 FR-1.1`, the single config owner the comment names, read by hand, since the line was last
+written in 0.18.0's commit, whose FR-1.1 is the map key.
+
+**The instruments, each seen failing on a partial move.**
+- **The union** is unchanged by the move: the same golden. With `UserCacheSubdir`'s body edited it
+  fails, one declaration new and one gone; restored by copy, it passes.
+- **`gcprobe`** with B5's line in `06_docs/perf/moves.tsv`: without it, 38 failures. With it, three
+  remained, all `LockedCopy`'s: a generic's body is compiled in the package that instantiates it, so
+  its three escapes and twelve inlined calls are keyed to `app` under the bare name, and none to
+  `run`. Three rows of class "moved" in `06_docs/perf/excused-B4.tsv`; then OK, 4,002 escapes in
+  1,997 keys and 7,491 inlined calls in 4,783 keys, none new and none lost, 145 keys excused.
+- **`make graph`**: OK, 11 figures, none above its baseline; `app`'s unexported crossings under the
+  planned map 273 against 283.
+- **`make mutant-anchors`**: all 1,067 match; no mutant sits on a moved file.
+- **The test inventory**: no test moves, since `EveryTick`'s two stay in `app/schedule_test.go`
+  (A-70); B5's close runs it.
+
+**P10.** `every.go`'s P10-02 row re-keys to `app/internal/run/every.go`. The first `make p10` on the
+move reported the race pair, `norace.go`'s directive and `race.go` left out of the analysed build,
+ratified on the dump pair's precedent (D-92), and the two packages' density: `run` 0.50 across 6,
+a row of its own, and `apptest` 0.00 across 10, its row amended to the helpers (D-93). `app` reads
+0.59 across 39, above D-91's 0.51.
+
+**The living documents (package map §9).** `docs/architecture.md` gains `run`'s row. 0.19.6's
+as-built page draws B0–B5, `run` under `app` and `apptest` importing it; the atlas reads it.
+`app/testdata/sharedlock/planned.tsv` places the moved files by their new paths.
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `app/internal/apptest/helpers.go:OfflineClient` | `run.UserAgent` | setup | — | — |
+| `06_docs/graph/exported-app.txt` | the root's list loses the seven names | golden | — | — |
+| `app/testdata/declset.txt` | the root loses the seven | golden | — | — |
+| `app/testdata/sharedlock/planned.tsv` | the five files and `run/doc.go` by their paths | assertion | none | none recorded |
+| `06_docs/perf/excused-B4.tsv` | `LockedCopy`'s three keys (A-71) | golden | — | — |
+| `cmd/watchpost/record_test.go` | D-92's and A-71's whole-file claims | setup | — | — |
+| `app/geodata_test.go:TestGeodataLoadsOncePerEntryPoint` | the test support's load left out | assertion | none recorded | none recorded |
+| `app`'s tests and code | 133 qualifiers and their imports | setup | — | — |
+
+**The inventory's delta.** No test moved, added or removed.
+
+**The first gate failed** in `race` after 1,440 s (`verify-runs.md`): `TestGeodataLoadsOncePerEntryPoint`
+counts the index's loads in every non-test file under `app`, and `apptest.IndexForTest` is one now.
+The test support is refused a non-test importer, so its load never reaches the binary: the count
+leaves `internal/apptest/` out, and a load planted in `run/shared.go` still fails it.
+The second gate, on that fix: `make verify` green, 2,477 s.

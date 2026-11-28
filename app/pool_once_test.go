@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/app/internal/apptest"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -43,8 +44,8 @@ func TestAWatchedPlaceInThePoolIsFetchedOnce(t *testing.T) {
 // lookup, favourite or watchlist edit.
 func TestThePoolsPointsSurviveACommit(t *testing.T) {
 	var points atomic.Int32
-	fixtures := NWSFixtures(t)
-	client, base := OfflineClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	fixtures := apptest.NWSFixtures(t)
+	client, base := apptest.OfflineClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/points/") {
 			points.Add(1)
 		}

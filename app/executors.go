@@ -21,6 +21,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
@@ -619,7 +620,7 @@ func (b *bandRecord) has(line string) bool {
 }
 
 // recent is the record, oldest first, as a copy.
-func (b *bandRecord) recent() []string { return LockedCopy(&b.mu, &b.lines) }
+func (b *bandRecord) recent() []string { return run.LockedCopy(&b.mu, &b.lines) }
 
 // cueFor puts the band's callout up for the producer's record behind a part.
 // The record is asked for, never constructed here: the band has ONE owner and

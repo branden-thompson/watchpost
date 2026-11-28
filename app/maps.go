@@ -20,6 +20,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/go-tuimaps/assets"
 
+	"github.com/branden-thompson/watchpost/app/internal/run"
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -52,7 +53,7 @@ const (
 
 // mapHTTPDir is where the temperature client keeps what it fetched (D-219):
 // the OS cache directory, beside the tiles.
-func mapHTTPDir() string { return UserCacheSubdir("map-http") }
+func mapHTTPDir() string { return run.UserCacheSubdir("map-http") }
 
 // newTempClient is the temperature client, keeping its answers at mapHTTPDir.
 func newTempClient(userAgent string) (*httpx.Client, error) {
@@ -78,7 +79,7 @@ func newMapBuilder(version, cacheDir string, transport http.RoundTripper, seed f
 // newProductionMapBuilder is the builder the station runs: the OS cache
 // directory and the library's own transport.
 func newProductionMapBuilder(version string, tiles *tileCounter, seed func()) *mapBuilder {
-	return newMapBuilder(version, UserCacheSubdir("map"), tiles.transport(libraryTransport()), seed)
+	return newMapBuilder(version, run.UserCacheSubdir("map"), tiles.transport(libraryTransport()), seed)
 }
 
 // build makes a map at the window's size: the library moves only a map that
