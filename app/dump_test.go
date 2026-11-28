@@ -164,7 +164,7 @@ func TestPublisherCountsPublishesAndFoldedTriggers(t *testing.T) {
 	// after its run — and a loaded runner (ubuntu CI under -race, PR #4) can
 	// have a second one in flight when the first is done. Wait for the sum,
 	// not for the first publish.
-	waitUntil(t, "three triggers published or folded", func() bool {
+	WaitUntil(t, "three triggers published or folded", func() bool {
 		st := pb.stats()
 		return st.Publishes+st.Folded == 3
 	})

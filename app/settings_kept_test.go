@@ -30,7 +30,7 @@ func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
 	}
 	was := render.ThemeName()
 	t.Cleanup(func() { render.SetTheme(was) }) // the save applies the theme, process-wide
-	withConfigFile(t)
+	WithConfigFile(t)
 	if err := setUIHook(want); err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestASavedSettingIsTheSettingAfterARestart(t *testing.T) {
 // writes the file, and the next launch hands the window what was written - the
 // alert radius, the history's retention and the radio's source.
 func TestTheOtherKeptSettingsSurviveARestart(t *testing.T) {
-	withConfigFile(t)
+	WithConfigFile(t)
 	_, setRadius := tickerRadiusState(0)
 	setRadius(40)
 	lp := &livePipelines{}

@@ -335,4 +335,4 @@ func (d *radioDeck) defaultVoice() string {
 
 // voiceDir is where Piper and its voice live: the OS cache dir (they are
 // re-downloadable, pinned artifacts).
-func voiceDir() string { return userCacheSubdir("piper") }
+func voiceDir() string { return UserCacheSubdir("piper") }

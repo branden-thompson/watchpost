@@ -120,7 +120,7 @@ func BenchmarkTimeToToneStart(b *testing.B) {
 // (PB-8); the count is deterministic, so it is held now. Each run builds its
 // deck outside the window, as the benchmark builds it with the timer stopped.
 func TestTimeToToneAllocBudget(t *testing.T) {
-	if raceEnabled {
+	if RaceEnabled {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
 	}
 	fresh := breakingFixture()

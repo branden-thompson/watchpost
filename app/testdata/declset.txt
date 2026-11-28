@@ -576,10 +576,16 @@ func (stationRecorder).incident
 func (stationRecorder).observation
 func (stationRecorder).record
 func (stationRecorder).tide
+func CacheDir
+func EveryTick
+func LockedCopy
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
+func RequestStatsOf
 func RunDashboard
+func SavePreference
+func UserCacheSubdir
 func abbreviateHome
 func aboutWarnings
 func addAlerts
@@ -627,7 +633,6 @@ func burstClosingLine
 func burstHead
 func burstTail
 func burstTitle
-func cacheDir
 func castConfig
 func castFromView
 func castLoaded
@@ -672,7 +677,6 @@ func envWatchlistDwell
 func errKind
 func eventNarration
 func eventScript
-func everyTick
 func extremes
 func feelsForecastGrids
 func fetchForecast
@@ -745,7 +749,6 @@ func live
 func loadGeodata
 func loadSeen
 func loadUserThemes
-func lockedCopy
 func lookupContext
 func lookupContextUnder
 func loopSlots
@@ -866,7 +869,6 @@ func renderSlots
 func replayUV
 func reportFetch
 func reportTiming
-func requestStats
 func resolveAlertAreas
 func resolveHook
 func resolveQuery
@@ -878,7 +880,6 @@ func runsOf
 func runtimeCounts
 func runtimeGOOS
 func saveCast
-func savePreference
 func savePropagationAck
 func saveRadioMode
 func saveRadioPrefs
@@ -970,7 +971,6 @@ func uiHook
 func unionPoints
 func unitGrid
 func unread
-func userCacheSubdir
 func uvAsked
 func uvCells
 func uvCityKey

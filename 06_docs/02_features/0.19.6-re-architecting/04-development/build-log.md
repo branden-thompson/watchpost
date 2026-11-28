@@ -1701,3 +1701,55 @@ The second gate, on that fix: `make verify` green, 4,364 s.
 single-pair moves above 2 % (`Key` +6.97 % then unchanged, `Parse27k` -3.23 % then +3.65 %,
 `DisplayWidth_styledRow` +4.42 % then -1.19 %, `TimeToToneStart` unchanged then +4.18 %) each
 reverse or vanish in the other. D-87's hunt is closed: B2 to B4 hold the timing on all 28.
+
+## Before B5's move: the run's helpers and the test helpers, in place (D-90, D-91; A-70)
+
+**The run's helpers (design AP-5).** `LockedCopy`, `SavePreference`, `CacheDir`, `UserCacheSubdir`,
+`UserAgent` and `RequestStatsOf` cut whole, each with its doc comment, into `app/run_shared.go`
+beside `app/every.go`, and the five unexported ones and `EveryTick` exported by `gopls rename`.
+`RequestStats`, AP-5's name, read to P10-01 as recursion through `httpx.Client`'s method of the same
+name, and is `RequestStatsOf` (D-90). `startSchedule`'s local `run` is `scheduleCtx`, so the package
+will not be shadowed there. The export list gains the six until the move takes them out of `app`, and
+`app/doc.go`'s file map names `run_shared.go`.
+
+**The test helpers (design AP-9, A-24).** The nine pure helpers cut into `app/apptest_helpers_test.go`
+under the names `apptest` will export, and the race pair renamed with them (A-70). `NWSFixtures` read
+its fixtures by a path relative to `app`, which a caller in `app/internal/deck` would miss; it finds
+them through `ModuleDir`, from the test's directory up to `go.mod`.
+
+**The pin gate's spelling.** `TestEveryRaceSkippedPinIsInTheAllocBudget` found a race-skipped pin by
+the literal `raceEnabled`, so `RaceEnabled` would have hidden every `app` pin from it, and from every
+gate with it. It reads either spelling; its second planted file, `apptest.RaceEnabled`, was seen
+failing on the old match.
+
+**The maps.** `06_docs/perf/renames.tsv` gains the six renames scoped to `app`, and a seventh that
+gives `propagationHolder.requestStats` its name back: gcprobe renames a name where it stands whole,
+and after a dot it does. The first run of `TestTheTreesKeepWhatTheCompilerDecided` failed on that
+method's two inlined calls, read as lost; with the line, none new, none lost.
+
+**Mutants.** None re-pointed: every anchor matches (1,067), m183's on the holder's own method.
+
+**P10.** `app/every.go`'s P10-02 row re-keyed to `EveryTick` (the plan's re-key table). The first
+`make p10` reported D-90's finding and, with it applied, `app`'s density at 0.51 over 41 against its
+floor of 0.61: the renames' callers count as changed, bodies otherwise unchanged. At `3ea507fe` it
+read 0.64 over 11. Re-ratified at 0.51 over 41, re-measured at the move (D-91).
+
+**The changed-line table.**
+
+| File | Line | Kind | Mutants before | After |
+|---|---|---|---|---|
+| `cmd/watchpost/gates_test.go` | the race-skip match and its second control | assertion | none | none recorded |
+| `app/apptest_helpers_test.go` | the nine helpers, cut; `NWSFixtures`' directory by `ModuleDir` | setup | — | — |
+| `app/apptest_race_test.go`, `app/apptest_norace_test.go` | renamed, `RaceSlowdown`, `RaceEnabled` | setup | — | — |
+| `app/schedule_test.go` | `EveryTick` in its failure messages | message | — | — |
+| the helpers' call sites, tests' included | renamed (A-70) | setup | — | — |
+| `app/testdata/declset.txt`, `cmd/watchpost/testdata/union-decls.txt` | re-captured: six names, 35 declarations | golden | — | — |
+
+**The inventory's delta.** No test added or removed.
+
+**The first gate failed** in `race` after 1,389 s (`verify-runs.md`), on three of the record's
+checks and none of the code's: this section was headed as B5 itself, which holds the as-built page
+to drawing B5 before the move has drawn it, so it is headed as B3's and B4's preps were;
+`app/testdata/sharedlock/planned.tsv` placed no `run_shared.go`, and places it in `run` beside
+`every.go`; A-70 named six files as wholes, now `wholeFileClaims` as A-66's and A-68's are.
+The second gate, on those fixes: `make verify` green, 2,355 s.

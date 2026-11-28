@@ -99,14 +99,14 @@ func TestTheDecksFenceFollowsTheScope(t *testing.T) {
 // far does this station reach" can disagree, and then the console's transmitter
 // and the listener's default location blur into one.
 func TestTheRailAndThePoolShareOneServiceArea(t *testing.T) {
-	lp := &livePipelines{idx: indexForTest(t)}
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	lp := &livePipelines{idx: IndexForTest(t)}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
 	lp.owner.set(tty.SurfaceBroadcaster)
 	got := scopeFor(&lp.owner, func() airScope { return airScope{} }, lp.currentStation)
 	if got.radiusMi != config.DefaultServiceRadiusMi {
 		t.Errorf("the rail is fenced at the station's service radius; got %v", got.radiusMi)
 	}
-	if got.lat != bonsallCfg.Lat || got.lon != bonsallCfg.Lon {
+	if got.lat != BonsallCfg.Lat || got.lon != BonsallCfg.Lon {
 		t.Errorf("and measured from its transmitter; got %v,%v", got.lat, got.lon)
 	}
 }

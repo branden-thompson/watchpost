@@ -79,7 +79,7 @@ func tickerRadiusState(mi int) (*atomic.Int64, func(int)) {
 	v.Store(int64(mi))
 	return v, func(m int) {
 		v.Store(int64(m))
-		_ = savePreference(func(c *config.Config) { c.TickerRadiusMi = m })
+		_ = SavePreference(func(c *config.Config) { c.TickerRadiusMi = m })
 	}
 }
 
@@ -175,7 +175,7 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 		sources: []globalfeed.Source{globalfeed.NewUSGS(client, ""), globalfeed.NewNHC(client, ""), globalfeed.NewNWS(client, "")},
 		watch:   watch,
 		nearest: nearestMetro(idx),
-		seen:    loadSeen(userCacheSubdir("ticker"), tickerSeenWindow),
+		seen:    loadSeen(UserCacheSubdir("ticker"), tickerSeenWindow),
 		alerts:  newAlertStore(),
 		muted:   prefs.muted,
 		radius:  prefs.radius, clockPref: prefs.clock,

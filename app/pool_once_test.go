@@ -43,8 +43,8 @@ func TestAWatchedPlaceInThePoolIsFetchedOnce(t *testing.T) {
 // lookup, favourite or watchlist edit.
 func TestThePoolsPointsSurviveACommit(t *testing.T) {
 	var points atomic.Int32
-	fixtures := nwsFixtures(t)
-	client, base := offlineClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	fixtures := NWSFixtures(t)
+	client, base := OfflineClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/points/") {
 			points.Add(1)
 		}

@@ -78,5 +78,5 @@ func (l *timingLog) last() []timingRecord {
 	if l == nil {
 		return nil
 	}
-	return lockedCopy(&l.mu, &l.held)
+	return LockedCopy(&l.mu, &l.held)
 }

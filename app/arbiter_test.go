@@ -112,7 +112,7 @@ func TestArbiterBreakingSuspendsAndResumesARead(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("the read never finished")
 	}
-	waitUntil(t, "the read's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
+	WaitUntil(t, "the read's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
 	if got := v.got(); got != "duck,speak:read-line,pause,aside:breaking-line,resume,restore" {
 		t.Fatalf("one restore, at the very end: %s", got)
 	}
@@ -139,7 +139,7 @@ func TestArbiterALineRenderedUnderSuspensionWaitsForTheAir(t *testing.T) {
 		close(breakingDone)
 	}()
 	<-breakingDone
-	waitUntil(t, "the read's line and release", func() bool { return strings.HasSuffix(v.got(), "restore") })
+	WaitUntil(t, "the read's line and release", func() bool { return strings.HasSuffix(v.got(), "restore") })
 	if got := v.got(); got != "duck,pause,aside:breaking-line,resume,speak:read-line,restore" {
 		t.Fatalf("…and its line plays only after: %s", got)
 	}
@@ -194,7 +194,7 @@ func TestArbiterQueuesBehindAHigherClassAndInOrder(t *testing.T) {
 				s.line(name)
 			})
 		}(name)
-		waitUntil(t, "arrival order", func() bool { n.mu.Lock(); defer n.mu.Unlock(); return len(n.waiting) == i+1 }) // queued before the next arrives
+		WaitUntil(t, "arrival order", func() bool { n.mu.Lock(); defer n.mu.Unlock(); return len(n.waiting) == i+1 }) // queued before the next arrives
 	}
 	if got := v.got(); got != "duck,aside:breaking" {
 		t.Fatalf("reads must wait for the takeover: %s", got)
@@ -351,25 +351,6 @@ func (p *probeVoice) resume()  {}
 func (p *probeVoice) discard() {}
 func (p *probeVoice) restore() {}
 
-// pollLimit is how long a test polls for a state before failing. A poll
-// returns the moment its condition holds, so the limit costs nothing on a
-// passing run; it has to outlast a loaded CI runner under the race detector,
-// which two seconds does not.
-const pollLimit = 10 * time.Second
-
-// waitUntil polls cond (no fixed sleeps: the release, a queue position) and
-// fails after pollLimit.
-func waitUntil(t *testing.T, what string, cond func() bool) {
-	t.Helper()
-	for deadline := time.Now().Add(pollLimit); time.Now().Before(deadline); {
-		if cond() {
-			return
-		}
-		time.Sleep(2 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for %s", what)
-}
-
 // A read cancelled while PARKED suspended (in the air wait, not in a sleep)
 // returns at once and is discarded — never resumed after the takeover
 // (REVIEW R5-B-02: a cancel that does not wake the cond var leaves settle to
@@ -390,12 +371,12 @@ func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 	go func() {
 		readDone <- n.Run(ctx, narrateRead, cast.SevereRead, true, func(ctx context.Context, s *speaker) { s.line("read"); s.hold(time.Hour) })
 	}()
-	waitUntil(t, "the read's hold", func() bool { return sleeps.Load() == 1 })
+	WaitUntil(t, "the read's hold", func() bool { return sleeps.Load() == 1 })
 	onAir, release := make(chan struct{}), make(chan struct{})
 	go n.Run(context.Background(), narrateBreaking, cast.Breaking, true, func(ctx context.Context, s *speaker) { s.line("breaking"); close(onAir); <-release })
 	<-onAir
 	close(gate) // the read's step ends: its next air wait PARKS (suspended)
-	waitUntil(t, "the read parked", func() bool {
+	WaitUntil(t, "the read parked", func() bool {
 		n.mu.Lock()
 		defer n.mu.Unlock()
 		return len(n.suspended) == 1 && n.suspended[0].suspended
@@ -411,7 +392,7 @@ func TestReadCancelledWhileParkedSuspendedReturnsAtOnce(t *testing.T) {
 		t.Fatalf("the parked read never woke on its cancel: %s", v.got())
 	}
 	close(release)
-	waitUntil(t, "the takeover's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
+	WaitUntil(t, "the takeover's release", func() bool { return strings.HasSuffix(v.got(), "restore") })
 	if got := v.got(); strings.Contains(got, "resume") || !strings.Contains(got, ",discard,") || strings.Count(got, "restore") != 1 {
 		t.Fatalf("discarded, never resumed, one restore: %s", got)
 	}

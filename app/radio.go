@@ -1238,7 +1238,7 @@ func radioDebugPath() string {
 	if !ok || v == "" {
 		return ""
 	}
-	dir := userCacheSubdir("debug")
+	dir := UserCacheSubdir("debug")
 	if dir == "" {
 		return ""
 	}

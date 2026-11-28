@@ -97,7 +97,7 @@ func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
 	if cfg.Maps != "off" || cfg.MapDescription != "instead" {
 		t.Errorf("the window is handed %q %q", cfg.Maps, cfg.MapDescription)
 	}
-	withConfigFile(t)
+	WithConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", Clock: "24h", Maps: "off", MapDescription: "off"}); err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestTheMapsTabReachesTheWindowAndTheFile(t *testing.T) {
 	if cfg.MapScale != "region" || cfg.MapNearbyKm != 5 || cfg.MapLayerChoice["alert"] {
 		t.Errorf("the window is handed %q %d %v", cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayerChoice)
 	}
-	withConfigFile(t)
+	WithConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapScale: "county", MapNearbyKm: 25, MapLayers: map[string]bool{"alert": false}}); err != nil {
 		t.Fatal(err)
 	}
@@ -269,31 +269,11 @@ func (closerFunc) Init() tea.Cmd                       { return nil }
 func (closerFunc) Update(tea.Msg) (tea.Model, tea.Cmd) { return nil, nil }
 func (closerFunc) View() tea.View                      { return tea.NewView("") }
 
-// withConfigFile points the config at a file the station already has:
-// Settings saves over one, and a first run's is refused by design.
-func withConfigFile(t *testing.T) {
-	t.Helper()
-	writeConfigFile(t, "units = \"imperial\"\n")
-}
-
-// writeConfigFile is withConfigFile with the file's words given.
-func writeConfigFile(t *testing.T, body string) {
-	t.Helper()
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	if err := os.MkdirAll(filepath.Join(dir, "watchpost"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "watchpost", "config.toml"), []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
-}
-
 // TestTheRetiredAlertScopeLeavesTheFile is D-76 (UAT-1 U1-37): a file an
 // earlier build wrote with map_alert_scope loads without an unknown key
 // reported, and the next Settings save lets the key go.
 func TestTheRetiredAlertScopeLeavesTheFile(t *testing.T) {
-	writeConfigFile(t, "units = \"imperial\"\nmap_alert_scope = \"station\"\n")
+	WriteConfigFile(t, "units = \"imperial\"\nmap_alert_scope = \"station\"\n")
 	if got, err := config.Load(); err != nil || len(got.Unknown) != 0 {
 		t.Fatalf("the file loads with unknown keys %v (%v)", got.Unknown, err)
 	}

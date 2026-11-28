@@ -13,7 +13,7 @@ import (
 // without playing it. A list that moves under the selection keeps the relay,
 // not the position.
 func TestTheBedRelayPickIsKeptByItsCallsign(t *testing.T) {
-	withConfigFile(t)
+	WithConfigFile(t)
 	lp := bedPipelines(t)
 	relays := lp.bedRelays()
 	if len(relays) < 3 {

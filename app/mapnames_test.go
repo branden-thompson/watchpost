@@ -82,7 +82,7 @@ func TestTheDetailAndTheNamerReachTheWindow(t *testing.T) {
 	if name, country := cfg.Map.PlaceNear(35.5, 139.5); name == "" || country == "" {
 		t.Error("the window is not handed the world's namer")
 	}
-	withConfigFile(t)
+	WithConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}); err != nil {
 		t.Fatal(err)
 	}

@@ -86,7 +86,7 @@ func TestThePoolReachesTheConsoleHomeFirst(t *testing.T) {
 
 // AND A STATION WITH NO EPICENTRE OFFERS NOTHING, rather than the whole country.
 func TestAStationWithNoTransmitterPublishesAnEmptyPool(t *testing.T) {
-	lp := &livePipelines{idx: indexForTest(t)}
+	lp := &livePipelines{idx: IndexForTest(t)}
 	lp.setStation(stationFrom(config.Config{}))
 
 	var got []console.StationAreaMsg

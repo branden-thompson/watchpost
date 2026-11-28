@@ -327,7 +327,7 @@ a Go test lives in the suites `make verify` and CI already run (D-30).
 ## B5: the kit and the test helpers (`app`)
 
 - **Prep:** the seven shared helpers gathered and exported (`EveryTick`, `LockedCopy`,
-  `SavePreference`, `UserCacheSubdir`, `CacheDir`, `UserAgent`, `RequestStats`); `app`'s pure test
+  `SavePreference`, `UserCacheSubdir`, `CacheDir`, `UserAgent`, `RequestStatsOf`, D-90); `app`'s pure test
   helpers gathered into `apptest` beside B0's helper; the local `run` in `startSchedule`
   (`app/schedule.go:startSchedule`) renamed; `app/every.go`'s P10-02 row re-keyed by symbol.
 - **Move:** `app/internal/run` with its tests; `app/schedule_test.go`'s callers re-qualified.

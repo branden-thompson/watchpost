@@ -9,7 +9,7 @@ import (
 
 // one_writer_test.go — FR-1.1's enforcement.
 //
-// savePreference called itself "the one path" in a doc comment while five
+// SavePreference called itself "the one path" in a doc comment while five
 // siblings bypassed it. A comment cannot fail, so it never did.
 //
 // TIGHTENED when this moved onto platform/singleowner: the matcher now accepts

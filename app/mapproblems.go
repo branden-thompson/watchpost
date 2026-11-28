@@ -35,4 +35,4 @@ func (p *mapProblems) note(what string) {
 }
 
 // last is a copy of the problems held.
-func (p *mapProblems) last() []string { return lockedCopy(&p.mu, &p.held) }
+func (p *mapProblems) last() []string { return LockedCopy(&p.mu, &p.held) }

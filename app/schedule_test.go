@@ -120,7 +120,7 @@ func TestNoArbiterMeansNoSchedule(t *testing.T) {
 	none.stop() // must not panic: stopAll calls this on an audio-less station
 }
 
-// everyTick RUNS ON THE INTERVAL AND STOPS WITH THE CONTEXT.
+// EveryTick RUNS ON THE INTERVAL AND STOPS WITH THE CONTEXT.
 //
 // It carries the single P10-02 exemption for every poller, so it is worth more
 // than any one of them: a defect here is a defect in every poller at once.
@@ -130,11 +130,11 @@ func TestEveryTickRunsUntilTheContextEnds(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		everyTick(ctx, time.Millisecond, func(time.Time) { runs.Add(1) })
+		EveryTick(ctx, time.Millisecond, func(time.Time) { runs.Add(1) })
 	}()
 	for deadline := time.Now().Add(2 * time.Second); runs.Load() < 3; {
 		if time.Now().After(deadline) {
-			t.Fatalf("everyTick ran %d times in two seconds on a 1 ms interval", runs.Load())
+			t.Fatalf("EveryTick ran %d times in two seconds on a 1 ms interval", runs.Load())
 		}
 		time.Sleep(time.Millisecond)
 	}
@@ -142,12 +142,12 @@ func TestEveryTickRunsUntilTheContextEnds(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(2 * time.Second):
-		t.Fatal("everyTick did not return when the context ended — every poller built on it leaks")
+		t.Fatal("EveryTick did not return when the context ended — every poller built on it leaks")
 	}
 	after := runs.Load()
 	time.Sleep(20 * time.Millisecond)
 	if got := runs.Load(); got != after {
-		t.Errorf("everyTick ran %d more times after returning", got-after)
+		t.Errorf("EveryTick ran %d more times after returning", got-after)
 	}
 }
 
@@ -161,14 +161,14 @@ func TestEveryTickRefusesANonPositiveInterval(t *testing.T) {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			everyTick(context.Background(), d, func(time.Time) {
-				t.Errorf("everyTick(%v) ran its function", d)
+			EveryTick(context.Background(), d, func(time.Time) {
+				t.Errorf("EveryTick(%v) ran its function", d)
 			})
 		}()
 		select {
 		case <-done:
 		case <-time.After(time.Second):
-			t.Fatalf("everyTick(%v) did not return", d)
+			t.Fatalf("EveryTick(%v) did not return", d)
 		}
 	}
 }

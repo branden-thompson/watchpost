@@ -16,7 +16,7 @@ import (
 // kept as zero and not the default.
 func TestTheRadioPanelsChoicesSurviveARestart(t *testing.T) {
 	for _, want := range []tty.RadioPrefs{{Volume: 30, Repeat: tty.RepeatWatchlist, Viz: true}, {Volume: 0, Repeat: tty.RepeatOne}} {
-		withConfigFile(t)
+		WithConfigFile(t)
 		if err := saveRadioPrefs(want); err != nil {
 			t.Fatal(err)
 		}
@@ -37,7 +37,7 @@ func TestTheRadioPanelsChoicesSurviveARestart(t *testing.T) {
 // is written to the file as well as handed to the deck, and the deck is given
 // it at the next launch.
 func TestTheRelaysPacingAndLanguageSurviveARestart(t *testing.T) {
-	withConfigFile(t)
+	WithConfigFile(t)
 	lp := &livePipelines{}
 	lp.setRelayDwell()(10 * time.Minute)
 	lp.setRelayLang()("es")

@@ -340,3 +340,5 @@ says exactly what passed.
 | 2026-11-28T00:30:26Z | 61d93b7e | 7cc40069abd2 | verify | FAILED (exit 2) | 1373 |
 | 2026-11-28T01:43:51Z | 61d93b7e | 83a04a830b00 | verify | green | 4364 |
 | 2026-11-28T02:30:22Z | f8d8d093 | 384cc3f2b56b | verify-docs | green | 557 |
+| 2026-11-28T12:06:36Z | 3ea507fe | 9471627809e1 | verify | FAILED (exit 2) | 1389 |
+| 2026-11-28T12:47:47Z | 3ea507fe | cae89f259f6e | verify | green | 2355 |

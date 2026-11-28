@@ -33,7 +33,7 @@ Signatures and field lists are in the designs. This page carries no implementati
 | `app` | the composition root: `RunDashboard`, the pipelines, the pool, `commit`, the diagnostics | `cmd/watchpost` |
 | `app/internal/deck` | the shared deck, whole: the radio deck, the arbiter, MasterControl, the air scope and fences, the bed, the Director's executors, the Producer and Composer | `app` |
 | `app/internal/mapdata` | the map's feeds and memos, the zone shapes, the propagation client, the timing instrument, the history | `app` |
-| `app/internal/run` | seven helpers one run shares: `UserAgent`, `EveryTick`, `SavePreference`, the cache directories, `LockedCopy`, `RequestStats` | `app`, `deck`, `mapdata` |
+| `app/internal/run` | seven helpers one run shares: `UserAgent`, `EveryTick`, `SavePreference`, the cache directories, `LockedCopy`, `RequestStatsOf` (D-90) | `app`, `deck`, `mapdata` |
 | `app/internal/apptest` | `app`'s pure test helpers | `_test.go` files under `app` only |
 
 ## The import graph

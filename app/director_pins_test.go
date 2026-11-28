@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"slices"
 	"strings"
 	"sync"
@@ -21,7 +20,6 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
-	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -37,24 +35,6 @@ import (
 //
 // Each pin is mutation-validated (T0.4): deleting the rule it guards must make
 // it fail. A pin that has never failed protects nothing.
-
-// offlineClient is an httpx client over a server of the test's own, and the
-// server's URL for the providers to point at. The handler is what the test
-// wants upstream to say — nothing at all for a deck that must run offline, the
-// NWS fixtures for a seam that needs a location to exist — and no unit test
-// reaches api.weather.gov. The cache is memory-only on purpose: a disk tier
-// starts a writer goroutine that outlives the test and races the removal of
-// t.TempDir(), which is F-102's mechanism.
-func offlineClient(t *testing.T, upstream http.Handler) (*httpx.Client, string) {
-	t.Helper()
-	srv := httptest.NewServer(upstream)
-	t.Cleanup(srv.Close)
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 1000, MaxRetries: 1})
-	if err != nil {
-		t.Fatalf("client: %v", err)
-	}
-	return client, srv.URL
-}
 
 // offlineDeck is a radioDeck that can run tune() END TO END with no network: an
 // httptest server that 404s everything, the NWS provider and BOTH relay
@@ -76,7 +56,7 @@ func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	// These five tests are about the Director's advance and the duck. The host's
 	// voice catalogue is not the subject, so it is pinned rather than inherited.
 	asPlatform(t, "darwin")
-	client, base := offlineClient(t, http.NotFoundHandler())
+	client, base := OfflineClient(t, http.NotFoundHandler())
 	res, err := stream.NewResolver(stream.NewDirectory(client, base, base))
 	if err != nil {
 		t.Fatalf("resolver: %v", err)

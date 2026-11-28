@@ -13,13 +13,10 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 
-	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/modes/tty/console"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
-
-var bonsallCfg = config.Location{Label: "Bonsall, CA", Zip: "92003", Lat: 33.2881, Lon: -117.2256, TZ: "America/Los_Angeles"}
 
 // THE SCHEDULE IS FED BY THE STATION'S POOL, NOT THE LISTENER'S WATCHLIST.
 //
@@ -31,14 +28,14 @@ var bonsallCfg = config.Location{Label: "Bonsall, CA", Zip: "92003", Lat: 33.288
 // all read one list, and a wiring no test drives is a defect nothing catches —
 // so the choice lives in `producer()` and this is what asserts it.
 func TestTheProducerOffersTheStationsPoolNotTheWatchlist(t *testing.T) {
-	lp := &livePipelines{idx: indexForTest(t)}
+	lp := &livePipelines{idx: IndexForTest(t)}
 	// A WATCHLIST DELIBERATELY NOWHERE NEAR THE STATION. If the schedule were
 	// fed by it, every name below would come back.
 	lp.setWatch([]snapshot.LocationRef{
 		{Label: "Anchorage, AK", Lat: 61.2181, Lon: -149.9003},
 		{Label: "Miami, FL", Lat: 25.7617, Lon: -80.1918},
 	})
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
 
 	got := lp.producer()()
 	if len(got) < 10 {
@@ -49,7 +46,7 @@ func TestTheProducerOffersTheStationsPoolNotTheWatchlist(t *testing.T) {
 			t.Errorf("the listener's watchlist reached the station's pool: %q", r.Label)
 		}
 	}
-	if got[0].Label != bonsallCfg.Label {
+	if got[0].Label != BonsallCfg.Label {
 		t.Errorf("the station reads where it transmits from first; got %q", got[0].Label)
 	}
 	// AND THE TWO LISTS ARE GENUINELY DIFFERENT THINGS.
@@ -66,8 +63,8 @@ func TestTheProducerOffersTheStationsPoolNotTheWatchlist(t *testing.T) {
 func TestTheStationFollowsTheDefaultOnlyWhileItIsBorrowingIt(t *testing.T) {
 	moved := []snapshot.LocationRef{{Label: "Reno, NV", Lat: 39.5296, Lon: -119.8138}}
 
-	borrowing := &livePipelines{idx: indexForTest(t)}
-	borrowing.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	borrowing := &livePipelines{idx: IndexForTest(t)}
+	borrowing.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
 	next, pool, ok := borrowing.reStation(moved)
 	if !ok {
 		t.Fatal("a borrowed epicentre moves with the listener's default location")
@@ -76,10 +73,10 @@ func TestTheStationFollowsTheDefaultOnlyWhileItIsBorrowingIt(t *testing.T) {
 		t.Errorf("and the pool is re-derived around it; got %q / %d", next.transmitter.Label, len(pool))
 	}
 
-	own := &livePipelines{idx: indexForTest(t)}
+	own := &livePipelines{idx: IndexForTest(t)}
 	own.setStation(stationFrom(config.Config{
 		Locations:   []config.Location{{Label: "Vista, CA", Lat: 33.2, Lon: -117.24}},
-		Broadcaster: config.Broadcaster{Transmitter: bonsallCfg},
+		Broadcaster: config.Broadcaster{Transmitter: BonsallCfg},
 	}))
 	if _, _, ok := own.reStation(moved); ok {
 		t.Error("a station with its own transmitter does not move because the listener did")
@@ -89,20 +86,11 @@ func TestTheStationFollowsTheDefaultOnlyWhileItIsBorrowingIt(t *testing.T) {
 // AND A STATION WITH NOWHERE TO TRANSMIT FROM OFFERS NOTHING, rather than the
 // whole country.
 func TestAStationWithNoEpicentreOffersNothing(t *testing.T) {
-	lp := &livePipelines{idx: indexForTest(t)}
+	lp := &livePipelines{idx: IndexForTest(t)}
 	lp.setStation(stationFrom(config.Config{}))
 	if got := lp.producer()(); len(got) != 0 {
 		t.Errorf("no transmitter is no region; got %d", len(got))
 	}
-}
-
-func indexForTest(t *testing.T) *geodata.Index {
-	t.Helper()
-	idx, err := geodata.Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return idx
 }
 
 // The pool fills the console's window, end to end.
@@ -120,8 +108,8 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lp := &livePipelines{idx: indexForTest(t)}
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	lp := &livePipelines{idx: IndexForTest(t)}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
 
 	var mu sync.Mutex
 	deepest := 0
@@ -173,8 +161,8 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	bishop := snapshot.LocationRef{Label: "Bishop, CA", Lat: 37.3614, Lon: -118.3951}
 	watch := func() []snapshot.LocationRef { return []snapshot.LocationRef{bishop, lonePine} }
 
-	lp := &livePipelines{idx: indexForTest(t)}
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	lp := &livePipelines{idx: IndexForTest(t)}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
 	pool := lp.producer()
 
 	// THE FIXTURE IS ASSERTED FIRST: Lone Pine really is outside the station's

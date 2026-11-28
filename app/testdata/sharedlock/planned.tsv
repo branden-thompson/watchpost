@@ -62,6 +62,7 @@ file	app/refs.go	app
 file	app/release.go	app
 file	app/resolve.go	app
 file	app/rotation_script.go	deck
+file	app/run_shared.go	run
 file	app/saychildren.go	app
 file	app/schedule.go	deck
 file	app/seen_store.go	deck

@@ -196,7 +196,7 @@ func (lp *livePipelines) startHistory(ctx context.Context, keep tty.HistoryReten
 		case <-time.After(start):
 		}
 		h.pass(ctx, time.Now())
-		everyTick(ctx, historyEvery, func(now time.Time) { h.pass(ctx, now) })
+		EveryTick(ctx, historyEvery, func(now time.Time) { h.pass(ctx, now) })
 	}()
 }
 

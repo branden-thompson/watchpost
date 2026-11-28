@@ -117,7 +117,7 @@ func TestCommitAndStopAllFinishUnderTheSharedLock(t *testing.T) {
 		lp.stopAll()
 		close(done)
 	}()
-	watchStalls(t, done, &steps, deadlockBound*raceSlowdown)
+	watchStalls(t, done, &steps, deadlockBound*RaceSlowdown)
 }
 
 // watchStalls waits for done, failing with every goroutine's stack when the

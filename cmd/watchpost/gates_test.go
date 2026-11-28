@@ -416,8 +416,11 @@ func TestEveryRaceSkippedPinIsInTheAllocBudget(t *testing.T) {
 	m := loadBuildModel(t)
 	m.mustRun(t)
 	re := regexp.MustCompile(selectorOf(t, m, "alloc-budget"))
-	planted := map[string]string{"x/planted_test.go": "package x\nfunc TestPlanted(t *testing.T) {\n\tif raceEnabled {\n\t\tt.Skip()\n\t}\n\t_ = allocpin.Pin(t, \"p\", 1, func() {})\n}\n"}
-	if got := racedPinsOutside(t, planted, re); !slices.Equal(got, []string{"x/planted_test.go: TestPlanted"}) {
+	planted := map[string]string{
+		"x/planted_test.go": "package x\nfunc TestPlanted(t *testing.T) {\n\tif raceEnabled {\n\t\tt.Skip()\n\t}\n\t_ = allocpin.Pin(t, \"p\", 1, func() {})\n}\n",
+		"y/planted_test.go": "package y\nfunc TestPlantedShared(t *testing.T) {\n\tif apptest.RaceEnabled {\n\t\tt.Skip()\n\t}\n\t_ = allocpin.Pin(t, \"p\", 1, func() {})\n}\n",
+	}
+	if got := racedPinsOutside(t, planted, re); !slices.Equal(got, []string{"x/planted_test.go: TestPlanted", "y/planted_test.go: TestPlantedShared"}) {
 		t.Fatalf("COULD NOT RUN — a planted race-skipped pin outside the pattern was reported as %v", got)
 	}
 	files := map[string]string{}
@@ -457,8 +460,13 @@ func skipOf(t *testing.T, m *buildModel, target string) *regexp.Regexp {
 	return regexp.MustCompile(`^$`)
 }
 
+// raceSkip is a read of the race detector's flag, a package's own or the
+// test support's exported one (0.19.6 B5).
+var raceSkip = regexp.MustCompile(`\b[Rr]aceEnabled\b`)
+
 // racedPinsOutside is every test function, by file and name, whose body reads
-// raceEnabled and measures allocations, and whose name re does not match.
+// raceEnabled or RaceEnabled and measures allocations, and whose name re does
+// not match.
 func racedPinsOutside(t *testing.T, files map[string]string, re *regexp.Regexp) []string {
 	t.Helper()
 	var out []string
@@ -475,7 +483,7 @@ func racedPinsOutside(t *testing.T, files map[string]string, re *regexp.Regexp) 
 			}
 			body := src[fn.Body.Pos()-1 : fn.Body.End()-1]
 			measures := strings.Contains(body, "allocpin.") || strings.Contains(body, "AllocsPerRun") || strings.Contains(body, "testing.Benchmark(")
-			if strings.Contains(body, "raceEnabled") && measures {
+			if raceSkip.MatchString(body) && measures {
 				out = append(out, path+": "+fn.Name.Name)
 			}
 		}

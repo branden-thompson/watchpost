@@ -139,16 +139,16 @@ func startSchedule(ctx context.Context, nar *arbiter, scripts *script.Library, c
 	if x == nil {
 		return nil // a seam was nil; newExecutors has already said which
 	}
-	run, cancel := context.WithCancel(ctx)
+	scheduleCtx, cancel := context.WithCancel(ctx)
 	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: console.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {
 		cancel()
 		return nil
 	}
-	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{}), executors: x}
-	go p.loop(run)
-	go s.tick(run)
+	s := &schedule{pump: p, ctx: scheduleCtx, cancel: cancel, ticks: make(chan struct{}), executors: x}
+	go p.loop(scheduleCtx)
+	go s.tick(scheduleCtx)
 	tick.mu.Lock()
 	tick.emit = s.carry
 	tick.mu.Unlock()
@@ -274,7 +274,7 @@ func (s *schedule) carry(ev lineup.Event) {
 // tick tells the Director the time until the station stops.
 func (s *schedule) tick(ctx context.Context) {
 	defer close(s.ticks)
-	everyTick(ctx, scheduleTick, func(now time.Time) {
+	EveryTick(ctx, scheduleTick, func(now time.Time) {
 		s.pump.send(ctx, lineup.Tick{Now: now})
 	})
 }

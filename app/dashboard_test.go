@@ -103,7 +103,7 @@ func TestNarrateEventDecidesAtThePress(t *testing.T) {
 	}
 	lp.deck = &radioDeck{} // attached later, as attachRadio does
 	hook("k1")
-	waitUntil(t, "the read", func() bool { lp.reader.mu.Lock(); defer lp.reader.mu.Unlock(); return !lp.reader.busy })
+	WaitUntil(t, "the read", func() bool { lp.reader.mu.Lock(); defer lp.reader.mu.Unlock(); return !lp.reader.busy })
 	if len(reads) != 1 {
 		t.Fatalf("a deck: the read runs, got %v", reads)
 	}

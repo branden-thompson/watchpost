@@ -10,10 +10,6 @@ package app
 
 import (
 	"context"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
@@ -23,10 +19,10 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// The package already has an oceanside(); these are the two the resolution
+// The package already has an Oceanside(); these are the two the resolution
 // tests compare, so the SECOND-entry case is a real one.
 var (
-	refOceanside = oceanside()
+	refOceanside = Oceanside()
 	refBonsall   = snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.2887, Lon: -117.2253, TZ: "America/Los_Angeles"}
 )
 
@@ -39,38 +35,8 @@ var (
 // route around, which it does.
 func offlineProviders(t *testing.T) (*httpx.Client, *nws.Provider, *synth.Products) {
 	t.Helper()
-	client, base := offlineClient(t, nwsFixtures(t))
+	client, base := OfflineClient(t, NWSFixtures(t))
 	return client, nws.New(client, base), synth.NewProducts(client, base)
-}
-
-// nwsFixtures serves the NWS package's recorded responses for the point,
-// station, observation and alert routes, and nothing for any other.
-func nwsFixtures(t *testing.T) http.Handler {
-	t.Helper()
-	serve := func(w http.ResponseWriter, name string) {
-		body, err := os.ReadFile(filepath.Join("..", "domains", "weather", "nws", "testdata", name))
-		if err != nil {
-			t.Errorf("COULD NOT RUN — the NWS fixture %s: %v", name, err)
-			http.Error(w, "no fixture", http.StatusInternalServerError)
-			return
-		}
-		_, _ = w.Write(body)
-	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := r.URL.Path
-		switch {
-		case strings.HasPrefix(p, "/points/"):
-			serve(w, "points.json")
-		case strings.HasSuffix(p, "/stations"):
-			serve(w, "stations.json")
-		case strings.HasSuffix(p, "/observations/latest"):
-			serve(w, "obs.json")
-		case p == "/alerts/active":
-			serve(w, "alerts.json")
-		default:
-			http.NotFound(w, r)
-		}
-	})
 }
 
 func watchOf(refs ...snapshot.LocationRef) func() []snapshot.LocationRef {

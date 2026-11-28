@@ -315,8 +315,8 @@ func TestTheAppsEndStopsAnUpdateAndKeepsItsState(t *testing.T) {
 		t.Fatal("control: the burst ended before the app's end")
 	}
 	appEnd()
-	if !svc.Settle(settleBound * raceSlowdown) {
-		t.Fatalf("the burst outlived the app's end by more than %v", settleBound*raceSlowdown)
+	if !svc.Settle(settleBound * RaceSlowdown) {
+		t.Fatalf("the burst outlived the app's end by more than %v", settleBound*RaceSlowdown)
 	}
 	<-out
 	again := &replayGetter{replay: replay, asking: make(chan struct{})}

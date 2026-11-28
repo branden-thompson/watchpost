@@ -22,8 +22,8 @@ func bedPipelines(t *testing.T) *livePipelines {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lp := &livePipelines{idx: indexForTest(t), relayTable: tbl}
-	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	lp := &livePipelines{idx: IndexForTest(t), relayTable: tbl}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{BonsallCfg}}))
 	lp.bedRadiusMi = config.DefaultBedRadiusMi
 	// THE RESOLVED LIST, SEEDED (D-117). The selector walks what actually STREAMS
 	// near the station, and finding that out is a network question the resolver

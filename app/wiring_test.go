@@ -75,10 +75,10 @@ func TestResolveHookReportsABrokenResolverOnEveryQuery(t *testing.T) {
 }
 
 func TestCacheDirBuilderIsUnderTheOSCacheDir(t *testing.T) {
-	if dir := userCacheSubdir("http"); dir != "" && !strings.Contains(filepath.ToSlash(dir), "/watchpost/http") {
+	if dir := UserCacheSubdir("http"); dir != "" && !strings.Contains(filepath.ToSlash(dir), "/watchpost/http") {
 		t.Fatalf("the HTTP cache lives at <os cache>/watchpost/http, got %s", dir)
 	}
-	if cacheDir() != userCacheSubdir("http") || voiceDir() != userCacheSubdir("piper") {
+	if CacheDir() != UserCacheSubdir("http") || voiceDir() != UserCacheSubdir("piper") {
 		t.Fatal("cacheDir and voiceDir are the one builder's outputs")
 	}
 }

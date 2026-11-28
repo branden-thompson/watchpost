@@ -113,7 +113,7 @@ func TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel(t *testing.T) {
 		t.Fatalf("restore %d, slept %v", restoredN, sleptN)
 	}
 	r.Read("nope") // an unknown key reads nothing
-	waitUntil(t, "the unknown key's no-op", func() bool { r.mu.Lock(); defer r.mu.Unlock(); return !r.busy })
+	WaitUntil(t, "the unknown key's no-op", func() bool { r.mu.Lock(); defer r.mu.Unlock(); return !r.busy })
 	if got := v.got(); strings.Count(got, "speak") != 1 {
 		t.Fatalf("an unknown key must not touch the voice: %v", got)
 	}
@@ -243,7 +243,7 @@ func TestEventReadEndsWithTheApp(t *testing.T) {
 	r.End() // nothing in progress: inert
 	r.Read("k1")
 	<-reading
-	waitUntil(t, "the read on air", func() bool { return strings.Contains(v.got(), "speak:") })
+	WaitUntil(t, "the read on air", func() bool { return strings.Contains(v.got(), "speak:") })
 	start := time.Now()
 	r.End()
 	if took := time.Since(start); took > time.Second {
@@ -324,12 +324,12 @@ func TestAPausedReadReleasesTheBedAndResumesOnRequest(t *testing.T) {
 		s.hold(time.Hour)
 	})
 	<-onAir
-	waitUntil(t, "the read to take the air", func() bool { return nar.mc.givenWay() })
+	WaitUntil(t, "the read to take the air", func() bool { return nar.mc.givenWay() })
 
 	if !nar.pauseRead() {
 		t.Fatal("there was no read to pause")
 	}
-	waitUntil(t, "the bed to come back while paused", func() bool { return !nar.mc.givenWay() })
+	WaitUntil(t, "the bed to come back while paused", func() bool { return !nar.mc.givenWay() })
 	if !nar.readPaused() {
 		t.Error("the read is paused but does not report itself so; the window cannot draw the mark")
 	}
@@ -340,7 +340,7 @@ func TestAPausedReadReleasesTheBedAndResumesOnRequest(t *testing.T) {
 	if !nar.resumeRead() {
 		t.Fatal("the paused read would not resume")
 	}
-	waitUntil(t, "the bed to dip again on resume", func() bool { return nar.mc.givenWay() })
+	WaitUntil(t, "the bed to dip again on resume", func() bool { return nar.mc.givenWay() })
 	if nar.readPaused() {
 		t.Error("the read still reports itself paused after resuming")
 	}
@@ -409,7 +409,7 @@ func TestClosingTheWindowStopsTheReadWithoutWaitingForIt(t *testing.T) {
 	r := newEventReader(context.Background(), nar, nil,
 		func(string) (tty.SevereRow, bool) { return tornadoRow(), true }, func(tea.Msg) {})
 	r.Read("k1")
-	waitUntil(t, "the read to start", func() bool {
+	WaitUntil(t, "the read to start", func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return r.busy
@@ -448,7 +448,7 @@ func TestShutdownWaitsForTheReadItEnds(t *testing.T) {
 	r := newEventReader(context.Background(), nar, nil,
 		func(string) (tty.SevereRow, bool) { return tornadoRow(), true }, func(tea.Msg) {})
 	r.Read("k1")
-	waitUntil(t, "the read to start", func() bool {
+	WaitUntil(t, "the read to start", func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return r.busy
@@ -487,7 +487,7 @@ func TestTheWindowsCloseHookDoesNotWaitForTheRead(t *testing.T) {
 	lp.reader = newEventReader(context.Background(), nar, nil,
 		func(string) (tty.SevereRow, bool) { return tornadoRow(), true }, func(tea.Msg) {})
 	lp.reader.Read("k1")
-	waitUntil(t, "the read to start", func() bool {
+	WaitUntil(t, "the read to start", func() bool {
 		lp.reader.mu.Lock()
 		defer lp.reader.mu.Unlock()
 		return lp.reader.busy
@@ -543,14 +543,14 @@ func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 		})
 
 	r.Toggle("k1") // open, [space]
-	waitUntil(t, "the first read", func() bool {
+	WaitUntil(t, "the first read", func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return r.busy
 	})
 	r.Cancel()     // [esc]
 	r.Toggle("k2") // reopen, navigate, [space] on another row
-	waitUntil(t, "the second read", func() bool {
+	WaitUntil(t, "the second read", func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return r.busy && r.key == "k2"
@@ -569,7 +569,7 @@ func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 	// then asks the arbiter to pause something that is not playing. The dip
 	// alone does not say it: the cancelled read can leave the bed down before
 	// the second is queued, so the live read on the air is asked as well.
-	waitUntil(t, "the second read to take the air", func() bool {
+	WaitUntil(t, "the second read to take the air", func() bool {
 		nar.mu.Lock()
 		reading := live(nar.onAir) && nar.onAir.class == narrateRead
 		nar.mu.Unlock()
@@ -578,7 +578,7 @@ func TestFastInputNeverLeavesTwoReadsRunning(t *testing.T) {
 
 	// And a further press is a PAUSE of that read, never a third read.
 	r.Toggle("k2")
-	waitUntil(t, "the second read to pause", func() bool { return nar.readPaused() })
+	WaitUntil(t, "the second read to pause", func() bool { return nar.readPaused() })
 	r.mu.Lock()
 	stillOne := r.busy && r.key == "k2"
 	r.mu.Unlock()
@@ -624,7 +624,7 @@ func TestTheClosePathNeverSendsAndSoCannotSoftlock(t *testing.T) {
 			}
 		})
 	r.Read("k1")
-	waitUntil(t, "the read to start", func() bool {
+	WaitUntil(t, "the read to start", func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return r.busy
@@ -671,7 +671,7 @@ func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 		s.hold(time.Hour)
 	})
 	<-readOn
-	waitUntil(t, "the read on air", func() bool { return nar.mc.givenWay() })
+	WaitUntil(t, "the read on air", func() bool { return nar.mc.givenWay() })
 
 	// A takeover displaces it and holds the air until released.
 	release := make(chan struct{})
@@ -680,7 +680,7 @@ func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 		defer close(takeoverDone)
 		nar.Run(context.Background(), narrateBreaking, cast.Breaking, true, func(context.Context, *speaker) { <-release })
 	}()
-	waitUntil(t, "the read to be displaced", func() bool {
+	WaitUntil(t, "the read to be displaced", func() bool {
 		nar.mu.Lock()
 		defer nar.mu.Unlock()
 		return len(nar.suspended) == 1
@@ -697,7 +697,7 @@ func TestAReadCanBePausedWhileATakeoverIsSpeaking(t *testing.T) {
 	<-takeoverDone
 	// THE HOLD SURVIVES THE TAKEOVER: the read must not go back on the air the
 	// moment the alert finishes.
-	waitUntil(t, "the takeover to leave the air", func() bool {
+	WaitUntil(t, "the takeover to leave the air", func() bool {
 		nar.mu.Lock()
 		defer nar.mu.Unlock()
 		return nar.onAir == nil
@@ -806,12 +806,12 @@ func TestAReadForAMissingRowLeavesNoMark(t *testing.T) {
 		})
 
 	r.Toggle("gone")
-	waitUntil(t, "the read to finish", func() bool {
+	WaitUntil(t, "the read to finish", func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return !r.busy
 	})
-	waitUntil(t, "the mark to come down", func() bool {
+	WaitUntil(t, "the mark to come down", func() bool {
 		mu.Lock()
 		defer mu.Unlock()
 		return len(marks) > 0 && marks[len(marks)-1].Key == ""
@@ -844,7 +844,7 @@ func TestAQueuedReadCanBePausedBeforeItTakesTheAir(t *testing.T) {
 	go nar.Run(context.Background(), narrateRead, cast.SevereRead, true, func(_ context.Context, s *speaker) {
 		s.hold(time.Hour)
 	})
-	waitUntil(t, "the read to queue", func() bool {
+	WaitUntil(t, "the read to queue", func() bool {
 		nar.mu.Lock()
 		defer nar.mu.Unlock()
 		return len(nar.waiting) == 1
@@ -858,7 +858,7 @@ func TestAQueuedReadCanBePausedBeforeItTakesTheAir(t *testing.T) {
 	}
 
 	close(release)
-	waitUntil(t, "the alert to leave the air", func() bool {
+	WaitUntil(t, "the alert to leave the air", func() bool {
 		nar.mu.Lock()
 		defer nar.mu.Unlock()
 		return nar.onAir == nil
@@ -1007,12 +1007,12 @@ func TestAPausedQueuedReadGivesTheBedBack(t *testing.T) {
 		<-release
 	})
 	<-onAir
-	waitUntil(t, "the alert to duck the bed", func() bool { return nar.mc.givenWay() })
+	WaitUntil(t, "the alert to duck the bed", func() bool { return nar.mc.givenWay() })
 
 	go nar.Run(context.Background(), narrateRead, cast.SevereRead, true, func(_ context.Context, s *speaker) {
 		s.hold(time.Hour)
 	})
-	waitUntil(t, "the read to queue", func() bool {
+	WaitUntil(t, "the read to queue", func() bool {
 		nar.mu.Lock()
 		defer nar.mu.Unlock()
 		return len(nar.waiting) == 1
@@ -1022,7 +1022,7 @@ func TestAPausedQueuedReadGivesTheBedBack(t *testing.T) {
 	}
 
 	close(release) // the alert ends; nothing is speaking now
-	waitUntil(t, "the bed to come back", func() bool { return !nar.mc.givenWay() })
+	WaitUntil(t, "the bed to come back", func() bool { return !nar.mc.givenWay() })
 }
 
 // A READ THAT IS ALREADY GONE DOES NOT HOLD THE BED.

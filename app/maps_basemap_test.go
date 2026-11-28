@@ -201,10 +201,10 @@ func TestTheMapCachesAreStated(t *testing.T) {
 	if want := mapDiskBytes + httpCacheBytes + temperature.CacheBytes; statedCacheBytes != want {
 		t.Errorf("the stated total is %d; the configured caps sum to %d", statedCacheBytes, want)
 	}
-	if mapHTTPDir() != userCacheSubdir("map-http") {
+	if mapHTTPDir() != UserCacheSubdir("map-http") {
 		t.Errorf("the map's web cache is at %q, want the OS cache directory's map-http folder", mapHTTPDir())
 	}
-	if prod := newProductionMapBuilder("t", &tileCounter{}, nil); prod.cacheDir != userCacheSubdir("map") || prod.transport == nil {
+	if prod := newProductionMapBuilder("t", &tileCounter{}, nil); prod.cacheDir != UserCacheSubdir("map") || prod.transport == nil {
 		t.Errorf("the tile cache is at %q, want the OS cache directory's map folder", prod.cacheDir)
 	}
 	tr := &recorded{}

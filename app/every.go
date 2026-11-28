@@ -9,7 +9,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
-// everyTick runs fn every d until the context ends.
+// EveryTick runs fn every d until the context ends.
 //
 // IT EXISTS SO THERE IS ONE EXEMPTION INSTEAD OF ONE PER POLLER. A loop that
 // runs until it is cancelled cannot state a bound in iterations — that is what
@@ -24,7 +24,7 @@ import (
 //
 // The exits are the two a poller has: the context ending, and the ticker
 // stopping. Both return; neither leaks.
-func everyTick(ctx context.Context, d time.Duration, fn func(time.Time)) {
+func EveryTick(ctx context.Context, d time.Duration, fn func(time.Time)) {
 	if err := invariant.Check(d > 0, "a poller ticks on a positive interval"); err != nil {
 		return // a zero or negative interval is a spin, not a schedule
 	}

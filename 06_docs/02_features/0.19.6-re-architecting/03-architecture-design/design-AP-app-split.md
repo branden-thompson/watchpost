@@ -833,7 +833,7 @@ the graph shows one user (CQ F-6).
 | `dropSuperseded` (`app/severe.go:530`) | root only (`pipelines.go:189`, `:329`) | root | one user |
 
 **The kit survives, with seven helpers in about 105 lines.** It holds `EveryTick`, `LockedCopy`,
-`SavePreference`, `UserCacheSubdir`, `CacheDir`, `UserAgent` and `RequestStats`, exported because they
+`SavePreference`, `UserCacheSubdir`, `CacheDir`, `UserAgent` and `RequestStatsOf` (D-90), exported because they
 are shared. The kit batch's prep commit gathers them into one file beside `every.go`, still in package
 `app`. Every helper in it has users in at least two packages (graph-held). Map I's other two kit files
 leave: `lazymemo.go` to the maps, `hangup.go` to the root. Its name is in AP-11.
@@ -999,9 +999,9 @@ unexported crossing set is empty once the listed entry points replace the split 
 |---|---|---|---|
 | root → deck | 15 (+ 12 `Config` fields) | 0 | `Deck`, `Config`, `New`, `CastBlock`, `VoiceDir`, the 10 methods |
 | root → maps | 15 (+ 10 `Config` fields) | 0 | `Feeds`, `Config`, `New`, `TimingRecord`, the 11 methods |
-| root → kit | 4 | 0 | `UserAgent`, `CacheDir`, `UserCacheSubdir`, `RequestStats` |
+| root → kit | 4 | 0 | `UserAgent`, `CacheDir`, `UserCacheSubdir`, `RequestStatsOf` |
 | deck → kit | 6 | 0 | `EveryTick`, `LockedCopy`, `SavePreference`, `UserCacheSubdir`, `CacheDir`, `UserAgent` |
-| maps → kit | 6 | 0 | `EveryTick`, `LockedCopy`, `SavePreference`, `UserCacheSubdir`, `UserAgent`, `RequestStats` |
+| maps → kit | 6 | 0 | `EveryTick`, `LockedCopy`, `SavePreference`, `UserCacheSubdir`, `UserAgent`, `RequestStatsOf` |
 | deck ↔ maps | 0 | 0 | none. Map I's one `maps → deck` edge (`lockedCopy`, `app/mapproblems.go:38`) goes to the kit. Map I's `kit → deck` edge (`timing.go` → `lockedCopy`) goes with `timing.go` to the maps. |
 | kit → anything in `app` | 0 | 0 | none |
 

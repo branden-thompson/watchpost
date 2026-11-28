@@ -459,3 +459,13 @@ Dashboard.numPriority	mapPick.priorityRows	modes/tty
 d.mapPane.outside	mm.mapPane.outside	modes/tty
 # B4.3 (D-82): rain-is-radar asks the mode it is handed, decided once by its caller
 mapModel.rainIsRadar	rainIsRadar	modes/tty
+# B5 prep (design AP-5): the run's shared helpers exported, for app/internal/run
+everyTick	EveryTick	app
+lockedCopy	LockedCopy	app
+savePreference	SavePreference	app
+cacheDir	CacheDir	app
+userCacheSubdir	UserCacheSubdir	app
+requestStats	RequestStatsOf	app
+# the propagation holder's own requestStats method keeps its name: the line above renames it
+# too, where it stands whole after the dot, and this line puts it back
+propagationHolder.RequestStatsOf	propagationHolder.requestStats	app
